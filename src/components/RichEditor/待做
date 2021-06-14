@@ -1,0 +1,38 @@
+
+完善list的各种事件，添加说明
+
+list：
+没有选区的情况下：
+tab
+shift tab
+enter
+backspace
+delete
+
+有选区的情况下：
+tab
+shift tab
+enter
+backspace
+delete
+ctrl c
+ctrl v
+中文输入
+
+table
+没有选区的情况下：
+tab
+shift tab
+enter
+backspace
+delete
+
+有选区的情况下：
+tab
+shift tab
+enter
+backspace
+delete
+ctrl c
+ctrl v
+中文输入
