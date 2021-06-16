@@ -100,19 +100,18 @@ const utils = {
     return Element.isElement(node) && TextWrappers.includes(node.type);
   },
   getElementType(editor: EditorType) {
-    const [ele] = Editor.nodes(editor, {
-      reverse: true,
+    const ele = Editor.above(editor, {
       match(n) {
-        return utils.isTextWrapper(n);
+        return (
+          ListLogic.isListItem(n) || TableLogic.isTd(n) || Editor.isEditor(n)
+        );
       },
     });
     if (!ele) return null;
 
-    const [parent, pp] = utils.getParent(editor, ele[1]);
-
     return (
-      (Element.isElement(parent) && parent.type) ||
-      (Editor.isEditor(parent) && CET.EDITOR)
+      (Element.isElement(ele[0]) && ele[0].type) ||
+      (Editor.isEditor(ele[0]) && CET.EDITOR)
     );
   },
   getPath(path: Path, type: "pre" | "next" | "parent") {
@@ -359,7 +358,6 @@ const ListLogic = {
         return;
       }
     });
-    return true;
   },
   /**
    * 对应键盘Backspace事件
@@ -401,7 +399,6 @@ const ListLogic = {
         }
       }
     });
-    return true;
   },
   /**
    * 删除选区里的li策略：
@@ -561,7 +558,6 @@ const ListLogic = {
         },
       });
     });
-    return true;
   },
   tabEvent(editor: EditorType) {
     Editor.withoutNormalizing(editor, () => {
@@ -576,7 +572,6 @@ const ListLogic = {
         ListLogic.indentLi(editor, [n, p]);
       }
     });
-    return true;
   },
   indentLi(editor: EditorType, liEntry: NodeEntry) {
     Editor.withoutNormalizing(editor, () => {
@@ -620,7 +615,6 @@ const ListLogic = {
         ListLogic.liftLi(editor, [n, p]);
       }
     });
-    return true;
   },
   liftLi(editor: EditorType, liEntry: NodeEntry) {
     const [li, liPath] = liEntry;
@@ -638,18 +632,6 @@ const ListLogic = {
 const TableLogic = {
   model: [
     {
-      type: CET.P,
-      children: [
-        {
-          text: "123",
-        },
-        {
-          type: CET.IMG,
-          children: [{ text: "" }],
-        },
-      ],
-    },
-    {
       type: CET.TABLE,
       children: [
         {
@@ -660,16 +642,11 @@ const TableLogic = {
               children: [
                 {
                   type: CET.TD,
-                  children: [
-                    {
-                      type: CET.DIV,
-                      children: [{ text: "123" }],
-                    },
-                  ],
+                  children: [{ text: "" }],
                 },
                 {
                   type: CET.TD,
-                  children: [{ text: "age" }],
+                  children: [{ text: "" }],
                 },
               ],
             },
@@ -677,76 +654,43 @@ const TableLogic = {
         },
         {
           type: CET.TBODY,
-          children: [
-            {
+          children: new Array(10).fill(0).map((item) => {
+            return {
               type: CET.TR,
               children: [
                 {
                   type: CET.TD,
-                  children: [
-                    { text: "chenyu" },
-                    {
-                      type: CET.IMG,
-                      children: [{ text: "" }],
-                    },
-                    { text: "pic" },
-                  ],
+                  children: [{ text: "123" }],
                 },
                 {
                   type: CET.TD,
-                  children: [
-                    { text: "chenyu" },
-                    {
-                      type: CET.IMG,
-                      children: [{ text: "" }],
-                    },
-                    { text: "pic" },
-                  ],
+                  children: [{ text: "321" }],
                 },
               ],
-            },
-          ],
+            };
+          }),
         },
       ],
     },
     ..._.cloneDeep(ListLogic.model),
   ],
-  getKeyDownEvent(key: string, e: KeyDownEventParam) {
-    switch (key) {
-      case "Tab":
-        return !e.shiftKey ? TableLogic.tabEvent : TableLogic.shiftTabEvent;
-      case "Enter":
-        return TableLogic.enterEvent;
-      case "Backspace":
-        return TableLogic.backspaceEvent;
-      case "Delete":
-        return TableLogic.deleteEvent;
-      case "ArrowUp":
-      case "ArrowDown":
-        return e.shiftKey
-          ? () => {}
-          : (editor: EditorType) => TableLogic.arrowKeyEvent(editor, key);
-      default:
-        return (editor: EditorType) => TableLogic.normalEvent(editor, key);
-    }
-  },
   normalizeTable(editor: EditorType, nodeEntry: NodeEntry) {
     const [node, path] = nodeEntry;
 
     if (Element.isElement(node) && CET.TABLE == node.type) {
-      const nextPath = utils.getPath(path, "next");
-      const [nextNode] = utils.getNodeByPath(editor, nextPath);
-      if (!nextNode) {
-        Transforms.insertNodes(
-          editor,
-          {
-            type: CET.DIV,
-            children: [{ text: "" }],
-          },
-          { at: nextPath }
-        );
-        return;
-      }
+      // const nextPath = utils.getPath(path, "next");
+      // const [nextNode] = utils.getNodeByPath(editor, nextPath);
+      // if (!nextNode) {
+      //   Transforms.insertNodes(
+      //     editor,
+      //     {
+      //       type: CET.DIV,
+      //       children: [{ text: "" }],
+      //     },
+      //     { at: nextPath }
+      //   );
+      //   return;
+      // }
     }
 
     if (Element.isElement(node) && [CET.THEAD, CET.TBODY].includes(node.type)) {
@@ -792,35 +736,6 @@ const TableLogic = {
           return;
         }
       }
-      // const tableDom = ReactEditor.toDOMNode(editor, table);
-      // console.log(tableDom);
-      // const trDom = ReactEditor.toDOMNode(editor, node);
-      // let maxColSpanSum = 0;
-      // Array.from(tableDom.querySelectorAll("tr")).forEach((tr) => {
-      //   let sum = 0;
-      //   Array.from(tr.children).forEach((td: any) => {
-      //     sum += td.colSpan;
-      //   });
-      //   maxColSpanSum = Math.max(maxColSpanSum, sum);
-      // });
-      // let sum = 0;
-      // Array.from(trDom.querySelectorAll("td")).forEach((td: any) => {
-      //   sum += td.colSpan;
-      // });
-
-      // if (sum != maxColSpanSum) {
-      //   Transforms.insertNodes(
-      //     editor,
-      //     {
-      //       type: CET.TD,
-      //       children: [],
-      //     },
-      //     {
-      //       at: path.concat([node.children.length]),
-      //     }
-      //   );
-      //   return;
-      // }
     }
 
     if (Element.isElement(node) && CET.TD == node.type) {
@@ -859,9 +774,32 @@ const TableLogic = {
     const tableDom = nowTrDom?.parentNode?.parentNode;
     if (!tableDom) return;
 
-    switch (key.toLowerCase().replace("arrow", "")) {
-      case "up": {
-        if (nowTrDom.rowIndex == 0) return false;
+    switch (key) {
+      case "ArrowUp": {
+        if (nowTrDom.rowIndex == 0) {
+          const table = Editor.above(editor, {
+            match(n) {
+              return TableLogic.isTable(n);
+            },
+          });
+          if (!table) return false;
+          const beforeTable = Editor.before(editor, table[1]);
+          // 如果table已经是第一个元素，那么在它前面插入一个空文本
+          if (!beforeTable) {
+            Transforms.insertNodes(
+              editor,
+              {
+                type: CET.DIV,
+                children: [{ text: "" }],
+              },
+              { at: table[1] }
+            );
+            Transforms.select(editor, table[1]);
+          } else {
+            Transforms.select(editor, beforeTable);
+          }
+          return true;
+        }
         const [firstChild, fcp] = Editor.first(editor, td[1]);
         if (!Path.equals(fcp, selection.anchor.path)) return false;
         if (
@@ -889,7 +827,7 @@ const TableLogic = {
         }
         return true;
       }
-      case "down": {
+      case "ArrowDown": {
         const [lastChild, lcp] = Editor.last(editor, td[1]);
         if (!Path.equals(lcp, selection.anchor.path)) return false;
         if (
@@ -901,7 +839,31 @@ const TableLogic = {
         const targetTrDom: any = Array.from(tableDom.querySelectorAll("tr"))?.[
           nowTrDom.rowIndex + 1
         ];
-        if (!targetTrDom) return false;
+        // 如果下一行tr元素不存在，那么说明已经是在最后一行
+        if (!targetTrDom) {
+          const table = Editor.above(editor, {
+            match(n) {
+              return TableLogic.isTable(n);
+            },
+          });
+          if (!table) return false;
+          let afterTable = Editor.after(editor, table[1]);
+          // 如果table的下一个元素不存在，那么插入一个
+          if (!afterTable) {
+            Transforms.insertNodes(
+              editor,
+              {
+                type: CET.DIV,
+                children: [{ text: "" }],
+              },
+              { at: utils.getPath(table[1], "next") }
+            );
+            Transforms.select(editor, utils.getPath(table[1], "next"));
+          } else {
+            Transforms.select(editor, afterTable);
+          }
+          return true;
+        }
         const targetTdDom: any = Array.from(
           targetTrDom.querySelectorAll("td")
         )?.[nowTdDom.cellIndex];
@@ -922,77 +884,6 @@ const TableLogic = {
   },
   isTable(node: Node): node is Element {
     return Element.isElement(node) && CET.TABLE == node.type;
-  },
-  normalEvent(editor: EditorType, key: string) {
-    const { selection } = editor;
-    if (
-      selection &&
-      !Range.isCollapsed(selection) &&
-      (key.length == 1 || key == "Process")
-    ) {
-    }
-    return false;
-  },
-  removeRangeTd2(editor: EditorType, selection: Range, tdEntry: NodeEntry) {
-    const [start, end] = Range.edges(selection);
-    const [td, tdPath] = tdEntry;
-
-    for (const [div, divPath] of Node.children(editor, tdPath, {
-      reverse: true,
-    })) {
-      for (const [child, childP] of Node.children(editor, divPath, {
-        reverse: true,
-      })) {
-        if (Path.equals(start.path, childP)) {
-          if (Text.isText(child) && child.text.length > 0) {
-            Transforms.delete(editor, {
-              at: {
-                anchor: {
-                  path: childP,
-                  offset: start.offset,
-                },
-                focus: {
-                  path: childP,
-                  offset: child.text.length,
-                },
-              },
-              reverse: true,
-            });
-          } else {
-            Transforms.removeNodes(editor, { at: childP });
-          }
-        } else if (Path.equals(end.path, childP)) {
-          if (Text.isText(child) && child.text.length > 0) {
-            Transforms.delete(editor, {
-              at: {
-                anchor: {
-                  path: childP,
-                  offset: 0,
-                },
-                focus: {
-                  path: childP,
-                  offset: end.offset,
-                },
-              },
-              reverse: true,
-            });
-          } else {
-            Transforms.removeNodes(editor, { at: childP });
-          }
-        } else if (Range.includes(selection, childP)) {
-          if (Editor.isVoid(editor, child) || Editor.isInline(editor, child)) {
-            Transforms.removeNodes(editor, {
-              at: childP,
-            });
-          } else if (Text.isText(child)) {
-            Transforms.delete(editor, {
-              at: childP,
-              reverse: true,
-            });
-          }
-        }
-      }
-    }
   },
   removeRangeTd(editor: EditorType, selection: Range, tdEntry: NodeEntry) {
     const [td, tdPath] = tdEntry;
@@ -1028,7 +919,6 @@ const TableLogic = {
         return true;
       }
     });
-    return true;
   },
   deleteEvent(editor: EditorType) {
     Editor.withoutNormalizing(editor, () => {
@@ -1056,12 +946,7 @@ const TableLogic = {
     return true;
   },
   enterEvent(editor: EditorType) {
-    const { selection } = editor;
-    if (selection && Range.isCollapsed(selection)) {
-      // if (ListLogic.isInList(editor)) return;
-      // Editor.insertText(editor, "\n");
-    }
-    return false;
+    Editor.insertBreak(editor);
   },
   tabEvent(editor: EditorType) {
     const [td] = Editor.nodes(editor, {
@@ -1083,7 +968,6 @@ const TableLogic = {
         },
       });
     }
-    return true;
   },
   shiftTabEvent(editor: EditorType) {
     const [td] = Editor.nodes(editor, {
@@ -1107,7 +991,6 @@ const TableLogic = {
         });
       }
     }
-    return true;
   },
   getNextTd(editor: EditorType, path: Path): NodeEntry | [] {
     try {
@@ -1217,8 +1100,7 @@ const ToolBar = () => {
     Transforms.move(editor);
   };
 
-  const insertTable = () => {
-  };
+  const insertTable = () => {};
 
   return (
     <div style={{ position: "relative" }}>
@@ -1914,18 +1796,9 @@ const EditorComp: EditorCompShape = () => {
     []
   );
 
-  const publishKeyDownEvent = (type: CET, e: KeyDownEventParam) => {
-    if ([CET.LIST_ITEM].includes(type)) {
-      return ListLogic.getKeyDownEvent(e.key, e)?.(editor);
-    }
-    if ([CET.TD].includes(type)) {
-      return TableLogic.getKeyDownEvent(e.key, e)?.(editor);
-    }
-    return false;
-  };
-
   const bindKeyDownEvent: EditableProps["onKeyDown"] = (e) => {
     let { selection } = editor;
+    if (!selection) return;
 
     const removeRangeElement = (editor: EditorType, selection: Range) => {
       // 不能在withoutNormalize里运行
@@ -1956,6 +1829,29 @@ const EditorComp: EditorCompShape = () => {
             });
         }
       }
+
+      // const tableRanges: any = [];
+      // for (const [n, p] of Editor.nodes(editor, {
+      //   match(n) {
+      //     return TableLogic.isTable(n);
+      //   },
+      // })) {
+      //   const inte = Range.intersection(selection, Editor.range(editor, p));
+      //   tableRanges.push(inte);
+      // }
+
+      // Transforms.collapse(editor, { edge: "start" });
+
+      // setTimeout(() => {
+      //   tableRanges.forEach((inte: any) => {
+      //     if (inte) {
+      //       Transforms.insertText(editor, "", {
+      //         at: inte,
+      //       });
+      //     }
+      //   });
+      // }, 0);
+
       // 为了在normalize之后运行
       setTimeout(() => {
         Transforms.select(
@@ -1965,59 +1861,43 @@ const EditorComp: EditorCompShape = () => {
       }, 0);
     };
 
-    // 如果是选区
-    if (selection && Range.isExpanded(selection)) {
-      if (["Backspace", "Delete"].includes(e.key)) {
-        e.preventDefault();
-        removeRangeElement(editor, selection);
-        return;
-      }
-      if (e.key == "Enter") {
+    if (Range.isExpanded(selection)) {
+      switch (e.key) {
+        case "Backspace":
+        case "Delete": {
+          e.preventDefault();
+          removeRangeElement(editor, selection);
+          break;
+        }
         // 如果在选区里按回车，只删除内容
-        e.preventDefault();
-        removeRangeElement(editor, selection);
-        return;
-      }
-      if (!e.shiftKey && e.key == "Tab") {
-        e.preventDefault();
-
-        for (const [n, p] of Editor.nodes(editor, {
-          at: selection,
-          reverse: true,
-          universal: true,
-          match(n) {
-            return utils.isTextWrapper(n);
-          },
-        })) {
-          const [parent, pp] = utils.getParent(editor, p);
-          if (!parent) continue;
-          if (ListLogic.isListItem(parent)) {
-            ListLogic.indentLi(editor, [parent, pp]);
-          }
+        case "Enter": {
+          e.preventDefault();
+          removeRangeElement(editor, selection);
+          break;
         }
+        case "Tab": {
+          e.preventDefault();
 
-        return;
-      }
-      if (e.shiftKey && e.key == "Tab") {
-        e.preventDefault();
-
-        for (const [n, p] of Editor.nodes(editor, {
-          at: selection,
-          reverse: true,
-          universal: true,
-          match(n) {
-            return Element.isElement(n) && TextWrappers.includes(n.type);
-          },
-        })) {
-          const [parent, pp] = utils.getParent(editor, p);
-          if (!parent) continue;
-          if (ListLogic.isListItem(parent)) {
-            ListLogic.liftLi(editor, [parent, pp]);
+          for (const [n, p] of Editor.nodes(editor, {
+            at: selection,
+            reverse: true,
+            universal: true,
+            match(n) {
+              return utils.isTextWrapper(n);
+            },
+          })) {
+            const [parent, pp] = utils.getParent(editor, p);
+            if (!parent) continue;
+            if (ListLogic.isListItem(parent)) {
+              e.shiftKey
+                ? ListLogic.indentLi(editor, [parent, pp])
+                : ListLogic.liftLi(editor, [parent, pp]);
+            }
           }
+          break;
         }
-
-        return;
       }
+
       if (!e.ctrlKey && (e.key.length == 1 || e.key == "Process")) {
         removeRangeElement(editor, selection);
         Transforms.collapse(editor, { edge: "start" });
@@ -2026,61 +1906,111 @@ const EditorComp: EditorCompShape = () => {
       return;
     }
 
-    // 以下是没有选区的情况下的事件
-    const elementType = utils.getElementType(editor);
-    if (elementType && publishKeyDownEvent(elementType, e)) e.preventDefault();
-    else {
+    if (Range.isCollapsed(selection)) {
+      // 以下是没有选区的情况下的事件
+      const elementType = utils.getElementType(editor);
+
       // 如果默认事件没有被组件拦截掉，那么在这里重新定义拦截逻辑
       switch (e.key) {
-        case "Tab":
-          e.preventDefault();
-          Transforms.insertText(editor, "    ");
+        case "ArrowUp":
+        case "ArrowDown": {
+          if (CET.TD == elementType) {
+            if (TableLogic.arrowKeyEvent(editor, e.key)) e.preventDefault();
+            break;
+          }
           break;
-        case "Delete":
+        }
+        case "Tab": {
           e.preventDefault();
-          if (editor.selection) {
-            // 如果后面是表格，则无法删除
-            const afterNodePath = Editor.after(editor, editor.selection);
-            const table = Editor.above(editor, {
-              at: afterNodePath,
-              match(n) {
-                return TableLogic.isTable(n);
-              },
+          if (CET.LIST_ITEM == elementType) {
+            e.shiftKey
+              ? ListLogic.shiftTabEvent(editor)
+              : ListLogic.tabEvent(editor);
+            break;
+          }
+          if (CET.TD == elementType) {
+            e.shiftKey
+              ? TableLogic.shiftTabEvent(editor)
+              : TableLogic.tabEvent(editor);
+            break;
+          }
+          // 如果是在其他元素上
+          !e.shiftKey && Transforms.insertText(editor, "    ");
+          break;
+        }
+        case "Enter": {
+          e.preventDefault();
+          if (CET.LIST_ITEM == elementType) {
+            ListLogic.enterEvent(editor);
+            break;
+          }
+          if (CET.TD == elementType) {
+            TableLogic.enterEvent(editor);
+            break;
+          }
+          Editor.insertBreak(editor);
+          break;
+        }
+        case "Delete": {
+          e.preventDefault();
+          if (CET.LIST_ITEM == elementType) {
+            ListLogic.deleteEvent(editor);
+            break;
+          }
+          if (CET.TD == elementType) {
+            TableLogic.deleteEvent(editor);
+            break;
+          }
+          // 如果后面是表格，则无法删除
+          const afterNodePath = Editor.after(editor, selection);
+          const table = Editor.above(editor, {
+            at: afterNodePath,
+            match(n) {
+              return TableLogic.isTable(n);
+            },
+          });
+          // 如果已经是空元素，那么删除整行
+          const textWrapper = Editor.above(editor, {
+            match(n) {
+              return utils.isTextWrapper(n);
+            },
+          });
+          if (!textWrapper) break;
+          if (Editor.string(editor, textWrapper[1], { voids: true }) == "") {
+            Transforms.removeNodes(editor, {
+              at: textWrapper[1],
             });
-            // 如果已经是空元素，那么删除整行
-            const textWrapper = Editor.above(editor, {
-              match(n) {
-                return utils.isTextWrapper(n);
-              },
-            });
-            if (!textWrapper) break;
-            if (Editor.string(editor, textWrapper[1], { voids: true }) == "") {
-              Transforms.removeNodes(editor, {
-                at: textWrapper[1],
-              });
-              break;
-            }
+            break;
+          }
 
-            if (!!table) break;
-            Editor.deleteForward(editor);
-          }
+          if (!!table) break;
+          Editor.deleteForward(editor);
           break;
-        case "Backspace":
+        }
+        case "Backspace": {
           e.preventDefault();
-          // 如果前面是表格，则无法删除
-          if (editor.selection) {
-            const beforeNodePath = Editor.before(editor, editor.selection);
-            const table = Editor.above(editor, {
-              at: beforeNodePath,
-              match(n) {
-                return TableLogic.isTable(n);
-              },
-            });
-            if (!!table) break;
-            Editor.deleteBackward(editor)
+          if (CET.LIST_ITEM == elementType) {
+            ListLogic.backspaceEvent(editor);
+            break;
           }
+          if (CET.TD == elementType) {
+            TableLogic.backspaceEvent(editor);
+            break;
+          }
+          // 如果前面是表格，则无法删除
+          const beforeNodePath = Editor.before(editor, selection);
+          const table = Editor.above(editor, {
+            at: beforeNodePath,
+            match(n) {
+              return TableLogic.isTable(n);
+            },
+          });
+          if (!!table) break;
+          Editor.deleteBackward(editor);
           break;
+        }
       }
+      return;
     }
   };
 
@@ -2098,6 +2028,7 @@ const EditorComp: EditorCompShape = () => {
           renderElement={renderElement}
           renderLeaf={renderLeaf}
           autoFocus
+          spellCheck
           onKeyDown={bindKeyDownEvent}
           onDragStart={(e) => {
             e.preventDefault();
