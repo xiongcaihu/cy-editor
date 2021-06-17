@@ -134,8 +134,11 @@ const utils = {
 };
 
 const ListLogic = {
-  model: JSON.parse(
+  model2: JSON.parse(
     `[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"1"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"2.1"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2.2"},{"type":"img","children":[{"text":""}]},{"text":""}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2.3"}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"4"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":""}]}]}]}]`
+  ),
+  model: JSON.parse(
+    `[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"1"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"2.1"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2.2"},{"type":"img","children":[{"text":""}]},{"text":""}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2.3"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":""}]},{"type":"table","children":[{"type":"thead","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"table","children":[{"type":"thead","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]}]}]},{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]}]}]}]},{"type":"div","children":[{"text":"dsa"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]}]},{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"2"}]}]}]}]}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"4"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":""}]}]}]}]`
   ),
   arrayModel: [
     ...new Array(10).fill(0).map((o, index) => {
@@ -273,8 +276,12 @@ const ListLogic = {
 
     if (ListLogic.isListItem(node)) {
       const parent = utils.getParent(editor, path);
-      // 如果父节点为空或者不为列表元素
-      if (parent == null || !ListLogic.isOrderList(parent[0])) {
+      // 如果父节点为空或者不为列表元素或者子元素为空
+      if (
+        parent == null ||
+        !ListLogic.isOrderList(parent[0]) ||
+        node.children.length == 0
+      ) {
         Transforms.removeNodes(editor, { at: path });
         return true;
       }
@@ -350,55 +357,59 @@ const ListLogic = {
    * 对应键盘Delete事件
    */
   deleteEvent(editor: EditorType) {
-    Editor.withoutNormalizing(editor, () => {
-      const { selection } = editor;
-
-      if (selection && Range.isCollapsed(selection)) {
-        Editor.deleteForward(editor, { unit: "character" });
+    if (editor.selection && Range.isCollapsed(editor.selection)) {
+      const textWrapper = Editor.parent(editor, editor.selection);
+      if (
+        utils.isTextWrapper(textWrapper[0]) &&
+        Editor.string(editor, textWrapper[1]) == ""
+      ) {
+        Transforms.removeNodes(editor, { at: textWrapper[1] });
         return;
       }
-    });
+      Editor.deleteForward(editor);
+    }
   },
   /**
    * 对应键盘Backspace事件
    * 屏蔽了默认的退格事件，只针对没有选区的退格事件
    */
   backspaceEvent(editor: EditorType) {
-    Editor.withoutNormalizing(editor, () => {
-      const { selection } = editor;
-
-      if (selection && Range.isCollapsed(selection)) {
-        const [li] = Editor.nodes(editor, {
-          match(n) {
-            return ListLogic.isListItem(n);
-          },
-        });
-        if (!li) return false;
-        const liParent = utils.getParent(editor, li[1]);
-        const firstTextNodeInList = Node.first(editor, liParent[1]);
-        const lastTextNodeInList = Node.last(editor, liParent[1]);
-        const liGrandFather = utils.getParent(editor, liParent[1]);
-
-        if (
-          Path.equals(firstTextNodeInList[1], lastTextNodeInList[1]) &&
-          Text.isText(firstTextNodeInList[0]) &&
-          firstTextNodeInList[0].text == ""
-        ) {
-          if (liGrandFather && ListLogic.isOrderList(liGrandFather[0])) {
-            Transforms.liftNodes(editor, { at: liParent[1] });
-          } else {
-            Transforms.setNodes(
-              editor,
-              { type: CET.DIV, children: [{ text: "" }] },
-              { at: li[1] }
-            );
-            Transforms.unwrapNodes(editor, { at: liParent[1] });
-          }
-        } else {
-          Editor.deleteBackward(editor);
+    const { selection } = editor;
+    if (selection && Range.isCollapsed(selection)) {
+      // 如果光标位置在li的第一个textWrapper的第一个位置，向上提升，如果向上提升后是处于非list元素内，取消li包裹
+      const li = Editor.above(editor, {
+        match(n) {
+          return ListLogic.isListItem(n);
+        },
+      });
+      const textWrapper = Editor.above(editor, {
+        match(n) {
+          return utils.isTextWrapper(n);
+        },
+      });
+      const list = Editor.above(editor, {
+        match(n) {
+          return ListLogic.isOrderList(n);
+        },
+      });
+      if (!li || !textWrapper || !list) return;
+      const listParent = Editor.parent(editor, list[1]);
+      const firstTextNode = Editor.first(editor, li[1]);
+      const isOnlyOneChild =
+        Element.isElement(list[0]) && list[0].children.length == 1;
+      if (
+        isOnlyOneChild &&
+        Path.equals(selection.anchor.path, firstTextNode[1]) &&
+        selection.anchor.offset == 0
+      ) {
+        if (!(listParent && ListLogic.isOrderList(listParent[0]))) {
+          Transforms.unwrapNodes(editor, { at: li[1] });
         }
+        Transforms.liftNodes(editor, { at: li[1] });
+        return;
       }
-    });
+      Editor.deleteBackward(editor);
+    }
   },
   /**
    * 删除选区里的li策略：
@@ -418,8 +429,10 @@ const ListLogic = {
       if (parent && parent?.children?.length == 1) {
         Transforms.removeNodes(editor, { at: pp });
       } else Transforms.removeNodes(editor, { at: liPath });
-      return;
+      return true;
     }
+
+    let hasDeal = false;
 
     for (const [textWrapper, textWrapperPath] of Node.children(editor, liPath, {
       reverse: true,
@@ -428,6 +441,7 @@ const ListLogic = {
       const inte = Range.intersection(twRange, selection);
       if (inte && Range.equals(inte, twRange)) {
         Transforms.removeNodes(editor, { at: textWrapperPath });
+        hasDeal = true;
         continue;
       }
       for (const [textNode, textNodePath] of Node.children(
@@ -447,10 +461,12 @@ const ListLogic = {
               at: selection,
               reverse: true,
             });
+            hasDeal = true;
           } else {
             Transforms.removeNodes(editor, {
               at: textNodePath,
             });
+            hasDeal = true;
           }
         } else if (Path.equals(start.path, textNodePath)) {
           // 如果子元素在start上
@@ -469,11 +485,13 @@ const ListLogic = {
                 },
                 reverse: true,
               });
+              hasDeal = true;
             }
           } else {
             Transforms.removeNodes(editor, {
               at: textNodePath,
             });
+            hasDeal = true;
           }
         } else if (Path.equals(end.path, textNodePath)) {
           // 如果子元素在end上
@@ -491,19 +509,23 @@ const ListLogic = {
                 reverse: true,
               });
             }
+            hasDeal = true;
           } else {
             Transforms.removeNodes(editor, {
               at: textNodePath,
             });
+            hasDeal = true;
           }
         } else if (Range.includes(selection, textNodePath)) {
           // 选区包含整个子元素
           Transforms.removeNodes(editor, {
             at: textNodePath,
           });
+          hasDeal = true;
         }
       }
     }
+    return hasDeal;
   },
   /**
    * 拦截回车事件，
@@ -642,11 +664,37 @@ const TableLogic = {
               children: [
                 {
                   type: CET.TD,
-                  children: [{ text: "" }],
+                  children: [
+                    {
+                      type: CET.DIV,
+                      children: [{ text: "" }],
+                    },
+                  ],
                 },
                 {
                   type: CET.TD,
-                  children: [{ text: "" }],
+                  children: [
+                    {
+                      type: CET.DIV,
+                      children: [
+                        { text: "123" },
+                        {
+                          type: CET.IMG,
+                          children: [{ text: "" }],
+                        },
+                        { text: "haha" },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: CET.TD,
+                  children: [
+                    {
+                      type: CET.DIV,
+                      children: [{ text: "" }],
+                    },
+                  ],
                 },
               ],
             },
@@ -654,17 +702,31 @@ const TableLogic = {
         },
         {
           type: CET.TBODY,
-          children: new Array(10).fill(0).map((item) => {
+          children: new Array(5).fill(0).map((item, index) => {
             return {
               type: CET.TR,
               children: [
                 {
                   type: CET.TD,
-                  children: [{ text: "123" }],
+                  children: [
+                    {
+                      type: CET.DIV,
+                      children: [{ text: "string".repeat(1) + String(index) }],
+                    },
+                  ],
                 },
                 {
                   type: CET.TD,
-                  children: [{ text: "321" }],
+                  children: [
+                    {
+                      type: CET.DIV,
+                      children: [{ text: "string" + String(index) }],
+                    },
+                  ],
+                },
+                {
+                  type: CET.TD,
+                  children: _.cloneDeep(ListLogic.model),
                 },
               ],
             };
@@ -673,6 +735,14 @@ const TableLogic = {
       ],
     },
     ..._.cloneDeep(ListLogic.model),
+    {
+      type: CET.DIV,
+      children: [{ text: "string" }],
+    },
+    {
+      type: CET.DIV,
+      children: [{ text: "string" }],
+    },
   ],
   normalizeTable(editor: EditorType, nodeEntry: NodeEntry) {
     const [node, path] = nodeEntry;
@@ -767,38 +837,43 @@ const TableLogic = {
         return TableLogic.isTd(n);
       },
     });
+    const table = Editor.above(editor, {
+      match(n) {
+        return TableLogic.isTable(n);
+      },
+    });
     const { selection } = editor;
-    if (!td || !selection) return false;
+    if (!td || !selection || !table) return false;
     const nowTdDom: any = ReactEditor.toDOMNode(editor, td[0]);
     const nowTrDom = nowTdDom.parentNode;
     const tableDom = nowTrDom?.parentNode?.parentNode;
     if (!tableDom) return;
-
     switch (key) {
       case "ArrowUp": {
         if (nowTrDom.rowIndex == 0) {
-          const table = Editor.above(editor, {
-            match(n) {
-              return TableLogic.isTable(n);
-            },
-          });
-          if (!table) return false;
-          const beforeTable = Editor.before(editor, table[1]);
-          // 如果table已经是第一个元素，那么在它前面插入一个空文本
-          if (!beforeTable) {
-            Transforms.insertNodes(
-              editor,
-              {
-                type: CET.DIV,
-                children: [{ text: "" }],
-              },
-              { at: table[1] }
-            );
-            Transforms.select(editor, table[1]);
-          } else {
-            Transforms.select(editor, beforeTable);
-          }
-          return true;
+          return false;
+          // 如果当前光标不在td里的第一个textWrapper里，那么使用原生的行为
+          // const first = Editor.first(editor, td[1]);
+          // if (!Path.equals(selection.anchor.path, first[1])) return false;
+          // const [beforeTable, btp] = utils.getNodeByPath(
+          //   editor,
+          //   utils.getPath(table[1], "pre")
+          // );
+          // // 如果table已经是第一个元素，那么在它前面插入一个空文本
+          // if (!utils.isTextWrapper(beforeTable)) {
+          //   Transforms.insertNodes(
+          //     editor,
+          //     {
+          //       type: CET.DIV,
+          //       children: [{ text: "" }],
+          //     },
+          //     { at: table[1] }
+          //   );
+          //   Transforms.select(editor, table[1]);
+          // } else {
+          //   Transforms.select(editor, btp);
+          // }
+          // return true;
         }
         const [firstChild, fcp] = Editor.first(editor, td[1]);
         if (!Path.equals(fcp, selection.anchor.path)) return false;
@@ -828,8 +903,10 @@ const TableLogic = {
         return true;
       }
       case "ArrowDown": {
+        // 如果当前光标不在最后一行的td的最后一个文本域里，使用原生事件
         const [lastChild, lcp] = Editor.last(editor, td[1]);
         if (!Path.equals(lcp, selection.anchor.path)) return false;
+
         if (
           Text.isText(lastChild) &&
           lastChild.text.lastIndexOf("\n") != -1 &&
@@ -841,28 +918,26 @@ const TableLogic = {
         ];
         // 如果下一行tr元素不存在，那么说明已经是在最后一行
         if (!targetTrDom) {
-          const table = Editor.above(editor, {
-            match(n) {
-              return TableLogic.isTable(n);
-            },
-          });
-          if (!table) return false;
-          let afterTable = Editor.after(editor, table[1]);
-          // 如果table的下一个元素不存在，那么插入一个
-          if (!afterTable) {
-            Transforms.insertNodes(
-              editor,
-              {
-                type: CET.DIV,
-                children: [{ text: "" }],
-              },
-              { at: utils.getPath(table[1], "next") }
-            );
-            Transforms.select(editor, utils.getPath(table[1], "next"));
-          } else {
-            Transforms.select(editor, afterTable);
-          }
-          return true;
+          return false;
+          // 如果当前光标不在td里的最后一个textWrapper里，那么使用原生的行为
+          // if (!Path.equals(lcp, selection.anchor.path)) return false;
+          // const nextPath = utils.getPath(table[1], "next");
+          // const [afterTable, atp] = utils.getNodeByPath(editor, nextPath);
+          // // 如果table的下一个元素不存在，那么插入一个
+          // if (!afterTable) {
+          //   Transforms.insertNodes(
+          //     editor,
+          //     {
+          //       type: CET.DIV,
+          //       children: [{ text: "" }],
+          //     },
+          //     { at: nextPath }
+          //   );
+          //   Transforms.select(editor, nextPath);
+          // } else {
+          //   Transforms.select(editor, Editor.start(editor, atp));
+          // }
+          // return true;
         }
         const targetTdDom: any = Array.from(
           targetTrDom.querySelectorAll("td")
@@ -880,70 +955,76 @@ const TableLogic = {
         return true;
       }
     }
-    return false;
   },
   isTable(node: Node): node is Element {
     return Element.isElement(node) && CET.TABLE == node.type;
   },
   removeRangeTd(editor: EditorType, selection: Range, tdEntry: NodeEntry) {
     const [td, tdPath] = tdEntry;
-    const inte = Range.intersection(selection, Editor.range(editor, tdPath));
-
-    inte &&
-      Transforms.insertText(editor, "", {
-        at: inte,
-        voids: false,
-      });
+    let hasDeal = false;
+    for (const [child, childP] of Node.children(editor, tdPath, {
+      reverse: true,
+    })) {
+      if (utils.isTextWrapper(child)) {
+        const inte = Range.intersection(
+          selection,
+          Editor.range(editor, childP)
+        );
+        if (inte && !Point.equals(inte.focus, inte.anchor)) {
+          Transforms.delete(editor, {
+            at: inte,
+            hanging: true,
+          });
+          hasDeal = true;
+        }
+      }
+    }
+    return hasDeal;
   },
   backspaceEvent(editor: EditorType) {
     Editor.withoutNormalizing(editor, () => {
       const { selection } = editor;
-      // 如果没有选区
-      if (selection && Range.isCollapsed(selection)) {
-        const [td] = Editor.nodes(editor, {
+      if (selection) {
+        // 是否在td的第一个位置
+        const td = Editor.above(editor, {
           match(n) {
             return TableLogic.isTd(n);
           },
         });
-        const [, firstNodePath] = Editor.first(editor, td[1]);
-        const [textNode, textNodePath] = Editor.node(editor, selection);
-        if (
-          Text.isText(textNode) &&
-          Path.equals(firstNodePath, textNodePath) &&
-          selection.anchor.offset == 0
-        ) {
-          // TableLogic.shiftTabEvent(editor);
-        } else {
-          Editor.deleteBackward(editor);
+        if (!!td) {
+          const firstTextNode = Editor.first(editor, td[1]);
+          if (
+            Path.equals(selection.anchor.path, firstTextNode[1]) &&
+            Text.isText(firstTextNode[0]) &&
+            selection.anchor.offset == 0
+          ) {
+            return;
+          }
         }
-        return true;
+        Editor.deleteBackward(editor);
       }
     });
   },
   deleteEvent(editor: EditorType) {
-    Editor.withoutNormalizing(editor, () => {
-      const { selection } = editor;
-      if (selection && Range.isCollapsed(selection)) {
-        const [td] = Editor.nodes(editor, {
-          match(n) {
-            return TableLogic.isTd(n);
-          },
-        });
-        const [lastNode, lastNodePath] = Editor.last(editor, td[1]);
-        const [textNode, textNodePath] = Editor.node(editor, selection);
+    if (editor.selection && Range.isCollapsed(editor.selection)) {
+      // 是否在td的最后一个位置
+      const td = Editor.above(editor, {
+        match(n) {
+          return TableLogic.isTd(n);
+        },
+      });
+      if (!!td) {
+        const lastTextNode = Editor.last(editor, td[1]);
         if (
-          Text.isText(textNode) &&
-          Path.equals(lastNodePath, textNodePath) &&
-          selection.anchor.offset == textNode.text.length
+          Path.equals(editor.selection.anchor.path, lastTextNode[1]) &&
+          Text.isText(lastTextNode[0]) &&
+          editor.selection.anchor.offset == lastTextNode[0].text.length
         ) {
-          // TableLogic.tabEvent(editor);
-        } else {
-          Editor.deleteForward(editor);
+          return;
         }
-        return true;
       }
-    });
-    return true;
+    }
+    Editor.deleteForward(editor);
   },
   enterEvent(editor: EditorType) {
     Editor.insertBreak(editor);
@@ -1100,7 +1181,100 @@ const ToolBar = () => {
     Transforms.move(editor);
   };
 
-  const insertTable = () => {};
+  const insertTable = () => {
+    if (editor.selection && Range.isCollapsed(editor.selection)) {
+      const textWrapper = Editor.above(editor, {
+        match(n) {
+          return utils.isTextWrapper(n);
+        },
+      });
+      if (textWrapper) {
+        Transforms.insertNodes(
+          editor,
+          {
+            type: CET.TABLE,
+            children: [
+              {
+                type: CET.THEAD,
+                children: [
+                  {
+                    type: CET.TR,
+                    children: [
+                      {
+                        type: CET.TD,
+                        children: [
+                          {
+                            type: CET.DIV,
+                            children: [
+                              {
+                                text: "",
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        type: CET.TD,
+                        children: [
+                          {
+                            type: CET.DIV,
+                            children: [
+                              {
+                                text: "",
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+              {
+                type: CET.TBODY,
+                children: [
+                  {
+                    type: CET.TR,
+                    children: [
+                      {
+                        type: CET.TD,
+                        children: [
+                          {
+                            type: CET.DIV,
+                            children: [
+                              {
+                                text: "",
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                      {
+                        type: CET.TD,
+                        children: [
+                          {
+                            type: CET.DIV,
+                            children: [
+                              {
+                                text: "",
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            at: utils.getPath(textWrapper[1], "pre"),
+          }
+        );
+      }
+    }
+  };
 
   return (
     <div style={{ position: "relative" }}>
@@ -1483,7 +1657,56 @@ const LinkComp: EditableProps["renderElement"] = ({
 };
 
 const withCyWrap = (editor: EditorType) => {
-  const { isInline, isVoid, normalizeNode } = editor;
+  const { deleteForward, deleteBackward, isInline, isVoid, normalizeNode } =
+    editor;
+
+  editor.deleteForward = (unit) => {
+    if (editor.selection && Range.isCollapsed(editor.selection)) {
+      const isInTable = Editor.above(editor, {
+        match(n) {
+          return TableLogic.isTable(n);
+        },
+      });
+
+      // 如果光标的下一个位置就是表格，那么阻止执行
+      const after = Editor.after(editor, editor.selection.anchor);
+      const isBeforeTable = Editor.above(editor, {
+        at: after,
+        match(n) {
+          return TableLogic.isTable(n);
+        },
+      });
+
+      if (!isInTable && isBeforeTable) {
+        return;
+      }
+      deleteForward(unit);
+    }
+  };
+
+  editor.deleteBackward = (unit) => {
+    if (editor.selection && Range.isCollapsed(editor.selection)) {
+      const isInTable = Editor.above(editor, {
+        match(n) {
+          return TableLogic.isTable(n);
+        },
+      });
+      // 如果光标的上一个位置就是表格，那么阻止执行
+      const before = Editor.before(editor, editor.selection.anchor);
+      const isAfterTable = Editor.above(editor, {
+        at: before,
+        match(n) {
+          return TableLogic.isTable(n);
+        },
+      });
+      // 如果在表格内部
+      if (!isInTable && isAfterTable) {
+        return;
+      }
+      deleteBackward(unit);
+    }
+  };
+
   editor.isInline = (node) => {
     if ([CET.IMG, CET.LINK].includes(node.type)) {
       return true;
@@ -1510,20 +1733,20 @@ const withCyWrap = (editor: EditorType) => {
     }
 
     // 如果inline节点没有被TextWrapper包围，那么包起来
-    if (
-      Text.isText(node) ||
-      (Element.isElement(node) && InLineTypes.includes(node.type))
-    ) {
-      const [p] = utils.getParent(editor, path);
-      if (Element.isElement(p) && !TextWrappers.includes(p.type)) {
-        Transforms.wrapNodes(
-          editor,
-          { type: CET.DIV, children: [] },
-          { at: path }
-        );
-        return;
-      }
-    }
+    // if (
+    //   Text.isText(node) ||
+    //   (Element.isElement(node) && InLineTypes.includes(node.type))
+    // ) {
+    //   const [p] = utils.getParent(editor, path);
+    //   if (Element.isElement(p) && !TextWrappers.includes(p.type)) {
+    //     Transforms.wrapNodes(
+    //       editor,
+    //       { type: CET.DIV, children: [] },
+    //       { at: path }
+    //     );
+    //     return;
+    //   }
+    // }
 
     if (Element.isElement(node) && TextWrappers.includes(node.type)) {
       // 如果有相邻的两个空的文字，那么删除下一个
@@ -1600,7 +1823,7 @@ const EditorComp: EditorCompShape = () => {
    * https://github.com/ianstormtaylor/slate/issues/4081
    */
   const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
-  const [value, setValue] = useState<StateShape>(TableLogic.model);
+  const [value, setValue] = useState<StateShape>(ListLogic.model);
   useEffect(() => {
     for (const [node, path] of Node.descendants(editor, {
       from: [],
@@ -1630,7 +1853,11 @@ const EditorComp: EditorCompShape = () => {
         return <LinkComp {...props}></LinkComp>;
       case CET.TABLE:
         return (
-          <table border="1" {...attributes}>
+          <table
+            border="1"
+            {...attributes}
+            style={{ width: "100%", wordBreak: "break-all" }}
+          >
             {children}
           </table>
         );
@@ -1801,7 +2028,51 @@ const EditorComp: EditorCompShape = () => {
     if (!selection) return;
 
     const removeRangeElement = (editor: EditorType, selection: Range) => {
-      // 不能在withoutNormalize里运行
+      selection = Editor.unhangRange(editor, selection);
+      if (Point.equals(selection.anchor, selection.focus)) {
+        Transforms.collapse(editor);
+        return;
+      }
+      // 如果全选了表格，那么直接删除表格即可
+      const tables = Editor.nodes(editor, {
+        at: selection,
+        universal: true,
+        match(n) {
+          return TableLogic.isTable(n);
+        },
+      });
+      for (const table of tables) {
+        if (table) {
+          const tableRange = Editor.range(editor, table[1]);
+          const inte = Range.intersection(selection, tableRange);
+          if (inte && Range.equals(tableRange, inte)) {
+            Transforms.removeNodes(editor, { at: table[1] });
+            editor.selection && removeRangeElement(editor, editor.selection);
+            return;
+          }
+        }
+      }
+      // 如果全选了列表，那么直接删除列表即可
+      const lists = Editor.nodes(editor, {
+        at: selection,
+        universal: true,
+        match(n) {
+          return ListLogic.isOrderList(n);
+        },
+      });
+      for (const list of lists) {
+        if (!!list) {
+          const listRange = Editor.range(editor, list[1]);
+          const inte = Range.intersection(selection, listRange);
+          if (inte && Range.equals(listRange, inte)) {
+            Transforms.removeNodes(editor, { at: list[1] });
+            editor.selection && removeRangeElement(editor, editor.selection);
+            return;
+          }
+        }
+      }
+
+      // 部分删除，此部分最耗费性能，因为考虑到列表和表格可能杂糅在一起，所以需要从textWrapper一个个处理
       for (const [n, p] of Editor.nodes(editor, {
         at: selection,
         reverse: true,
@@ -1814,43 +2085,38 @@ const EditorComp: EditorCompShape = () => {
         if (!parent) continue;
 
         if (TableLogic.isTd(parent)) {
-          TableLogic.removeRangeTd(editor, selection, [parent, pp]);
+          const result = TableLogic.removeRangeTd(editor, selection, [
+            parent,
+            pp,
+          ]);
+          if (result) {
+            editor.selection && removeRangeElement(editor, editor.selection);
+            return;
+          }
         } else if (ListLogic.isListItem(parent)) {
-          ListLogic.removeRangeLi(editor, selection, [parent, pp]);
+          const result = ListLogic.removeRangeLi(editor, selection, [
+            parent,
+            pp,
+          ]);
+          if (result) {
+            editor.selection && removeRangeElement(editor, editor.selection);
+            return;
+          }
         } else {
-          const int = Range.intersection(selection, Editor.range(editor, p));
-          int &&
+          const inte = Range.intersection(selection, Editor.range(editor, p));
+          if (inte) {
             Transforms.delete(editor, {
-              at: int,
+              at: inte,
               reverse: true,
               voids: true,
               unit: "character",
               hanging: true,
             });
+            editor.selection && removeRangeElement(editor, editor.selection);
+            return;
+          }
         }
       }
-
-      // const tableRanges: any = [];
-      // for (const [n, p] of Editor.nodes(editor, {
-      //   match(n) {
-      //     return TableLogic.isTable(n);
-      //   },
-      // })) {
-      //   const inte = Range.intersection(selection, Editor.range(editor, p));
-      //   tableRanges.push(inte);
-      // }
-
-      // Transforms.collapse(editor, { edge: "start" });
-
-      // setTimeout(() => {
-      //   tableRanges.forEach((inte: any) => {
-      //     if (inte) {
-      //       Transforms.insertText(editor, "", {
-      //         at: inte,
-      //       });
-      //     }
-      //   });
-      // }, 0);
 
       // 为了在normalize之后运行
       setTimeout(() => {
@@ -1889,7 +2155,7 @@ const EditorComp: EditorCompShape = () => {
             const [parent, pp] = utils.getParent(editor, p);
             if (!parent) continue;
             if (ListLogic.isListItem(parent)) {
-              e.shiftKey
+              !e.shiftKey
                 ? ListLogic.indentLi(editor, [parent, pp])
                 : ListLogic.liftLi(editor, [parent, pp]);
             }
@@ -2024,6 +2290,7 @@ const EditorComp: EditorCompShape = () => {
         }}
       >
         <ToolBar></ToolBar>
+        <br></br>
         <Editable
           renderElement={renderElement}
           renderLeaf={renderLeaf}
@@ -2033,6 +2300,7 @@ const EditorComp: EditorCompShape = () => {
           onDragStart={(e) => {
             e.preventDefault();
           }}
+          style={{ marginTop: 4, padding: 12, border: "1px solid" }}
         />
       </Slate>
     </div>

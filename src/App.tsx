@@ -5,7 +5,7 @@ import "./App.css";
 function App() {
   return (
     <div
-      style={{ border: "1px solid", width: "100%", height: 300, margin: 12 }}
+      style={{ width: "100%", height: 'auto', padding:12 }}
     >
       <Editor></Editor>
     </div>
