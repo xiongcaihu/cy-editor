@@ -14,7 +14,7 @@ import {
   Node,
   NodeEntry,
 } from "slate";
-import { Slate, Editable, withReact } from "slate-react";
+import { Slate, Editable, withReact, ReactEditor } from "slate-react";
 import { withHistory } from "slate-history";
 import "./RichEditor.css";
 
@@ -30,14 +30,15 @@ import {
   EditorCompShape,
   StateShape,
 } from "./common/Defines";
-import { ListLogic } from "./common/ListLogic";
-import { TableLogic } from "./common/TableLogic";
+import { ListLogic } from "./comps/ListComp";
+import { TableLogic } from "./comps/Table";
 import { utils } from "./common/utils";
 import { ToolBar } from "./comps/ToolBar";
 import { TD } from "./comps/Td";
 import { Table } from "./comps/Table";
 import { ImgComp } from "./comps/ImgComp";
 import { LinkComp } from "./comps/LinkComp";
+import { Path } from "slate";
 
 declare module "slate" {
   interface CustomTypes {
@@ -48,27 +49,104 @@ declare module "slate" {
 }
 
 const withCyWrap = (editor: EditorType) => {
-  const { deleteForward, deleteBackward, isInline, isVoid, normalizeNode } =
-    editor;
+  const {
+    deleteForward,
+    getFragment,
+    insertFragment,
+    deleteBackward,
+    isInline,
+    isVoid,
+    insertText,
+    insertData,
+    normalizeNode,
+    setFragmentData,
+  } = editor;
+
+  // 在本编辑器复制的时候触发
+  // dataTransfer 说明：https://developer.mozilla.org/zh-CN/docs/Web/API/DataTransfer
+  editor.getFragment = () => {
+    console.log("getFragment", getFragment());
+    return [
+      {
+        type: CET.DIV,
+        children: [{ text: "chenyu paste text" }],
+      },
+    ];
+  };
+
+  editor.insertText = (e) => {
+    console.log("insert text", e);
+    utils.removeRangeElement(editor);
+    insertText(e);
+  };
+
+  // 在粘贴的时候触发
+  editor.insertFragment = (fragment) => {
+    console.log("insertFragment", fragment);
+    utils.removeRangeElement(editor);
+    insertFragment(fragment);
+  };
+
+  // 粘贴的时候首先触发的方法，在这里可以将传入的内容进行个性化处理，然后生成新的dataTransfer传递给slate
+  editor.insertData = (e) => {
+    console.log("insertdata");
+    // 解码application/x-slate-fragment内容
+    // console.log(
+    //   utils.decodeContentToSlateData(e.getData("application/x-slate-fragment"))
+    // );
+    const newTransfer = new DataTransfer();
+    newTransfer.setData(
+      "application/x-slate-fragment",
+      // 编码内容
+      utils.encodeSlateContent([
+        {
+          type: CET.DIV,
+          children: [{ text: "chenyu paste text123" }],
+        },
+      ])
+    );
+    // newTransfer.setData("text/plain", "plan text");
+    return insertData(newTransfer);
+  };
 
   editor.deleteForward = (unit) => {
     if (editor.selection && Range.isCollapsed(editor.selection)) {
-      const isInTable = Editor.above(editor, {
+      const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
+      if (!textWrapper) return;
+      const td = Editor.above(editor, {
         match(n) {
-          return TableLogic.isTable(n);
+          return TableLogic.isTd(n);
         },
       });
+
+      // 如果在td的最后一个文本域的最后一个位置，那么阻止默认行为
+      if (
+        td &&
+        Point.equals(editor.selection.anchor, Editor.end(editor, td[1]))
+      )
+        return;
+
+      if (Editor.string(editor, textWrapper[1], { voids: true }) == "") {
+        Transforms.removeNodes(editor, {
+          at: textWrapper[1],
+        });
+        return;
+      }
 
       // 如果光标的下一个位置就是表格，那么阻止执行
       const after = Editor.after(editor, editor.selection.anchor);
       const isBeforeTable = Editor.above(editor, {
         at: after,
-        match(n) {
-          return TableLogic.isTable(n);
+        match(n, p) {
+          return (
+            TableLogic.isTable(n) &&
+            editor.selection != null &&
+            Path.isAfter(p, editor.selection?.anchor.path)
+          );
         },
       });
 
-      if (!isInTable && isBeforeTable) {
+      if (isBeforeTable) {
         return;
       }
       deleteForward(unit);
@@ -77,21 +155,43 @@ const withCyWrap = (editor: EditorType) => {
 
   editor.deleteBackward = (unit) => {
     if (editor.selection && Range.isCollapsed(editor.selection)) {
-      const isInTable = Editor.above(editor, {
+      const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
+      if (!textWrapper) return;
+      const td = Editor.above(editor, {
         match(n) {
-          return TableLogic.isTable(n);
+          return TableLogic.isTd(n);
         },
       });
+
+      // 如果在td的第一个文本域的第一个位置，那么阻止默认行为
+      if (
+        td &&
+        Point.equals(editor.selection.anchor, Editor.start(editor, td[1]))
+      )
+        return;
+
+      if (Editor.string(editor, textWrapper[1], { voids: true }) == "") {
+        Transforms.removeNodes(editor, {
+          at: textWrapper[1],
+        });
+        return;
+      }
+
       // 如果光标的上一个位置就是表格，那么阻止执行
       const before = Editor.before(editor, editor.selection.anchor);
       const isAfterTable = Editor.above(editor, {
         at: before,
-        match(n) {
-          return TableLogic.isTable(n);
+        match(n, p) {
+          return (
+            TableLogic.isTable(n) &&
+            editor.selection != null &&
+            Path.isBefore(p, editor.selection?.anchor.path)
+          );
         },
       });
+
       // 如果在表格内部
-      if (!isInTable && isAfterTable) {
+      if (isAfterTable) {
         return;
       }
       deleteBackward(unit);
@@ -125,33 +225,33 @@ const withCyWrap = (editor: EditorType) => {
 
     if (Element.isElement(node) && TextWrappers.includes(node.type)) {
       // 如果有相邻的两个空的文字，那么删除下一个
-      const [preTextWrapper, preP] = utils.getNodeByPath(
-        editor,
-        utils.getPath(path, "pre")
-      );
-      if (
-        Element.isElement(preTextWrapper) &&
-        TextWrappers.includes(preTextWrapper.type) &&
-        Editor.string(editor, preP).length == 0 &&
-        Editor.string(editor, path).length == 0
-      ) {
-        Transforms.removeNodes(editor, { at: path });
-        return;
-      }
+      // const [preTextWrapper, preP] = utils.getNodeByPath(
+      //   editor,
+      //   utils.getPath(path, "pre")
+      // );
+      // if (
+      //   Element.isElement(preTextWrapper) &&
+      //   TextWrappers.includes(preTextWrapper.type) &&
+      //   Editor.string(editor, preP).length == 0 &&
+      //   Editor.string(editor, path).length == 0
+      // ) {
+      //   Transforms.removeNodes(editor, { at: path });
+      //   return;
+      // }
 
-      const [nextTextWrapper, nextP] = utils.getNodeByPath(
-        editor,
-        utils.getPath(path, "next")
-      );
-      if (
-        Element.isElement(nextTextWrapper) &&
-        TextWrappers.includes(nextTextWrapper.type) &&
-        Editor.string(editor, nextP).length == 0 &&
-        Editor.string(editor, path).length == 0
-      ) {
-        Transforms.removeNodes(editor, { at: nextP });
-        return;
-      }
+      // const [nextTextWrapper, nextP] = utils.getNodeByPath(
+      //   editor,
+      //   utils.getPath(path, "next")
+      // );
+      // if (
+      //   Element.isElement(nextTextWrapper) &&
+      //   TextWrappers.includes(nextTextWrapper.type) &&
+      //   Editor.string(editor, nextP).length == 0 &&
+      //   Editor.string(editor, path).length == 0
+      // ) {
+      //   Transforms.removeNodes(editor, { at: nextP });
+      //   return;
+      // }
 
       // 如果textWrapper里又有block元素，则删除
       for (const [child, childP] of Node.children(editor, path, {
@@ -251,99 +351,18 @@ const EditorComp: EditorCompShape = () => {
     let { selection } = editor;
     if (!selection) return;
 
-    const removeRangeElement = (editor: EditorType, selection: Range) => {
-      if (Point.equals(selection.anchor, selection.focus)) {
-        Transforms.collapse(editor);
-        return;
-      }
-      // 如果全选了表格，那么直接删除表格
-      const tables = Editor.nodes(editor, {
-        at: selection,
-        match(n) {
-          return TableLogic.isTable(n);
-        },
-      });
-      for (const table of tables) {
-        if (table) {
-          const tableRange = Editor.range(editor, table[1]);
-          const inte = Range.intersection(selection, tableRange);
-          if (inte && Range.equals(tableRange, inte)) {
-            Transforms.removeNodes(editor, { at: table[1] });
-            editor.selection && removeRangeElement(editor, editor.selection);
-            return;
-          }
-        }
-      }
-
-      // 如果全选了列表，那么直接删除列表即可
-      const lists = Editor.nodes(editor, {
-        at: selection,
-        match(n) {
-          return ListLogic.isOrderList(n);
-        },
-      });
-      for (const list of lists) {
-        if (!!list) {
-          const listRange = Editor.range(editor, list[1]);
-          const inte = Range.intersection(selection, listRange);
-          if (inte && Range.equals(listRange, inte)) {
-            Transforms.removeNodes(editor, { at: list[1] });
-            editor.selection && removeRangeElement(editor, editor.selection);
-            return;
-          }
-        }
-      }
-
-      // 部分删除，此部分最耗费性能，因为考虑到列表和表格可能杂糅在一起，所以需要从textWrapper一个个处理
-      for (const [n, p] of Editor.nodes(editor, {
-        reverse: true,
-        universal: true,
-        match(n, p) {
-          return Text.isText(n) || Editor.isInline(editor, n);
-        },
-      })) {
-        const textWrapper = utils.getParent(editor, p);
-        if (textWrapper && utils.isTextWrapper(textWrapper[0])) {
-          const tRange = Editor.range(editor, textWrapper[1]);
-          const inte = Range.intersection(selection, tRange);
-          if (!inte || Range.isCollapsed(inte)) continue;
-          // 如果整个被包含，那么直接删除textWrapper
-          if (Range.equals(inte, tRange)) {
-            Transforms.removeNodes(editor, {
-              at: textWrapper[1],
-            });
-          } else {
-            Transforms.delete(editor, {
-              at: inte,
-              reverse: true,
-              unit: "character",
-              hanging: true,
-            });
-          }
-        }
-      }
-
-      // 为了在normalize之后运行
-      setTimeout(() => {
-        Transforms.select(
-          editor,
-          editor.selection ? Range.start(editor.selection) : []
-        );
-      }, 0);
-    };
-
     if (Range.isExpanded(selection)) {
       switch (e.key) {
         case "Backspace":
         case "Delete": {
           e.preventDefault();
-          removeRangeElement(editor, selection);
+          utils.removeRangeElement(editor);
           break;
         }
         // 如果在选区里按回车，只删除内容
         case "Enter": {
           e.preventDefault();
-          removeRangeElement(editor, selection);
+          utils.removeRangeElement(editor);
           break;
         }
         case "Tab": {
@@ -370,7 +389,7 @@ const EditorComp: EditorCompShape = () => {
       }
 
       if (!e.ctrlKey && (e.key.length == 1 || e.key == "Process")) {
-        removeRangeElement(editor, selection);
+        utils.removeRangeElement(editor);
         Transforms.collapse(editor, { edge: "start" });
         return;
       }
@@ -424,59 +443,19 @@ const EditorComp: EditorCompShape = () => {
         }
         case "Delete": {
           e.preventDefault();
-          if (CET.LIST_ITEM == elementType) {
-            ListLogic.deleteEvent(editor);
-            break;
-          }
           if (CET.TD == elementType) {
             TableLogic.deleteEvent(editor);
             break;
           }
-          // 如果后面是表格，则无法删除
-          const afterNodePath = Editor.after(editor, selection);
-          const table = Editor.above(editor, {
-            at: afterNodePath,
-            match(n) {
-              return TableLogic.isTable(n);
-            },
-          });
-          // 如果已经是空元素，那么删除整行
-          const textWrapper = Editor.above(editor, {
-            match(n) {
-              return utils.isTextWrapper(n);
-            },
-          });
-          if (!textWrapper) break;
-          if (Editor.string(editor, textWrapper[1], { voids: true }) == "") {
-            Transforms.removeNodes(editor, {
-              at: textWrapper[1],
-            });
-            break;
-          }
-
-          if (!!table) break;
           Editor.deleteForward(editor);
           break;
         }
         case "Backspace": {
           e.preventDefault();
-          if (CET.LIST_ITEM == elementType) {
-            ListLogic.backspaceEvent(editor);
-            break;
-          }
           if (CET.TD == elementType) {
             TableLogic.backspaceEvent(editor);
             break;
           }
-          // 如果前面是表格，则无法删除
-          const beforeNodePath = Editor.before(editor, selection);
-          const table = Editor.above(editor, {
-            at: beforeNodePath,
-            match(n) {
-              return TableLogic.isTable(n);
-            },
-          });
-          if (!!table) break;
           Editor.deleteBackward(editor);
           break;
         }
@@ -504,7 +483,12 @@ const EditorComp: EditorCompShape = () => {
           onDragStart={(e) => {
             e.preventDefault();
           }}
-          style={{ marginTop: 4, padding: 12, border: "1px solid" }}
+          style={{
+            marginTop: 4,
+            padding: 12,
+            border: "1px solid",
+            overflow: "auto",
+          }}
         />
       </Slate>
     </div>

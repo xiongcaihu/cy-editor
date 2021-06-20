@@ -1,4 +1,5 @@
 /* eslint-disable eqeqeq */
+import { useCallback } from "react";
 import { RenderElementProps } from "slate-react";
 
 export const TD: (props: RenderElementProps) => JSX.Element = ({
@@ -6,18 +7,34 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
   element,
   children,
 }) => {
+  const ref = useCallback((e) => {
+    if (e && e.parentNode && e.parentNode.nextSibling == null) {
+      e.style.visibility = "hidden";
+    }
+  }, []);
+  const ref2 = useCallback((e) => {
+    if (
+      e &&
+      e?.parentNode?.parentNode &&
+      e.parentNode.parentNode.nextSibling == null
+    ) {
+      e.style.visibility = "hidden";
+    }
+  }, []);
   return (
     <td
       {...attributes}
       colSpan={element.colSpan}
       style={{
         padding: 4,
-        minWidth: 50,
+        minWidth: 100,
         position: "relative",
       }}
     >
       {children}
       <span
+        ref={ref}
+        className="resizer"
         style={{
           position: "absolute",
           width: 5,
@@ -47,20 +64,25 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 
           if (cell == null || table == null) return;
 
-          const cells: any[] = Array.from(table.querySelectorAll("td")).filter(
-            (c: any) => {
-              const end = cell.cellIndex + cell.colSpan - 1;
-              if (c.tagName == "TD" && c.cellIndex == end) {
-                c.initX = parseInt(window.getComputedStyle(c).width, 10);
-                return true;
-              }
-              return false;
+          const cells: any[] = Array.from(
+            table.querySelectorAll(":scope>tbody>tr>td")
+          ).filter((c: any) => {
+            const end = cell.cellIndex + cell.colSpan - 1;
+            if (c.tagName == "TD" && c.cellIndex == end) {
+              c.initX = c.offsetWidth;
+              return true;
             }
-          );
+            return false;
+          });
+
+          const tableInitX = parseInt(window.getComputedStyle(table).width);
 
           const mouseMoveHandler = function (e: any) {
             const dx = e.clientX - x;
-            cells.forEach((c) => (c.style.width = c.initX + dx + "px"));
+            cells.forEach((c) => {
+              c.style.width = c.initX + dx + "px";
+            });
+            table.style.width = tableInitX + dx + "px";
           };
 
           const mouseUpHandler = function () {
@@ -73,6 +95,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         }}
       ></span>
       <span
+        ref={ref2}
         style={{
           position: "absolute",
           width: "100%",
@@ -87,7 +110,8 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
           let y = e.clientY;
           let h = 0;
           let cell: any = null,
-            row: any = null;
+            row: any = null,
+            table: any = null;
 
           for (let i = 0, paths = e.nativeEvent.path; i < paths.length; i++) {
             const ele = paths[i];
@@ -96,22 +120,32 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
             }
             if (ele.tagName == "TR") {
               row = ele;
+            }
+            if (ele.tagName == "TABLE") {
+              table = ele;
               break;
             }
           }
 
-          if (cell == null || row == null) return;
+          if (cell == null || row == null || table == null) return;
 
-          const cells: any[] = Array.from(row.querySelectorAll("td"));
+          const cells: any[] = Array.from(
+            row.querySelectorAll(":scope>td")
+          );
+
+          console.log(row);
 
           const styles = window.getComputedStyle(cell);
           h = parseInt(styles.height, 10);
 
+          const tableInitY = parseInt(window.getComputedStyle(table).height);
+
           const mouseMoveHandler = function (e: any) {
             e.preventDefault();
             const dy = e.clientY - y;
-            const width = `${h + dy}px`;
-            cells.forEach((c) => (c.style.height = width));
+            const height = `${h + dy}px`;
+            cells.forEach((c) => (c.style.height = height));
+            table.style.height = tableInitY + dy + "px";
           };
 
           const mouseUpHandler = function () {

@@ -10,15 +10,35 @@ import {
   NodeEntry,
 } from "slate";
 import { ReactEditor } from "slate-react";
-import { CET, EditorType } from "./Defines";
-import { utils } from "./utils";
+import { CET, EditorType } from "../common/Defines";
+import { utils } from "../common/utils";
 
 export const ListLogic = {
+  model3: [
+    {
+      type: CET.NORMAL_LIST,
+      children: new Array(100).fill(0).map((item, index) => {
+        return {
+          type: CET.LIST_ITEM,
+          children: [
+            {
+              type: CET.DIV,
+              children: [
+                {
+                  text: String(index),
+                },
+              ],
+            },
+          ],
+        };
+      }),
+    },
+  ],
   model2: JSON.parse(
-    `[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"1"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"2.1"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2.2"},{"type":"img","children":[{"text":""}]},{"text":""}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"2.3"}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"4"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":""}]}]}]}]`
+    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"2"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"4"}]}]}]}]}]}]`
   ),
   model: JSON.parse(
-    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]},{"type":"div","children":[{"text":"ds"}]},{"type":"div","children":[{"text":"dsad"}]},{"type":"div","children":[{"text":"sadas"}]},{"type":"div","children":[{"text":"dsad"}]},{"type":"div","children":[{"text":"table"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsadas"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dasdas"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsd"}]}]}]}]}]},{"type":"div","children":[{"text":"dsadsadsa"}]},{"type":"div","children":[{"text":"das"}]},{"type":"div","children":[{"text":"dasdas"}]},{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}]}]}]},{"type":"div","children":[{"text":"1"}]}]
+    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]},{"type":"div","children":[{"text":"ds"}]},{"type":"div","children":[{"text":"dsad"}]},{"type":"div","children":[{"text":"sadas"}]},{"type":"div","children":[{"text":"dsad"}]},{"type":"div","children":[{"text":"table"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsadas"}]},{"type":"div","children":[{"text":"fsd"}]}],"colSpan":2}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dasdas"}]},{"type":"div","children":[{"text":"fsdfsd"}]}],"colSpan":2}]}]}]},{"type":"div","children":[{"text":"dsadsadsa"}]},{"type":"div","children":[{"text":"das"}]},{"type":"div","children":[{"text":"dasdas"}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":"string0"}]},{"type":"div","children":[{"text":"string0"}]}],"colSpan":3}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":"string1"}]}],"colSpan":2},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}]}]}]},{"type":"div","children":[{"text":"1"}]}]
   
   `
   ),
@@ -217,7 +237,7 @@ export const ListLogic = {
         }
       }
       if (childCount == 0) {
-        Transforms.unwrapNodes(editor, { at: path });
+        Transforms.removeNodes(editor, { at: path });
         return true;
       }
     }
