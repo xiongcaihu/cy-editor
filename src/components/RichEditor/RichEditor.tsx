@@ -2,7 +2,7 @@
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/ban-types */
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createEditor,
   Transforms,
@@ -37,6 +37,7 @@ import { Table } from "./comps/Table";
 import { ImgComp } from "./comps/ImgComp";
 import { LinkComp } from "./comps/LinkComp";
 import { Path } from "slate";
+import { unitTest } from "./Test/test";
 
 declare module "slate" {
   interface CustomTypes {
@@ -62,8 +63,12 @@ const withCyWrap = (editor: EditorType) => {
   } = editor;
 
   editor.apply = (e) => {
+    const array = JSON.parse(window.localStorage.getItem("history") || "[]");
     try {
       apply(e);
+      array.push(e);
+      window.localStorage.setItem("history", JSON.stringify(array));
+      // console.log(JSON.stringify(e));
     } catch (error) {
       console.error(error);
     }
@@ -175,7 +180,7 @@ const withCyWrap = (editor: EditorType) => {
   editor.deleteBackward = (unit) => {
     if (editor.selection && Range.isCollapsed(editor.selection)) {
       normalizeList();
-      
+
       const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
       if (!textWrapper[0]) return;
 
@@ -288,7 +293,15 @@ const EditorComp: EditorCompShape = () => {
    * https://github.com/ianstormtaylor/slate/issues/4081
    */
   const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
-  const [value, setValue] = useState<StateShape>(TableLogic.model);
+  const [value, setValue] = useState<StateShape>(ListLogic.model);
+
+  useEffect(() => {
+    window.localStorage.removeItem("history");
+
+    setTimeout(() => {
+      unitTest(editor);
+    }, 100);
+  }, []);
 
   const renderElement: EditableProps["renderElement"] = useCallback((props) => {
     const { attributes, children, element } = props;
@@ -465,6 +478,7 @@ const EditorComp: EditorCompShape = () => {
       >
         <ToolBar></ToolBar>
         <Editable
+          className="cyEditor"
           renderElement={renderElement}
           renderLeaf={renderLeaf}
           autoFocus
