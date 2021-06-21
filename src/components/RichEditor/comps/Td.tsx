@@ -9,7 +9,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 }) => {
   const ref = useCallback((e) => {
     if (e && e.parentNode && e.parentNode.nextSibling == null) {
-      e.style.visibility = "hidden";
+      // e.style.visibility = "hidden";
     }
   }, []);
   const ref2 = useCallback((e) => {
@@ -18,7 +18,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       e?.parentNode?.parentNode &&
       e.parentNode.parentNode.nextSibling == null
     ) {
-      e.style.visibility = "hidden";
+      // e.style.visibility = "hidden";
     }
   }, []);
   return (
@@ -64,11 +64,24 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 
           if (cell == null || table == null) return;
 
+          const getLeftTotalColSpan = (td: any) => {
+            let sum = td.colSpan,
+              nowTd = td;
+            while (nowTd.previousElementSibling != null) {
+              nowTd = nowTd.previousElementSibling;
+              sum += nowTd.colSpan;
+            }
+            return sum;
+          };
+
           const cells: any[] = Array.from(
             table.querySelectorAll(":scope>tbody>tr>td")
           ).filter((c: any) => {
-            const end = cell.cellIndex + cell.colSpan - 1;
-            if (c.tagName == "TD" && c.cellIndex == end) {
+            if (
+              c.tagName == "TD" &&
+              c.cellIndex + getLeftTotalColSpan(c) ==
+                cell.cellIndex + getLeftTotalColSpan(cell)
+            ) {
               c.initX = c.offsetWidth;
               return true;
             }
@@ -129,11 +142,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 
           if (cell == null || row == null || table == null) return;
 
-          const cells: any[] = Array.from(
-            row.querySelectorAll(":scope>td")
-          );
-
-          console.log(row);
+          const cells: any[] = Array.from(row.querySelectorAll(":scope>td"));
 
           const styles = window.getComputedStyle(cell);
           h = parseInt(styles.height, 10);

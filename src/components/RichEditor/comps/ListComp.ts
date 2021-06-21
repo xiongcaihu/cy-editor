@@ -5,9 +5,9 @@ import {
   Text,
   Element,
   Editor,
-  Path,
   Node,
   NodeEntry,
+  Point,
 } from "slate";
 import { ReactEditor } from "slate-react";
 import { CET, EditorType } from "../common/Defines";
@@ -38,8 +38,7 @@ export const ListLogic = {
     `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"2"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"4"}]}]}]}]}]}]`
   ),
   model: JSON.parse(
-    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]},{"type":"div","children":[{"text":"ds"}]},{"type":"div","children":[{"text":"dsad"}]},{"type":"div","children":[{"text":"sadas"}]},{"type":"div","children":[{"text":"dsad"}]},{"type":"div","children":[{"text":"table"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsadas"}]},{"type":"div","children":[{"text":"fsd"}]}],"colSpan":2}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dasdas"}]},{"type":"div","children":[{"text":"fsdfsd"}]}],"colSpan":2}]}]}]},{"type":"div","children":[{"text":"dsadsadsa"}]},{"type":"div","children":[{"text":"das"}]},{"type":"div","children":[{"text":"dasdas"}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":"string0"}]},{"type":"div","children":[{"text":"string0"}]}],"colSpan":3}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":"string1"}]}],"colSpan":2},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}]}]}]},{"type":"div","children":[{"text":"1"}]}]
-  
+    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsdf"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"sdf"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"sdfs"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dfsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fs"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"fs"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]}]}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":""}]}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsdfsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsd"},{"type":"img","children":[{"text":""}]},{"text":"fsdfsdfsd"},{"type":"link","url":"http://www.baidu.com","content":"百度百度百度百度","children":[{"text":"百度百度百度百度"}]},{"text":"fsdfsdfsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdf"}]}]},{"type":"td","children":[{"type":"ul","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsdfsdfsdffs"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ul","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsdfsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"ffsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ul","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsfsdfsd"}]}]}]}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sdfsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fs"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsfsd"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]}]}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dasd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"asd"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"as"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]}]}]
   `
   ),
   arrayModel: [
@@ -61,7 +60,7 @@ export const ListLogic = {
     const parent = root && utils.getParent(editor, root[1]);
     const isSameTypeToggle =
       isTurnOffList &&
-      parent &&
+      parent[0] != null &&
       Element.isElement(parent[0]) &&
       parent[0].type == type;
     // 是否改变列表类型
@@ -89,7 +88,7 @@ export const ListLogic = {
         });
         for (const [, path] of selectedListItems) {
           const parent = utils.getParent(editor, path);
-          parent && parents.add(parent[1].join("-"));
+          parent[0] != null && parents.add(parent[1].join("-"));
         }
         parents.forEach((value) => {
           const p = value.split("-").map((o) => +o);
@@ -112,6 +111,7 @@ export const ListLogic = {
         const elementsInRange = Editor.nodes(editor, {
           universal: true,
           reverse: true,
+          mode: "lowest",
           match(n) {
             return utils.isTextWrapper(n);
           },
@@ -151,6 +151,12 @@ export const ListLogic = {
       setList();
     }
   },
+  isInLi(editor: EditorType) {
+    if (editor.selection && Range.isCollapsed(editor.selection)) {
+      return utils.getFirstAboveElementType(editor) == CET.LIST_ITEM;
+    }
+    return false;
+  },
   isListItem(node: Node): node is Element {
     return Element.isElement(node) && [CET.LIST_ITEM].includes(node.type);
   },
@@ -165,14 +171,35 @@ export const ListLogic = {
 
     if (ListLogic.isListItem(node)) {
       const parent = utils.getParent(editor, path);
-      // 如果父节点为空或者不为列表元素或者子元素为空，或者子元素只有一个文本节点(且本身在本编辑器中也是不合法的，只不过slate会默认给block元素加入一个默认的空文本节点)
+      /**
+       * 如果父节点为空
+       * 或者
+       * 不为列表元素或者子元素为空，
+       * 或者
+       * 子元素只有一个文本节点(且本身在本编辑器中也是不合法的，只不过slate会默认给block元素加入一个默认的空文本节点)
+       *
+       */
+      if (parent.length == 0 || !ListLogic.isOrderList(parent[0])) {
+        Transforms.unwrapNodes(editor, { at: path });
+        return true;
+      }
+
       if (
-        parent == null ||
-        !ListLogic.isOrderList(parent[0]) ||
         node.children.length == 0 ||
         (node.children.length == 1 && Text.isText(Node.child(node, 0)))
       ) {
         Transforms.removeNodes(editor, { at: path });
+        return true;
+      }
+
+      if (node.children.length > 1) {
+        const secChildPath = path.concat([1]);
+        Transforms.wrapNodes(
+          editor,
+          { type: CET.LIST_ITEM, children: [] },
+          { at: secChildPath }
+        );
+        Transforms.liftNodes(editor, { at: secChildPath });
         return true;
       }
     }
@@ -223,7 +250,7 @@ export const ListLogic = {
         // 如果不为li元素，则提升
         if (!ListLogic.isListItem(child) && !ListLogic.isOrderList(child)) {
           Transforms.liftNodes(editor, { at: childP });
-          return;
+          return true;
         }
       }
 
@@ -251,7 +278,7 @@ export const ListLogic = {
       const textWrapper = Editor.parent(editor, editor.selection);
       if (
         utils.isTextWrapper(textWrapper[0]) &&
-        Editor.string(editor, textWrapper[1]) == ""
+        Editor.string(editor, textWrapper[1], { voids: true }) == ""
       ) {
         Transforms.removeNodes(editor, { at: textWrapper[1] });
         return;
@@ -266,39 +293,17 @@ export const ListLogic = {
   backspaceEvent(editor: EditorType) {
     const { selection } = editor;
     if (selection && Range.isCollapsed(selection)) {
-      // 如果光标位置在li的第一个textWrapper的第一个位置，向上提升，如果向上提升后是处于非list元素内，取消li包裹
-      const li = Editor.above(editor, {
-        match(n) {
-          return ListLogic.isListItem(n);
-        },
-      });
-      const textWrapper = Editor.above(editor, {
-        match(n) {
-          return utils.isTextWrapper(n);
-        },
-      });
-      const list = Editor.above(editor, {
-        match(n) {
-          return ListLogic.isOrderList(n);
-        },
-      });
-      if (!li || !textWrapper || !list) return;
-      const listParent = Editor.parent(editor, list[1]);
-      const firstTextNode = Editor.first(editor, li[1]);
-      const isOnlyOneChild =
-        Element.isElement(list[0]) && list[0].children.length == 1;
-      if (
-        isOnlyOneChild &&
-        Path.equals(selection.anchor.path, firstTextNode[1]) &&
-        selection.anchor.offset == 0
-      ) {
-        if (!(listParent && ListLogic.isOrderList(listParent[0]))) {
-          Transforms.unwrapNodes(editor, { at: li[1] });
-        }
+      // 如果光标在textWrapper的开头第一个位置，那么直接lift li
+      const textWrapper = utils.getParent(editor, selection.anchor.path);
+      if (!textWrapper[0]) return;
+      const li = utils.getParent(editor, textWrapper[1]);
+      if (!li[0]) return;
+
+      if (Point.equals(selection.anchor, Editor.start(editor, li[1]))) {
         Transforms.liftNodes(editor, { at: li[1] });
-        return;
+      } else {
+        Editor.deleteBackward(editor);
       }
-      Editor.deleteBackward(editor);
     }
   },
   /**
@@ -308,52 +313,20 @@ export const ListLogic = {
    * 如果当前li的子元素大于1，那么在下方插入一个新的li
    */
   enterEvent(editor: EditorType) {
-    Editor.withoutNormalizing(editor, () => {
-      if (editor.selection && !Range.isCollapsed(editor.selection)) return;
-      const [listItem] = Editor.nodes(editor, {
-        match(n) {
-          return ListLogic.isListItem(n);
-        },
-      });
+    if (!editor.selection) return;
+    // 如果光标位置在li的第一个textWrapper的第一个位置，向上提升，如果向上提升后是处于非list元素内，取消li包裹
+    const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
+    if (!textWrapper[0]) return;
+    const li = utils.getParent(editor, textWrapper[1]);
+    if (!li[0]) return;
+    const list = utils.getParent(editor, li[1]);
+    if (!list[0]) return;
 
-      const [li, liPath] = listItem;
-      const [, pp] = utils.getParent(editor, liPath);
-      const [parentParent] = utils.getParent(editor, pp);
-
-      if (li.children.length == 1) {
-        const divChild = Node.child(li, 0);
-        if (divChild.children.length == 1) {
-          const textNode = Node.child(divChild, 0);
-          if (Text.isText(textNode) && textNode.text.length == 0) {
-            if (ListLogic.isOrderList(parentParent)) {
-              Transforms.liftNodes(editor, {
-                at: liPath,
-              });
-              return;
-            } else {
-              Transforms.unwrapNodes(editor, { at: liPath });
-              Transforms.liftNodes(editor, {
-                at: liPath,
-              });
-              return;
-            }
-          }
-        }
-      }
-
+    if (Editor.string(editor, li[1], { voids: true }) == "") {
+      Transforms.liftNodes(editor, { at: li[1] });
+    } else {
       Editor.insertBreak(editor);
-
-      Transforms.wrapNodes(editor, {
-        type: CET.LIST_ITEM,
-        children: [],
-      });
-
-      Transforms.liftNodes(editor, {
-        match(n) {
-          return ListLogic.isListItem(n);
-        },
-      });
-    });
+    }
   },
   tabEvent(editor: EditorType) {
     Editor.withoutNormalizing(editor, () => {
@@ -376,7 +349,7 @@ export const ListLogic = {
 
       const nextNode = utils.getNodeByPath(editor, utils.getPath(p, "next"));
       const parent = utils.getParent(editor, p);
-      if (nextNode && ListLogic.isOrderList(nextNode?.[0])) {
+      if (nextNode.length > 0 && ListLogic.isOrderList(nextNode?.[0])) {
         Transforms.wrapNodes(
           editor,
           {
@@ -385,7 +358,7 @@ export const ListLogic = {
           },
           { at: p }
         );
-      } else if (parent && ListLogic.isOrderList(parent?.[0])) {
+      } else if (parent.length > 0 && ListLogic.isOrderList(parent?.[0])) {
         Transforms.wrapNodes(
           editor,
           {

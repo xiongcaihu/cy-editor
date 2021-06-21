@@ -281,7 +281,7 @@ export const ToolBar = () => {
     for (const [, p] of textWrappers) {
       const td = utils.getParent(editor, p);
       if (
-        td &&
+        td.length > 0 &&
         TableLogic.isTd(td[0]) &&
         Element.isElement(td[0]) &&
         (td[0].colSpan || 1) > 1

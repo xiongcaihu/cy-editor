@@ -13,6 +13,96 @@ import {
 import { TextWrappers, EditorType, CET } from "./Defines";
 import { ListLogic } from "../comps/ListComp";
 import { TableLogic } from "../comps/Table";
+import { jsx } from "slate-hyperscript";
+
+const deserialize: any = (el: any) => {
+  // text node
+  if (el.nodeType === 3) {
+    return el.textContent;
+    // not element node
+  } else if (el.nodeType !== 1) {
+    return null;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let children = Array.from(el.childNodes).map(deserialize);
+
+  if (children.length === 0) {
+    children = [{ text: "" }];
+  }
+
+  switch (el.nodeName) {
+    case "BODY":
+      return jsx("fragment", {}, children);
+    case "BR":
+      return "\n";
+    case "BLOCKQUOTE":
+      return jsx("element", { type: "quote" }, children);
+    case "P":
+    case "DIV":
+      return jsx("element", { type: CET.DIV }, children);
+    case "A":
+      return jsx(
+        "element",
+        {
+          type: CET.LINK,
+          url: el.getAttribute("href"),
+          content: el.innserHTML,
+        },
+        children
+      );
+    case "IMG":
+      return jsx(
+        "element",
+        {
+          type: CET.IMG,
+          url: el.getAttribute("src"),
+        },
+        children
+      );
+    case "TABLE":
+      return jsx(
+        "element",
+        {
+          type: CET.TABLE,
+        },
+        children
+      );
+    case "TBODY":
+      return jsx(
+        "element",
+        {
+          type: CET.TBODY,
+        },
+        children
+      );
+    case "TR":
+      return jsx(
+        "element",
+        {
+          type: CET.TR,
+        },
+        children
+      );
+    case "TD":
+      return jsx(
+        "element",
+        {
+          type: CET.TD,
+          colSpan: el.getAttribute("colSpan"),
+        },
+        children
+      );
+    default:
+      return el.textContent;
+  }
+};
+
+/**
+ * const html = '...'
+const document = new DOMParser().parseFromString(html, 'text/html')
+deserialize(document.body)
+ */
 
 export const utils = {
   encodeSlateContent(data: Descendant[]) {
@@ -75,12 +165,19 @@ export const utils = {
       },
     })) {
       const textWrapper = utils.getParent(editor, p);
-      if (textWrapper && utils.isTextWrapper(textWrapper[0])) {
+      if (textWrapper.length > 0 && utils.isTextWrapper(textWrapper[0])) {
         const tRange = Editor.range(editor, textWrapper[1]);
-        const inte = Range.intersection(selection, tRange);
+        const inte =
+          editor.selection && Range.intersection(editor.selection, tRange);
         if (!inte) continue;
+        if (Range.isCollapsed(inte)) continue;
+        const [tParent] = utils.getParent(editor, textWrapper[1]);
+        const isInTd = TableLogic.isTd(tParent);
         // 如果整个被包含，那么直接删除textWrapper
-        if (Range.equals(inte, tRange)) {
+        if (
+          Range.equals(inte, tRange) &&
+          !(isInTd && tParent.children.length == 1)
+        ) {
           Transforms.removeNodes(editor, {
             at: textWrapper[1],
           });
@@ -108,20 +205,17 @@ export const utils = {
   },
   // 获取包裹光标文本位置的li或者td
   getFirstAboveElementType(editor: EditorType) {
-    const ele = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return (
-          ListLogic.isListItem(n) || TableLogic.isTd(n) || Editor.isEditor(n)
-        );
-      },
-    });
-    if (!ele) return null;
+    if (editor.selection) {
+      const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
+      if (!textWrapper[0]) return null;
+      const element = utils.getParent(editor, textWrapper[1]);
+      if (!element[0]) return null;
 
-    return (
-      (Element.isElement(ele[0]) && ele[0].type) ||
-      (Editor.isEditor(ele[0]) && CET.EDITOR)
-    );
+      return (
+        (Element.isElement(element[0]) && element[0].type) ||
+        (Editor.isEditor(element[0]) && CET.EDITOR)
+      );
+    }
   },
   getPath(path: Path, type: "pre" | "next" | "parent") {
     const basePath = path.slice(0, path.length - 1);

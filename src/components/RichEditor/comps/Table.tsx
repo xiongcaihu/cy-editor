@@ -28,7 +28,13 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
   return (
     <div
       {...attributes}
-      style={{ display: "inline-block", position: "relative" }}
+      style={{
+        display: "inline-block",
+        position: "relative",
+        width: "100%",
+        overflowX: "auto",
+        overflowY: "hidden",
+      }}
     >
       <table
         border="1"
@@ -44,6 +50,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
           height: 10,
           right: -5,
           bottom: -5,
+          display: "none",
           cursor: "se-resize",
           userSelect: "none",
         }}
@@ -157,6 +164,12 @@ export const TableLogic = {
   isTd(node: Node): node is Element {
     return Element.isElement(node) && [CET.TD].includes(node.type);
   },
+  isInTd(editor: EditorType) {
+    if (editor.selection && Range.isCollapsed(editor.selection)) {
+      return utils.getFirstAboveElementType(editor) == CET.TD;
+    }
+    return false;
+  },
   normalizeTable(editor: EditorType, nodeEntry: NodeEntry) {
     const [node, path] = nodeEntry;
 
@@ -224,9 +237,9 @@ export const TableLogic = {
     const { selection } = editor;
     if (!td || !selection || !table) return false;
     const tr = utils.getParent(editor, td[1]);
-    if (!tr) return false;
+    if (!tr[0]) return false;
     const trParent = utils.getParent(editor, tr[1]);
-    if (!trParent) return false;
+    if (!trParent[0]) return false;
 
     switch (key) {
       case "ArrowUp": {

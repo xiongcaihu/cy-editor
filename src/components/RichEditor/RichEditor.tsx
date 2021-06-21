@@ -2,7 +2,7 @@
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/ban-types */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   createEditor,
   Transforms,
@@ -11,10 +11,9 @@ import {
   Point,
   Element,
   Editor,
-  Node,
   NodeEntry,
 } from "slate";
-import { Slate, Editable, withReact, ReactEditor } from "slate-react";
+import { Slate, Editable, withReact } from "slate-react";
 import { withHistory } from "slate-history";
 import "./RichEditor.css";
 
@@ -25,7 +24,6 @@ import {
   CustomText,
   CET,
   EditableProps,
-  TextWrappers,
   InLineTypes,
   EditorCompShape,
   StateShape,
@@ -60,12 +58,21 @@ const withCyWrap = (editor: EditorType) => {
     insertData,
     normalizeNode,
     setFragmentData,
+    apply,
   } = editor;
+
+  editor.apply = (e) => {
+    try {
+      apply(e);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   // 在本编辑器复制的时候触发
   // dataTransfer 说明：https://developer.mozilla.org/zh-CN/docs/Web/API/DataTransfer
   editor.getFragment = () => {
-    console.log("getFragment", getFragment());
+    // console.log("getFragment", getFragment());
     return [
       {
         type: CET.DIV,
@@ -75,21 +82,21 @@ const withCyWrap = (editor: EditorType) => {
   };
 
   editor.insertText = (e) => {
-    console.log("insert text", e);
+    // console.log("insert text", e);
     utils.removeRangeElement(editor);
     insertText(e);
   };
 
   // 在粘贴的时候触发
   editor.insertFragment = (fragment) => {
-    console.log("insertFragment", fragment);
+    // console.log("insertFragment", fragment);
     utils.removeRangeElement(editor);
     insertFragment(fragment);
   };
 
   // 粘贴的时候首先触发的方法，在这里可以将传入的内容进行个性化处理，然后生成新的dataTransfer传递给slate
   editor.insertData = (e) => {
-    console.log("insertdata");
+    // console.log("insertdata");
     // 解码application/x-slate-fragment内容
     // console.log(
     //   utils.decodeContentToSlateData(e.getData("application/x-slate-fragment"))
@@ -112,7 +119,7 @@ const withCyWrap = (editor: EditorType) => {
   editor.deleteForward = (unit) => {
     if (editor.selection && Range.isCollapsed(editor.selection)) {
       const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
-      if (!textWrapper) return;
+      if (!textWrapper[0]) return;
       const td = Editor.above(editor, {
         match(n) {
           return TableLogic.isTd(n);
@@ -153,10 +160,25 @@ const withCyWrap = (editor: EditorType) => {
     }
   };
 
+  const normalizeList = _.debounce(() => {
+    const isListBefore = Editor.nodes(editor, {
+      mode: "all",
+      match(n) {
+        return ListLogic.isOrderList(n);
+      },
+    });
+    for (const list of isListBefore) {
+      if (list) editor.normalizeNode(list);
+    }
+  }, 0);
+
   editor.deleteBackward = (unit) => {
     if (editor.selection && Range.isCollapsed(editor.selection)) {
+      normalizeList();
+      
       const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
-      if (!textWrapper) return;
+      if (!textWrapper[0]) return;
+
       const td = Editor.above(editor, {
         match(n) {
           return TableLogic.isTd(n);
@@ -223,44 +245,12 @@ const withCyWrap = (editor: EditorType) => {
       return;
     }
 
-    if (Element.isElement(node) && TextWrappers.includes(node.type)) {
-      // 如果有相邻的两个空的文字，那么删除下一个
-      // const [preTextWrapper, preP] = utils.getNodeByPath(
-      //   editor,
-      //   utils.getPath(path, "pre")
-      // );
-      // if (
-      //   Element.isElement(preTextWrapper) &&
-      //   TextWrappers.includes(preTextWrapper.type) &&
-      //   Editor.string(editor, preP).length == 0 &&
-      //   Editor.string(editor, path).length == 0
-      // ) {
-      //   Transforms.removeNodes(editor, { at: path });
-      //   return;
-      // }
-
-      // const [nextTextWrapper, nextP] = utils.getNodeByPath(
-      //   editor,
-      //   utils.getPath(path, "next")
-      // );
-      // if (
-      //   Element.isElement(nextTextWrapper) &&
-      //   TextWrappers.includes(nextTextWrapper.type) &&
-      //   Editor.string(editor, nextP).length == 0 &&
-      //   Editor.string(editor, path).length == 0
-      // ) {
-      //   Transforms.removeNodes(editor, { at: nextP });
-      //   return;
-      // }
-
-      // 如果textWrapper里又有block元素，则删除
-      for (const [child, childP] of Node.children(editor, path, {
-        reverse: true,
-      })) {
-        if (Editor.isBlock(editor, child)) {
-          Transforms.removeNodes(editor, { at: childP });
-          return;
-        }
+    // 如果一个块级元素出现在textWrapper里，那么直接删除
+    if (Element.isElement(node) && Editor.isBlock(editor, node)) {
+      const [parent] = utils.getParent(editor, path);
+      if (utils.isTextWrapper(parent)) {
+        Transforms.removeNodes(editor, { at: path });
+        return;
       }
     }
 
@@ -298,7 +288,7 @@ const EditorComp: EditorCompShape = () => {
    * https://github.com/ianstormtaylor/slate/issues/4081
    */
   const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
-  const [value, setValue] = useState<StateShape>(ListLogic.model);
+  const [value, setValue] = useState<StateShape>(TableLogic.model);
 
   const renderElement: EditableProps["renderElement"] = useCallback((props) => {
     const { attributes, children, element } = props;
@@ -443,8 +433,8 @@ const EditorComp: EditorCompShape = () => {
         }
         case "Delete": {
           e.preventDefault();
-          if (CET.TD == elementType) {
-            TableLogic.deleteEvent(editor);
+          if (CET.LIST_ITEM == elementType) {
+            ListLogic.deleteEvent(editor);
             break;
           }
           Editor.deleteForward(editor);
@@ -452,8 +442,8 @@ const EditorComp: EditorCompShape = () => {
         }
         case "Backspace": {
           e.preventDefault();
-          if (CET.TD == elementType) {
-            TableLogic.backspaceEvent(editor);
+          if (CET.LIST_ITEM == elementType) {
+            ListLogic.backspaceEvent(editor);
             break;
           }
           Editor.deleteBackward(editor);
@@ -479,7 +469,13 @@ const EditorComp: EditorCompShape = () => {
           renderLeaf={renderLeaf}
           autoFocus
           spellCheck
-          onKeyDown={bindKeyDownEvent}
+          onKeyDown={(e) => {
+            try {
+              bindKeyDownEvent(e);
+            } catch (error) {
+              console.error(error);
+            }
+          }}
           onDragStart={(e) => {
             e.preventDefault();
           }}
@@ -487,7 +483,6 @@ const EditorComp: EditorCompShape = () => {
             marginTop: 4,
             padding: 12,
             border: "1px solid",
-            overflow: "auto",
           }}
         />
       </Slate>
