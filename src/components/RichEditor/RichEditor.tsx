@@ -2,18 +2,19 @@
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/ban-types */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createEditor,
   Transforms,
   Range,
+  Node,
   Text,
   Point,
   Element,
   Editor,
   NodeEntry,
 } from "slate";
-import { Slate, Editable, withReact } from "slate-react";
+import { Slate, Editable, withReact, ReactEditor } from "slate-react";
 import { withHistory } from "slate-history";
 import "./RichEditor.css";
 
@@ -67,10 +68,10 @@ const withCyWrap = (editor: EditorType) => {
     try {
       apply(e);
       array.push(e);
-      window.localStorage.setItem("history", JSON.stringify(array));
+      // window.localStorage.setItem("history", JSON.stringify(array));
       // console.log(JSON.stringify(e));
     } catch (error) {
-      console.error(error);
+      console.warn(error);
     }
   };
 
@@ -203,7 +204,6 @@ const withCyWrap = (editor: EditorType) => {
         });
         return;
       }
-
       // 如果光标的上一个位置就是表格，那么阻止执行
       const before = Editor.before(editor, editor.selection.anchor);
       const isAfterTable = Editor.above(editor, {
@@ -293,15 +293,61 @@ const EditorComp: EditorCompShape = () => {
    * https://github.com/ianstormtaylor/slate/issues/4081
    */
   const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
-  const [value, setValue] = useState<StateShape>(ListLogic.model);
+  const [value, setValue] = useState<StateShape>(TableLogic.testModel);
+  const ref = useRef<{
+    selectedTds: Path[];
+    isBeginSelectTd: boolean;
+    taskArray: any[];
+    mouseDownStartPoint: any;
+  }>({
+    selectedTds: [],
+    isBeginSelectTd: false,
+    taskArray: [],
+    mouseDownStartPoint: null,
+  });
 
   useEffect(() => {
     window.localStorage.removeItem("history");
 
-    setTimeout(() => {
-      unitTest(editor);
-    }, 100);
+    // setTimeout(() => {
+    //   unitTest(editor);
+    // }, 100);
   }, []);
+
+  const mousedownFunc = (e: any) => {
+    try {
+      const slateNode = ReactEditor.toSlateNode(editor, e.target);
+      const path = ReactEditor.findPath(editor, slateNode);
+
+      const isInTable = Editor.above(editor, {
+        at: path,
+        match(n) {
+          return TableLogic.isTable(n);
+        },
+      });
+      isInTable &&
+        (ref.current.isBeginSelectTd = true) &&
+        (ref.current.mouseDownStartPoint = path);
+    } catch (error) {}
+  };
+  const mousemoveFunc = (e: any) => {
+    try {
+      if (ref.current.isBeginSelectTd) {
+        const slateNode = ReactEditor.toSlateNode(editor, e.target);
+        const path = ReactEditor.findPath(editor, slateNode);
+        selectTd(
+          Editor.point(editor, ref.current.mouseDownStartPoint),
+          Editor.point(editor, path)
+        );
+      }
+    } catch (error) {}
+  };
+  const mouseupFunc = () => {
+    if (ref.current.isBeginSelectTd && ref.current.selectedTds.length > 0) {
+      Transforms.deselect(editor);
+    }
+    ref.current.isBeginSelectTd = false;
+  };
 
   const renderElement: EditableProps["renderElement"] = useCallback((props) => {
     const { attributes, children, element } = props;
@@ -467,14 +513,61 @@ const EditorComp: EditorCompShape = () => {
     }
   };
 
+  const selectTd = _.debounce((pa: Point, pb: Point) => {
+    // 取消选择上一次选中的td
+    ref.current.selectedTds.forEach((p) => {
+      Transforms.unsetNodes(editor, "selected", { at: p });
+    });
+    ref.current.selectedTds = [];
+
+    const commonNode = Node.common(editor, pa.path, pb.path);
+    if (
+      !commonNode ||
+      !Element.isElement(commonNode[0]) ||
+      (commonNode[0].type != CET.TBODY && commonNode[0].type != CET.TR)
+    )
+      return;
+
+    // 找到两个点同一层级的td
+    const tda = Editor.above(editor, {
+      at: pa,
+      mode: "highest",
+      match(n, p) {
+        return TableLogic.isTd(n) && p.length > commonNode[1].length;
+      },
+    });
+    if (!tda) return;
+    const tdb = Editor.above(editor, {
+      at: pb,
+      mode: "highest",
+      match(n, p) {
+        return TableLogic.isTd(n) && p.length > commonNode[1].length;
+      },
+    });
+    if (!tdb) return;
+
+    const basePath = tda[1].slice(0, tda[1].length - 2);
+    const tdaPath = tda[1].slice(tda[1].length - 2),
+      tdbPath = tdb[1].slice(tdb[1].length - 2);
+    const rowStart = Math.min(tdaPath[0], tdbPath[0]);
+    const rowEnd = Math.max(tdaPath[0], tdbPath[0]);
+    const cellStart = Math.min(tdaPath[1], tdbPath[1]);
+    const cellEnd = Math.max(tdaPath[1], tdbPath[1]);
+    for (let i = rowStart; i <= rowEnd; i++) {
+      for (let j = cellStart; j <= cellEnd; j++) {
+        const p = [...basePath, i, j];
+        Transforms.setNodes(editor, { selected: true }, { at: p });
+        ref.current.selectedTds.push(p);
+      }
+    }
+  }, 10);
+
   return (
     <div className="RichEditor">
       <Slate
         editor={editor}
         value={value}
-        onChange={(value) => {
-          setValue(value);
-        }}
+        onChange={setValue}
       >
         <ToolBar></ToolBar>
         <Editable
@@ -482,7 +575,6 @@ const EditorComp: EditorCompShape = () => {
           renderElement={renderElement}
           renderLeaf={renderLeaf}
           autoFocus
-          spellCheck
           onKeyDown={(e) => {
             try {
               bindKeyDownEvent(e);
@@ -490,6 +582,11 @@ const EditorComp: EditorCompShape = () => {
               console.error(error);
             }
           }}
+          onMouseDown={e=>{
+            mousedownFunc(e);
+          }}
+          onMouseMove={mousemoveFunc}
+          onMouseUp={mouseupFunc}
           onDragStart={(e) => {
             e.preventDefault();
           }}

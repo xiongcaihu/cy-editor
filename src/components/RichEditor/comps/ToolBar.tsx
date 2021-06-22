@@ -200,7 +200,6 @@ export const ToolBar = () => {
       },
       { at: nextPath }
     );
-    Transforms.select(editor, nextPath);
   };
 
   const insertDivBeforeTable = () => {
@@ -220,7 +219,6 @@ export const ToolBar = () => {
       },
       { at: table[1] }
     );
-    Transforms.select(editor, table[1]);
   };
 
   const deleteTable = () => {

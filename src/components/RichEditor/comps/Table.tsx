@@ -10,7 +10,9 @@ import {
   Editor,
   Path,
 } from "slate";
-import { RenderElementProps } from "slate-react";
+import {
+  RenderElementProps,
+} from "slate-react";
 import { CET, EditorType } from "../common/Defines";
 import { utils } from "../common/utils";
 
@@ -110,13 +112,16 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
 };
 
 export const TableLogic = {
+  testModel: JSON.parse(
+    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"string3d"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsad"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"sadas"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"asd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]}]}]}]}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sad"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsa"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"sd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"adsa"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"das"}]}]}]}]}]}]}]}]}]}]}]}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}]}]}]},{"type":"div","children":[{"text":"1"}]}]`
+  ),
   model: [
     {
       type: CET.TABLE,
       children: [
         {
           type: CET.TBODY,
-          children: new Array(100).fill(0).map((item, index) => {
+          children: new Array(10).fill(0).map((item, index) => {
             return {
               type: CET.TR,
               children: [

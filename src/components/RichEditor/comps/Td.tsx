@@ -7,12 +7,12 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
   element,
   children,
 }) => {
-  const ref = useCallback((e) => {
+  const horizenResizer = useCallback((e) => {
     if (e && e.parentNode && e.parentNode.nextSibling == null) {
       // e.style.visibility = "hidden";
     }
   }, []);
-  const ref2 = useCallback((e) => {
+  const verticalResizer = useCallback((e) => {
     if (
       e &&
       e?.parentNode?.parentNode &&
@@ -29,11 +29,12 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         padding: 4,
         minWidth: 100,
         position: "relative",
+        backgroundColor: element.selected ? "rgba(180,215,255,.7)" : "unset",
       }}
     >
       {children}
       <span
-        ref={ref}
+        ref={horizenResizer}
         className="resizer"
         style={{
           position: "absolute",
@@ -108,7 +109,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         }}
       ></span>
       <span
-        ref={ref2}
+        ref={verticalResizer}
         style={{
           position: "absolute",
           width: "100%",
