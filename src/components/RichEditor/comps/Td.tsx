@@ -25,6 +25,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     <td
       {...attributes}
       colSpan={element.colSpan}
+      rowSpan={element.rowSpan}
       style={{
         padding: 4,
         minWidth: 100,
@@ -110,6 +111,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       ></span>
       <span
         ref={verticalResizer}
+        className="resizer"
         style={{
           position: "absolute",
           width: "100%",

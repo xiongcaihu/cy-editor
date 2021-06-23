@@ -1,12 +1,11 @@
 /* eslint-disable eqeqeq */
 import { Button } from "antd";
-import { Editor, Transforms, Element, Range, Node, Path } from "slate";
+import { Editor, Node, Transforms, Element, Range, NodeEntry } from "slate";
 import { useSlate } from "slate-react";
 import { CET, Marks } from "../common/Defines";
 import { ListLogic } from "./ListComp";
 import { TableLogic } from "../comps/Table";
 import { utils } from "../common/utils";
-import _ from "lodash";
 
 export const ToolBar = () => {
   const editor = useSlate();
@@ -234,75 +233,164 @@ export const ToolBar = () => {
 
   const mergeTd = () => {
     if (editor.selection && !Range.isExpanded(editor.selection)) return;
-    const tds = Editor.nodes(editor, {
-      mode: "all",
-      reverse: true,
+
+    const [selectedTd, secTd] = Editor.nodes(editor, {
+      at: [],
       match(n) {
-        return TableLogic.isTd(n);
+        return TableLogic.isTd(n) && n.selected == true;
       },
     });
+    if (!selectedTd || secTd == null) return;
 
-    let prePath: Path = [],
-      preNode: Node = {} as Node;
-    for (const [n, p] of tds) {
-      if (
-        p &&
-        prePath &&
-        Element.isElement(preNode) &&
-        Element.isElement(n) &&
-        prePath.length == p.length &&
-        _.last(prePath) == (_.last(p) || 0) + 1
-      ) {
-        Transforms.mergeNodes(editor, { at: prePath });
-        Transforms.setNodes(
-          editor,
-          { colSpan: (preNode.colSpan || 1) + (n.colSpan || 1) },
-          { at: p }
-        );
-        mergeTd();
-        return;
+    const tbody = Editor.above(editor, {
+      at: selectedTd[1],
+      mode: "lowest",
+      match(n) {
+        return Element.isElement(n) && n.type == CET.TBODY;
+      },
+    });
+    if (!tbody) return;
+
+    const selectedTds = TableLogic.getSelectedTd(tbody);
+    if (!selectedTds) return;
+    const tbodyPath = tbody[1];
+    const tds = Array.from(selectedTds?.keys());
+
+    tds.sort((a, b) => {
+      if (a.row > b.row) {
+        return 1;
       }
-      prePath = p;
-      preNode = n;
-    }
+      if (a.row == b.row) {
+        return a.col - b.col;
+      }
+      return -1;
+    });
+
+    let firstTd = tds[0];
+    let maxColSpan = 0,
+      maxRowSpan = 0;
+    tds.forEach((td) => {
+      maxColSpan = Math.max(maxColSpan, td.colSpan + td.col - firstTd.col);
+      maxRowSpan = Math.max(maxRowSpan, td.rowSpan + td.row - firstTd.row);
+    });
+
+    const newTdPath = [...tbodyPath, firstTd.originRow, firstTd.originCol];
+    Transforms.setNodes(
+      editor,
+      {
+        colSpan: maxColSpan,
+        rowSpan: maxRowSpan,
+      },
+      { at: newTdPath }
+    );
+
+    const firstTdEntry = Editor.node(editor, newTdPath);
+    tds.forEach((td) => {
+      if (td.col == firstTd.col && td.row == firstTd.row) return;
+      const tdPath = [...tbodyPath, td.originRow, td.originCol];
+      for (const [, childP] of Node.children(editor, tdPath, {
+        reverse: true,
+      })) {
+        if (Editor.string(editor, childP, { voids: true }) == "") continue;
+        Transforms.moveNodes(editor, {
+          at: childP,
+          to: [...firstTdEntry[1], firstTdEntry[0].children.length],
+        });
+      }
+      Transforms.setNodes(editor, { toBeDeleted: true }, { at: tdPath });
+    });
+
+    Transforms.removeNodes(editor, {
+      at: [],
+      match(n) {
+        return TableLogic.isTd(n) && n.toBeDeleted == true;
+      },
+    });
   };
 
   const splitTd = () => {
-    const textWrappers = Editor.nodes(editor, {
-      mode: "lowest",
+    const selectedTds = Editor.nodes(editor, {
+      at: [],
       reverse: true,
       match(n) {
-        return utils.isTextWrapper(n);
+        return TableLogic.isTd(n) && n.selected == true;
       },
     });
 
-    for (const [, p] of textWrappers) {
-      const td = utils.getParent(editor, p);
-      if (
-        td.length > 0 &&
-        TableLogic.isTd(td[0]) &&
-        Element.isElement(td[0]) &&
-        (td[0].colSpan || 1) > 1
-      ) {
-        const addTdCount = (td[0].colSpan || 1) - 1;
-        Transforms.setNodes(editor, { colSpan: 1 }, { at: td[1] });
-        Transforms.insertNodes(
-          editor,
-          new Array(addTdCount).fill(0).map((item) => {
-            return {
-              type: CET.TD,
-              children: [{ type: CET.DIV, children: [{ text: "" }] }],
-            };
-          }),
-          {
-            at: utils.getPath(td[1], "next"),
-          }
-        );
-        splitTd();
-        return;
+    let tbody;
+    for (const [td, tdPath] of selectedTds) {
+      // fill col
+      if (!Element.isElement(td)) continue;
+      Transforms.setNodes(editor, { colSpan: 1, rowSpan: 1 }, { at: tdPath });
+      Transforms.unsetNodes(editor, ["selected", "start"], { at: tdPath });
+      if ((!td.colSpan || td.colSpan < 2) && (!td.rowSpan || td.rowSpan < 2))
+        continue;
+
+      if (tbody == null) {
+        tbody = Editor.above(editor, {
+          at: tdPath,
+          mode: "lowest",
+          match(n) {
+            return Element.isElement(n) && n.type == CET.TBODY;
+          },
+        });
+        if (!tbody) return;
       }
+
+      const nowTr = Editor.parent(editor, tdPath);
+      let leftSumColSpan = 0;
+      for (let i = 0; i < tdPath[tdPath.length - 1]; i++) {
+        leftSumColSpan = leftSumColSpan + (nowTr[0].children[i].colSpan || 1);
+      }
+      const findInsertCol = (tr: NodeEntry) => {
+        let sumColSpan = 0;
+        for (let i = 0; i < tr[0].children.length; i++) {
+          sumColSpan = sumColSpan + (tr[0].children[i].colSpan || 1);
+          if (sumColSpan == leftSumColSpan) return i + 1;
+        }
+        return 0;
+      };
+
+      for (
+        let row = tdPath[tdPath.length - 2], count = 0;
+        count < (td.rowSpan || 1);
+        count++, row++
+      ) {
+        const isInNowTr = row == tdPath[tdPath.length - 2];
+        const insertCol = findInsertCol(
+          Editor.node(editor, [...tbody[1], row])
+        );
+        console.log(insertCol);
+        for (let i = 0; i < (td.colSpan || 1) - (isInNowTr ? 1 : 0); i++) {
+          Transforms.insertNodes(
+            editor,
+            {
+              type: CET.TD,
+              children: [
+                {
+                  type: CET.DIV,
+                  children: [{ text: "" }],
+                },
+              ],
+            },
+            {
+              at: [...tbody[1], row, insertCol + (isInNowTr ? 1 : 0)],
+            }
+          );
+        }
+      }
+      splitTd();
+      return;
     }
   };
+
+  const insertRowAfter = () => {};
+
+  const insertRowBefore = () => {};
+
+  const insertColumnAfter = () => {};
+
+  const insertColumnBefore = () => {};
 
   return (
     <div style={{ position: "relative" }}>
@@ -319,6 +407,38 @@ export const ToolBar = () => {
           cursor: "not-allowed",
         }}
       ></div>
+      <Button
+        onMouseDown={(e) => {
+          e.preventDefault();
+          insertColumnAfter();
+        }}
+      >
+        insertColumnAfter
+      </Button>
+      <Button
+        onMouseDown={(e) => {
+          e.preventDefault();
+          insertColumnBefore();
+        }}
+      >
+        insertColumnBefore
+      </Button>
+      <Button
+        onMouseDown={(e) => {
+          e.preventDefault();
+          insertRowAfter();
+        }}
+      >
+        insertRowAfter
+      </Button>
+      <Button
+        onMouseDown={(e) => {
+          e.preventDefault();
+          insertRowBefore();
+        }}
+      >
+        insertRowBefore
+      </Button>
       <Button
         onMouseDown={(e) => {
           e.preventDefault();

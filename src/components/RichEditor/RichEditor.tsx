@@ -297,17 +297,17 @@ const EditorComp: EditorCompShape = () => {
   const ref = useRef<{
     selectedTds: Path[];
     isBeginSelectTd: boolean;
-    taskArray: any[];
     mouseDownStartPoint: any;
   }>({
     selectedTds: [],
     isBeginSelectTd: false,
-    taskArray: [],
     mouseDownStartPoint: null,
   });
 
   useEffect(() => {
     window.localStorage.removeItem("history");
+
+    window.onmousedown = mousedownFunc;
 
     // setTimeout(() => {
     //   unitTest(editor);
@@ -321,13 +321,27 @@ const EditorComp: EditorCompShape = () => {
 
       const isInTable = Editor.above(editor, {
         at: path,
+        mode: "highest",
         match(n) {
           return TableLogic.isTable(n);
         },
       });
-      isInTable &&
-        (ref.current.isBeginSelectTd = true) &&
-        (ref.current.mouseDownStartPoint = path);
+      // 取消选择上一次选中的td
+      ref.current.selectedTds = [];
+      Transforms.unsetNodes(editor, ["selected", "start"], {
+        at: [],
+        match(n) {
+          return TableLogic.isTd(n) && (n.selected == true || n.start == true);
+        },
+      });
+
+      if (isInTable && e.target.className != "resizer") {
+        ref.current.isBeginSelectTd = true;
+        ref.current.mouseDownStartPoint = path;
+
+        window.onmousemove = mousemoveFunc;
+        window.onmouseup = mouseupFunc;
+      }
     } catch (error) {}
   };
   const mousemoveFunc = (e: any) => {
@@ -371,7 +385,11 @@ const EditorComp: EditorCompShape = () => {
       case CET.TBODY:
         return <tbody {...attributes}>{children}</tbody>;
       case CET.TR:
-        return <tr {...attributes}>{children}</tr>;
+        return element.shouldEmpty ? (
+          <tr {...attributes} contentEditable={false}></tr>
+        ) : (
+          <tr {...attributes}>{children}</tr>
+        );
       case CET.TD:
         return <TD {...props}></TD>;
       default:
@@ -515,14 +533,42 @@ const EditorComp: EditorCompShape = () => {
 
   const selectTd = _.debounce((pa: Point, pb: Point) => {
     // 取消选择上一次选中的td
-    ref.current.selectedTds.forEach((p) => {
-      Transforms.unsetNodes(editor, "selected", { at: p });
-    });
     ref.current.selectedTds = [];
+    Transforms.unsetNodes(editor, ["selected", "start"], {
+      at: [],
+      match(n) {
+        return TableLogic.isTd(n) && (n.selected == true || n.start == true);
+      },
+    });
 
     const commonNode = Node.common(editor, pa.path, pb.path);
+    if (!commonNode) return;
+    const paTd = Editor.above(editor, {
+      at: pa,
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+    const pbTd = Editor.above(editor, {
+      at: pb,
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+    if (paTd && pbTd && Path.equals(paTd[1], pbTd[1])) {
+      // 说明选区在一个td里
+      const tdRange = Editor.range(editor, paTd[1]);
+      const inte =
+        editor.selection && Range.intersection(editor.selection, tdRange);
+      if (inte && Range.equals(inte, tdRange) && !Range.isCollapsed(inte)) {
+        Transforms.setNodes(editor, { selected: true }, { at: paTd[1] });
+        ref.current.selectedTds.push(paTd[1]);
+      }
+      return;
+    }
     if (
-      !commonNode ||
       !Element.isElement(commonNode[0]) ||
       (commonNode[0].type != CET.TBODY && commonNode[0].type != CET.TR)
     )
@@ -537,6 +583,7 @@ const EditorComp: EditorCompShape = () => {
       },
     });
     if (!tda) return;
+    Transforms.setNodes(editor, { start: true }, { at: tda[1] });
     const tdb = Editor.above(editor, {
       at: pb,
       mode: "highest",
@@ -545,30 +592,31 @@ const EditorComp: EditorCompShape = () => {
       },
     });
     if (!tdb) return;
+    Transforms.setNodes(editor, { start: true }, { at: tdb[1] });
 
-    const basePath = tda[1].slice(0, tda[1].length - 2);
-    const tdaPath = tda[1].slice(tda[1].length - 2),
-      tdbPath = tdb[1].slice(tdb[1].length - 2);
-    const rowStart = Math.min(tdaPath[0], tdbPath[0]);
-    const rowEnd = Math.max(tdaPath[0], tdbPath[0]);
-    const cellStart = Math.min(tdaPath[1], tdbPath[1]);
-    const cellEnd = Math.max(tdaPath[1], tdbPath[1]);
-    for (let i = rowStart; i <= rowEnd; i++) {
-      for (let j = cellStart; j <= cellEnd; j++) {
-        const p = [...basePath, i, j];
-        Transforms.setNodes(editor, { selected: true }, { at: p });
-        ref.current.selectedTds.push(p);
-      }
+    const tbody = Editor.above(editor, {
+      at: tda[1],
+      mode: "lowest",
+      match(n) {
+        return Element.isElement(n) && n.type == CET.TBODY;
+      },
+    });
+    if (!tbody || !Element.isElement(tbody[0])) return;
+
+    const selectedTds = TableLogic.getSelectedTd(tbody);
+    if (selectedTds == null) return;
+
+    const tbodyPath = tbody[1];
+    for (const td of selectedTds.keys()) {
+      const tdPath = [...tbodyPath, td.originRow, td.originCol];
+      Transforms.setNodes(editor, { selected: true }, { at: tdPath });
+      ref.current.selectedTds.push(tdPath);
     }
   }, 10);
 
   return (
     <div className="RichEditor">
-      <Slate
-        editor={editor}
-        value={value}
-        onChange={setValue}
-      >
+      <Slate editor={editor} value={value} onChange={setValue}>
         <ToolBar></ToolBar>
         <Editable
           className="cyEditor"
@@ -582,11 +630,6 @@ const EditorComp: EditorCompShape = () => {
               console.error(error);
             }
           }}
-          onMouseDown={e=>{
-            mousedownFunc(e);
-          }}
-          onMouseMove={mousemoveFunc}
-          onMouseUp={mouseupFunc}
           onDragStart={(e) => {
             e.preventDefault();
           }}

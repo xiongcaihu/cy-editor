@@ -34,7 +34,9 @@ export type CustomElement = {
   url?: string; // 图片，Link组件的参数
   content?: string; // Link组件的参数
   colSpan?: number; // td属性
-  selected?:boolean; // td是否被选中
+  rowSpan?: number; // td 属性
+  selected?: boolean; // td是否被选中
+  tdMap?: any; // 用于计算tdMap
   children: (CustomText | CustomElement)[];
 };
 export type CustomText = { text: string; bold?: boolean; [key: string]: any };
