@@ -2,14 +2,14 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import { Transforms } from "slate";
-import { RenderElementProps, useSlate, ReactEditor } from "slate-react";
+import { RenderElementProps, ReactEditor, useSlateStatic } from "slate-react";
 
 export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
   attributes,
   children,
   element,
 }) => {
-  const editor = useSlate();
+  const editor = useSlateStatic();
   const [state, setState] = useState<{
     url?: string;
     content?: string;

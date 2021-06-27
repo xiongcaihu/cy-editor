@@ -4,9 +4,9 @@ import { useState, useEffect } from "react";
 import { Transforms } from "slate";
 import {
   useSelected,
-  useSlate,
   ReactEditor,
   RenderElementProps,
+  useSlateStatic,
 } from "slate-react";
 import testImg from "../c.jpg";
 
@@ -16,7 +16,7 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
   element,
 }) => {
   const selected = useSelected();
-  const editor = useSlate();
+  const editor = useSlateStatic();
   const [state, setState] = useState({
     size: {
       width: element.width || 100,

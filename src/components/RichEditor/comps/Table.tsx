@@ -1,5 +1,6 @@
 /* eslint-disable eqeqeq */
 import _ from "lodash";
+import { useRef } from "react";
 import {
   Node,
   NodeEntry,
@@ -9,10 +10,12 @@ import {
   Transforms,
   Editor,
   Path,
+  Point,
 } from "slate";
-import { RenderElementProps } from "slate-react";
+import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
 import { CET, EditorType } from "../common/Defines";
 import { utils } from "../common/utils";
+import { TdLogic } from "./Td";
 
 declare module "react" {
   interface HTMLAttributes<T> extends DOMAttributes<T> {
@@ -20,23 +23,177 @@ declare module "react" {
   }
 }
 
-type customTdShape = {
-  start: boolean;
-  colSpan: number;
-  rowSpan: number;
-  row: number; // 在tdMap里的坐标
-  col: number; // 在tdMap里的坐标
-  originRow: number; // 在原来tbody里的坐标
-  originCol: number; // 在原来tbody里的坐标
-};
-
-type tdMapShape = Array<customTdShape[]>;
-
 export const Table: (props: RenderElementProps) => JSX.Element = ({
   attributes,
-  element,
   children,
 }) => {
+  const ref = useRef<{
+    isBeginSelectTd: boolean;
+    mouseDownStartPoint: any;
+    preMouseOnTdPath: Path | null; //  鼠标移动时，记录上一次所处的td
+    lastSelectedPaths: Path[];
+    initX: number;
+    initY: number;
+  }>({
+    isBeginSelectTd: false,
+    mouseDownStartPoint: null,
+    initX: 0,
+    initY: 0,
+    lastSelectedPaths: [],
+    preMouseOnTdPath: null,
+  });
+
+  const editor = useSlateStatic();
+  const selectTd = _.debounce((pa: Point, pb: Point) => {
+    const commonNode = Node.common(editor, pa.path, pb.path);
+    if (!commonNode) return;
+    const pbTd = Editor.above(editor, {
+      at: pb,
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+    if (!pbTd) return;
+
+    const preMouseOnTdPath = ref.current.preMouseOnTdPath;
+    if (preMouseOnTdPath && Path.equals(preMouseOnTdPath, pbTd[1])) return;
+    ref.current.preMouseOnTdPath = pbTd[1];
+
+    const paTd = Editor.above(editor, {
+      at: pa,
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+    if (!paTd) return;
+
+    // 取消选择上一次选中的td
+    ref.current.lastSelectedPaths.forEach((p) => {
+      Transforms.unsetNodes(editor, ["selected", "start"], {
+        at: p,
+      });
+    });
+    ref.current.lastSelectedPaths = [];
+
+    if (Path.equals(paTd[1], pbTd[1])) {
+      // 说明选区在一个td里
+      Transforms.setNodes(
+        editor,
+        { selected: true, start: true },
+        { at: paTd[1] }
+      );
+      return;
+    }
+    if (
+      !Element.isElement(commonNode[0]) ||
+      (commonNode[0].type != CET.TBODY && commonNode[0].type != CET.TR)
+    )
+      return;
+
+    // 找到两个点同一层级的td
+    const tda = Editor.above(editor, {
+      at: pa,
+      mode: "highest",
+      match(n, p) {
+        return TableLogic.isTd(n) && p.length > commonNode[1].length;
+      },
+    });
+    if (!tda) return;
+    Transforms.setNodes(editor, { start: true }, { at: tda[1] });
+    const tdb = Editor.above(editor, {
+      at: pb,
+      mode: "highest",
+      match(n, p) {
+        return TableLogic.isTd(n) && p.length > commonNode[1].length;
+      },
+    });
+    if (!tdb) return;
+    Transforms.setNodes(editor, { start: true }, { at: tdb[1] });
+
+    const tbody = Editor.above(editor, {
+      at: tda[1],
+      mode: "lowest",
+      match(n) {
+        return Element.isElement(n) && n.type == CET.TBODY;
+      },
+    });
+    if (!tbody || !Element.isElement(tbody[0])) return;
+
+    const selectedTds = TdLogic.getSelectedTd(tbody);
+    if (selectedTds == null) return;
+
+    const tbodyPath = tbody[1];
+    for (const td of selectedTds.keys()) {
+      const tdPath = [...tbodyPath, td.originRow, td.originCol];
+      Transforms.setNodes(editor, { selected: true }, { at: tdPath });
+      ref.current.lastSelectedPaths.push(tdPath);
+    }
+  }, 5);
+
+  const mousedownFunc = (e: any) => {
+    // 防止事件冒泡到父元素的td
+    e.stopPropagation();
+    try {
+      ref.current.lastSelectedPaths = [];
+      ref.current.preMouseOnTdPath = null;
+      const slateNode = ReactEditor.toSlateNode(editor, e.target);
+      const path = ReactEditor.findPath(editor, slateNode);
+      ref.current.initX = e.clientX;
+      ref.current.initY = e.clientY;
+
+      const tdDom = e.nativeEvent.path.find((e: any) => {
+        return e.tagName == "TD";
+      });
+      if (!tdDom) return;
+
+      if (
+        !["resizer", "columnSelector"].includes(e.target.className) &&
+        tdDom.contentEditable === "false"
+      ) {
+        ref.current.isBeginSelectTd = true;
+        ref.current.mouseDownStartPoint = path;
+
+        for (const [, p] of Editor.nodes(editor, {
+          at: [],
+          match(n) {
+            return (
+              TableLogic.isTd(n) && (n.selected == true || n.start == true)
+            );
+          },
+        })) {
+          ref.current.lastSelectedPaths.push(p);
+        }
+        window.onmousemove = mousemoveFunc;
+        window.onmouseup = mouseupFunc;
+      }
+    } catch (error) {}
+  };
+  const mousemoveFunc = (e: any) => {
+    try {
+      // 如果移动距离不超过1，那么不进入逻辑
+      if (
+        ref.current.isBeginSelectTd &&
+        (Math.abs(e.clientX - ref.current.initX) > 1 ||
+          Math.abs(e.clientY - ref.current.initY) > 1)
+      ) {
+        const slateNode = ReactEditor.toSlateNode(editor, e.target);
+        const path = ReactEditor.findPath(editor, slateNode);
+        selectTd(
+          Editor.point(editor, ref.current.mouseDownStartPoint),
+          Editor.point(editor, path)
+        );
+      }
+    } catch (error) {}
+  };
+  const mouseupFunc = (e: any) => {
+    ref.current.isBeginSelectTd = false;
+    window.onmousemove = () => {};
+    window.onmousedown = () => {};
+    window.onmouseup = () => {};
+  };
+
   return (
     <div
       {...attributes}
@@ -51,7 +208,11 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
       <table
         border="1"
         {...attributes}
-        style={{ tableLayout: "auto", wordBreak: "break-all" }}
+        style={{
+          tableLayout: "auto",
+          wordBreak: "break-all",
+        }}
+        onMouseDown={mousedownFunc}
       >
         {children}
       </table>
@@ -125,13 +286,23 @@ export const TableLogic = {
   testModel: JSON.parse(
     `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string1"}]}],"colSpan":2,"rowSpan":2}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"string3d"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsad"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"sadas"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"asd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]}]}]}]}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sad"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsa"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"sd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"adsa"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"das"}]}]}]}]}]}]}]}]}]}]}]}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]},{"type":"div","children":[{"text":"string4"}]}],"colSpan":2,"rowSpan":1},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}],"shouldEmpty":false}]}]},{"type":"div","children":[{"text":"1"}]}]`
   ),
+  tm2: JSON.parse(
+    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string2-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string4-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false}]}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string5-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string5-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string5-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string5-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string5-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string6-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string6-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string6-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string6-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string6-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string7-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string7-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string7-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string7-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string7-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string8-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string8-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string8-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string8-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string8-4"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string9-0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string9-1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string9-2"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string9-3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string9-4"}]}]}],"shouldEmpty":false}]}]},{"type":"div","children":[{"text":"1"}]}]
+`
+  ),
+  tm3: new Array(1000).fill(0).map(() => {
+    return {
+      type: CET.DIV,
+      children: [{ text: "kjfksdjfksjdfksdjfksdjkfjskdljfksdjfs" }],
+    };
+  }),
   model: [
     {
       type: CET.TABLE,
       children: [
         {
           type: CET.TBODY,
-          children: new Array(5).fill(0).map((item, index) => {
+          children: new Array(10).fill(0).map((item, fatherIndex) => {
             return {
               type: CET.TR,
               children: new Array(10).fill(0).map((item, index) => {
@@ -140,7 +311,7 @@ export const TableLogic = {
                   children: [
                     {
                       type: CET.DIV,
-                      children: [{ text: "string".repeat(1) + String(index) }],
+                      children: [{ text: `string${fatherIndex}-${index}` }],
                     },
                   ],
                 };
@@ -155,104 +326,8 @@ export const TableLogic = {
       children: [{ text: "1" }],
     },
   ],
-  getTdMap(tbody: NodeEntry): tdMapShape {
-    const trs: any = tbody[0].children;
-    const tdMap: any = new Array(trs.length).fill(0).map((o) => []);
-    for (let i = 0; i < trs.length; i++) {
-      const tr = trs[i];
-      const tds = tr.children;
-      for (let j = 0; j < tds.length; j++) {
-        const td = tds[j];
-        if (!TableLogic.isTd(td)) continue;
-        let colStart = tdMap[i].findIndex((o: any) => o == null);
-        colStart = colStart == -1 ? tdMap[i].length : colStart;
-        let colEnd = colStart + (td.colSpan || 1),
-          rowStart = i,
-          rowEnd = rowStart + (td.rowSpan || 1);
-        const fillTd = {
-          ...td,
-          colSpan: td.colSpan || 1,
-          rowSpan: td.rowSpan || 1,
-          row: i,
-          col: colStart,
-          originRow: i,
-          originCol: j,
-        };
-        const replaceFillTd = { ...fillTd, start: false };
-
-        for (let row = rowStart; row < rowEnd; row++) {
-          for (let col = colStart; col < colEnd; col++) {
-            tdMap[row][col] = replaceFillTd;
-          }
-        }
-        tdMap[rowStart][colStart] = fillTd;
-      }
-    }
-    return tdMap;
-  },
-  getSelectedTd(tbody: NodeEntry) {
-    const tdMap = TableLogic.getTdMap(tbody);
-    const helper = (
-      {
-        colStart,
-        colEnd,
-        rowStart,
-        rowEnd,
-      }: {
-        colStart: number;
-        colEnd: number;
-        rowStart: number;
-        rowEnd: number;
-      },
-      selectedTdMap: Map<any, number>
-    ) => {
-      for (let i = rowStart; i < rowEnd; i++) {
-        for (let j = colStart; j < colEnd; j++) {
-          const td: any = tdMap[i][j];
-          if (!selectedTdMap.has(td)) {
-            selectedTdMap.set(td, 1);
-            helper(
-              {
-                colStart: Math.min(td.col, colStart),
-                colEnd: Math.max(colEnd, td.col + td.colSpan),
-                rowStart: Math.min(td.row, rowStart),
-                rowEnd: Math.max(td.row + td.rowSpan, rowEnd),
-              },
-              selectedTdMap
-            );
-            return;
-          }
-        }
-      }
-    };
-
-    const startPoins: customTdShape[] = [];
-
-    for (let i = 0; i < tdMap.length; i++) {
-      for (let j = 0; j < tdMap[i].length; j++) {
-        const td: any = tdMap[i][j];
-        if (td.start) {
-          startPoins.push(td);
-        }
-      }
-      if (startPoins.length == 2) break;
-    }
-    if (startPoins.length != 2) return null;
-    const [a, b] = startPoins;
-    const selectedTd = new Map<customTdShape, number>([
-      [a, 1],
-      [b, 1],
-    ]);
-    helper(
-      {
-        colStart: Math.min(a.col, b.col),
-        colEnd: Math.max(a.col + a.colSpan, b.col + b.colSpan),
-        rowStart: Math.min(a.row, b.row),
-        rowEnd: Math.max(a.row + a.rowSpan, b.row + b.rowSpan),
-      },
-      selectedTd
-    );
-    return selectedTd;
+  isSelectedTd(n: Node) {
+    return TableLogic.isTd(n) && n.selected == true;
   },
   isTable(node: Node): node is Element {
     return Element.isElement(node) && CET.TABLE == node.type;
@@ -289,9 +364,21 @@ export const TableLogic = {
       }
       if (node.children.length == 1 && Node.child(node, 0).type != CET.TD) {
         Transforms.setNodes(editor, { shouldEmpty: true }, { at: path });
-        return;
+        return true;
       } else {
+        if (node.children.length > 1) {
+          for (const [child, childP] of Node.children(editor, path, {
+            reverse: true,
+          })) {
+            if (Text.isText(child)) {
+              Transforms.removeNodes(editor, { at: childP });
+              return true;
+            }
+          }
+        }
+
         Transforms.setNodes(editor, { shouldEmpty: false }, { at: path });
+        return true;
       }
     }
     // td校验
@@ -417,26 +504,17 @@ export const TableLogic = {
     Editor.insertBreak(editor);
   },
   tabEvent(editor: EditorType) {
-    // 找到text文本对应的第一层td
-    const td = Editor.above(editor, {
-      match(n) {
-        return TableLogic.isTd(n);
-      },
-    });
+    const td = TdLogic.getEditingTd(editor);
     if (!td) return;
-    const [, nextPath] = Editor.next(editor, { at: td[1] }) || [];
-    if (!nextPath) return;
-    Transforms.select(editor, Editor.start(editor, nextPath));
+
+    Transforms.deselect(editor);
+    TdLogic.findTargetTd(editor, td, "right");
   },
   shiftTabEvent(editor: EditorType) {
-    const td = Editor.above(editor, {
-      match(n) {
-        return TableLogic.isTd(n);
-      },
-    });
+    const td = TdLogic.getEditingTd(editor);
     if (!td) return;
-    const [, prePath] = Editor.previous(editor, { at: td[1] }) || [];
-    if (!prePath) return;
-    Transforms.select(editor, Editor.end(editor, prePath));
+
+    Transforms.deselect(editor);
+    TdLogic.findTargetTd(editor, td, "left");
   },
 };

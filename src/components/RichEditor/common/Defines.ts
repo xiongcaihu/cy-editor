@@ -1,4 +1,5 @@
 import { BaseEditor } from "slate";
+import { HistoryEditor } from "slate-history";
 import { Editable, ReactEditor, Slate } from "slate-react";
 
 export enum CET {
@@ -36,11 +37,17 @@ export type CustomElement = {
   colSpan?: number; // td属性
   rowSpan?: number; // td 属性
   selected?: boolean; // td是否被选中
+  canTdEdit?: boolean; // td是否可以编辑
+  preSelectedTdPos?: {
+    // tbody的属性，上一次选中的td在tdMap中的位置
+    row: number;
+    col: number;
+  };
   tdMap?: any; // 用于计算tdMap
   children: (CustomText | CustomElement)[];
 };
 export type CustomText = { text: string; bold?: boolean; [key: string]: any };
-export type EditorType = BaseEditor & ReactEditor;
+export type EditorType = BaseEditor & ReactEditor & HistoryEditor;
 
 export type StateShape = Parameters<typeof Slate>[0]["value"];
 export type EditorCompPropShape = {};

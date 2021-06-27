@@ -114,6 +114,7 @@ export const utils = {
   removeRangeElement(editor: EditorType) {
     const { selection } = editor;
     if (!selection) return;
+
     if (Point.equals(selection.anchor, selection.focus)) {
       Transforms.collapse(editor);
       return;

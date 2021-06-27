@@ -7,15 +7,16 @@ import {
   createEditor,
   Transforms,
   Range,
-  Node,
   Text,
   Point,
   Element,
   Editor,
   NodeEntry,
+  Operation,
+  Node,
 } from "slate";
 import { Slate, Editable, withReact, ReactEditor } from "slate-react";
-import { withHistory } from "slate-history";
+import { withHistory, HistoryEditor, SAVING } from "slate-history";
 import "./RichEditor.css";
 
 import _ from "lodash";
@@ -33,12 +34,11 @@ import { ListLogic } from "./comps/ListComp";
 import { TableLogic } from "./comps/Table";
 import { utils } from "./common/utils";
 import { ToolBar } from "./comps/ToolBar";
-import { TD } from "./comps/Td";
+import { TD, TdLogic } from "./comps/Td";
 import { Table } from "./comps/Table";
 import { ImgComp } from "./comps/ImgComp";
 import { LinkComp } from "./comps/LinkComp";
 import { Path } from "slate";
-import { unitTest } from "./Test/test";
 
 declare module "slate" {
   interface CustomTypes {
@@ -61,13 +61,19 @@ const withCyWrap = (editor: EditorType) => {
     normalizeNode,
     setFragmentData,
     apply,
+    redo,
+    undo,
   } = editor;
 
+  // editor.undo = () => {
+  //   undo();
+  // };
+
   editor.apply = (e) => {
-    const array = JSON.parse(window.localStorage.getItem("history") || "[]");
+    // const array = JSON.parse(window.localStorage.getItem("history") || "[]");
     try {
       apply(e);
-      array.push(e);
+      // array.push(e);
       // window.localStorage.setItem("history", JSON.stringify(array));
       // console.log(JSON.stringify(e));
     } catch (error) {
@@ -287,115 +293,76 @@ const withCyWrap = (editor: EditorType) => {
   return editor;
 };
 
+const MyElements: EditableProps["renderElement"] = (props) => {
+  const { attributes, children, element } = props;
+  switch (element.type) {
+    case CET.NUMBER_LIST:
+      return <ol {...attributes}>{children}</ol>;
+    case CET.NORMAL_LIST:
+      return <ul {...attributes}>{children}</ul>;
+    case CET.LIST_ITEM:
+      return <li {...attributes}>{children}</li>;
+    case CET.DIV:
+      return <div {...attributes}>{children}</div>;
+    case CET.H1:
+      return <h1 {...attributes}>{children}</h1>;
+    case CET.IMG:
+      return <ImgComp {...props}>{children}</ImgComp>;
+    case CET.LINK:
+      return <LinkComp {...props}></LinkComp>;
+    case CET.TABLE:
+      return <Table {...props}></Table>;
+    case CET.TBODY:
+      return <tbody {...attributes}>{children}</tbody>;
+    case CET.TR:
+      const otherAttr: any = {};
+      if (element.shouldEmpty) {
+        otherAttr.contentEditable = false;
+      }
+      return (
+        <tr {...attributes} {...otherAttr}>
+          {element.shouldEmpty ? null : children}
+        </tr>
+      );
+    case CET.TD:
+      return <TD {...props}></TD>;
+    default:
+      return <div {...attributes}>{children}</div>;
+  }
+};
+
 const EditorComp: EditorCompShape = () => {
   /**
    * 解决live refresh问题的链接
    * https://github.com/ianstormtaylor/slate/issues/4081
    */
-  const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
+  // const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
+  const [editor] = useState(withCyWrap(withReact(createEditor())));
   const [value, setValue] = useState<StateShape>(TableLogic.testModel);
   const ref = useRef<{
-    selectedTds: Path[];
-    isBeginSelectTd: boolean;
-    mouseDownStartPoint: any;
+    preUndos: Operation[][];
   }>({
-    selectedTds: [],
-    isBeginSelectTd: false,
-    mouseDownStartPoint: null,
+    preUndos: [],
   });
 
   useEffect(() => {
     window.localStorage.removeItem("history");
-
-    window.onmousedown = mousedownFunc;
 
     // setTimeout(() => {
     //   unitTest(editor);
     // }, 100);
   }, []);
 
-  const mousedownFunc = (e: any) => {
-    try {
-      const slateNode = ReactEditor.toSlateNode(editor, e.target);
-      const path = ReactEditor.findPath(editor, slateNode);
+  // useEffect(() => {
+  //   // console.log(ref.current.preUndos);
+  //   // console.log(editor.history.undos);
+  //   ref.current.preUndos = _.clone(editor.history.undos);
+  // }, [editor.history.undos.length]);
 
-      const isInTable = Editor.above(editor, {
-        at: path,
-        mode: "highest",
-        match(n) {
-          return TableLogic.isTable(n);
-        },
-      });
-      // 取消选择上一次选中的td
-      ref.current.selectedTds = [];
-      Transforms.unsetNodes(editor, ["selected", "start"], {
-        at: [],
-        match(n) {
-          return TableLogic.isTd(n) && (n.selected == true || n.start == true);
-        },
-      });
-
-      if (isInTable && e.target.className != "resizer") {
-        ref.current.isBeginSelectTd = true;
-        ref.current.mouseDownStartPoint = path;
-
-        window.onmousemove = mousemoveFunc;
-        window.onmouseup = mouseupFunc;
-      }
-    } catch (error) {}
-  };
-  const mousemoveFunc = (e: any) => {
-    try {
-      if (ref.current.isBeginSelectTd) {
-        const slateNode = ReactEditor.toSlateNode(editor, e.target);
-        const path = ReactEditor.findPath(editor, slateNode);
-        selectTd(
-          Editor.point(editor, ref.current.mouseDownStartPoint),
-          Editor.point(editor, path)
-        );
-      }
-    } catch (error) {}
-  };
-  const mouseupFunc = () => {
-    if (ref.current.isBeginSelectTd && ref.current.selectedTds.length > 0) {
-      Transforms.deselect(editor);
-    }
-    ref.current.isBeginSelectTd = false;
-  };
-
-  const renderElement: EditableProps["renderElement"] = useCallback((props) => {
-    const { attributes, children, element } = props;
-    switch (element.type) {
-      case CET.NUMBER_LIST:
-        return <ol {...attributes}>{children}</ol>;
-      case CET.NORMAL_LIST:
-        return <ul {...attributes}>{children}</ul>;
-      case CET.LIST_ITEM:
-        return <li {...attributes}>{children}</li>;
-      case CET.DIV:
-        return <div {...attributes}>{children}</div>;
-      case CET.H1:
-        return <h1 {...attributes}>{children}</h1>;
-      case CET.IMG:
-        return <ImgComp {...props}>{children}</ImgComp>;
-      case CET.LINK:
-        return <LinkComp {...props}></LinkComp>;
-      case CET.TABLE:
-        return <Table {...props}></Table>;
-      case CET.TBODY:
-        return <tbody {...attributes}>{children}</tbody>;
-      case CET.TR:
-        return element.shouldEmpty ? (
-          <tr {...attributes} contentEditable={false}></tr>
-        ) : (
-          <tr {...attributes}>{children}</tr>
-        );
-      case CET.TD:
-        return <TD {...props}></TD>;
-      default:
-        return <div {...attributes}>{children}</div>;
-    }
-  }, []);
+  const renderElement: EditableProps["renderElement"] = useCallback(
+    (props) => <MyElements {...props}></MyElements>,
+    []
+  );
 
   const renderLeaf: EditableProps["renderLeaf"] = useCallback(
     ({ attributes, children, leaf }) => {
@@ -416,7 +383,64 @@ const EditorComp: EditorCompShape = () => {
 
   const bindKeyDownEvent: EditableProps["onKeyDown"] = (e) => {
     let { selection } = editor;
-    if (!selection) return;
+    if (!selection) {
+      // 当没有选区的时候，查看是否已经选中表格
+      const [td, isNotOnlyOneTd] = Editor.nodes(editor, {
+        at: [],
+        match(n) {
+          return TableLogic.isSelectedTd(n);
+        },
+      });
+      if (!td) return;
+      switch (e.key) {
+        case "Delete":
+        case "Backspace":
+          TdLogic.clearTd(editor);
+          return;
+        case "Tab":
+          e.preventDefault();
+          if (isNotOnlyOneTd) return;
+          TdLogic.findTargetTd(editor, td, e.shiftKey ? "left" : "right");
+          return;
+        case "Escape":
+          e.preventDefault();
+          TdLogic.deselectAllTd(editor);
+          return;
+        // 直接全选选中的td的内容，进入编辑状态
+        case " ":
+        case "Enter":
+          e.preventDefault();
+          if (isNotOnlyOneTd) return;
+          TdLogic.editTd(editor, td);
+          return;
+        case "ArrowUp":
+          e.preventDefault();
+          if (isNotOnlyOneTd) return;
+          TdLogic.findTargetTd(editor, td, "up");
+          return;
+        case "ArrowDown":
+          e.preventDefault();
+          if (isNotOnlyOneTd) return;
+          TdLogic.findTargetTd(editor, td, "down");
+          return;
+        case "ArrowLeft":
+          e.preventDefault();
+          if (isNotOnlyOneTd) return;
+          TdLogic.findTargetTd(editor, td, "left");
+          return;
+        case "ArrowRight":
+          e.preventDefault();
+          if (isNotOnlyOneTd) return;
+          TdLogic.findTargetTd(editor, td, "right");
+          return;
+      }
+      if (!e.ctrlKey && (e.key.length == 1 || e.key == "Process")) {
+        if (isNotOnlyOneTd) return;
+        TdLogic.clearTd(editor);
+        TdLogic.editTd(editor, td);
+      }
+      return;
+    }
 
     if (Range.isExpanded(selection)) {
       switch (e.key) {
@@ -430,6 +454,17 @@ const EditorComp: EditorCompShape = () => {
         case "Enter": {
           e.preventDefault();
           utils.removeRangeElement(editor);
+          break;
+        }
+        case "Escape": {
+          const [td, isNotOnlyOne] = Editor.nodes(editor, {
+            at: selection,
+            match(n) {
+              return TableLogic.isTd(n) && n.canTdEdit == true;
+            },
+          });
+          if (!td || isNotOnlyOne) break;
+          TdLogic.chooseTd(editor, td);
           break;
         }
         case "Tab": {
@@ -469,14 +504,6 @@ const EditorComp: EditorCompShape = () => {
 
       // 如果默认事件没有被组件拦截掉，那么在这里重新定义拦截逻辑
       switch (e.key) {
-        case "ArrowUp":
-        case "ArrowDown": {
-          if (CET.TD == elementType && !e.shiftKey) {
-            if (TableLogic.arrowKeyEvent(editor, e.key)) e.preventDefault();
-            break;
-          }
-          break;
-        }
         case "Tab": {
           e.preventDefault();
           if (CET.LIST_ITEM == elementType) {
@@ -493,6 +520,17 @@ const EditorComp: EditorCompShape = () => {
           }
           // 如果是在其他元素上
           !e.shiftKey && Transforms.insertText(editor, "    ");
+          break;
+        }
+        case "Escape": {
+          const [td] = Editor.nodes(editor, {
+            at: selection,
+            match(n) {
+              return TableLogic.isTd(n) && n.canTdEdit == true;
+            },
+          });
+          if (!td) break;
+          TdLogic.chooseTd(editor, td);
           break;
         }
         case "Enter": {
@@ -531,114 +569,48 @@ const EditorComp: EditorCompShape = () => {
     }
   };
 
-  const selectTd = _.debounce((pa: Point, pb: Point) => {
-    // 取消选择上一次选中的td
-    ref.current.selectedTds = [];
-    Transforms.unsetNodes(editor, ["selected", "start"], {
-      at: [],
-      match(n) {
-        return TableLogic.isTd(n) && (n.selected == true || n.start == true);
-      },
-    });
-
-    const commonNode = Node.common(editor, pa.path, pb.path);
-    if (!commonNode) return;
-    const paTd = Editor.above(editor, {
-      at: pa,
-      mode: "lowest",
-      match(n) {
-        return TableLogic.isTd(n);
-      },
-    });
-    const pbTd = Editor.above(editor, {
-      at: pb,
-      mode: "lowest",
-      match(n) {
-        return TableLogic.isTd(n);
-      },
-    });
-    if (paTd && pbTd && Path.equals(paTd[1], pbTd[1])) {
-      // 说明选区在一个td里
-      const tdRange = Editor.range(editor, paTd[1]);
-      const inte =
-        editor.selection && Range.intersection(editor.selection, tdRange);
-      if (inte && Range.equals(inte, tdRange) && !Range.isCollapsed(inte)) {
-        Transforms.setNodes(editor, { selected: true }, { at: paTd[1] });
-        ref.current.selectedTds.push(paTd[1]);
-      }
-      return;
-    }
-    if (
-      !Element.isElement(commonNode[0]) ||
-      (commonNode[0].type != CET.TBODY && commonNode[0].type != CET.TR)
-    )
-      return;
-
-    // 找到两个点同一层级的td
-    const tda = Editor.above(editor, {
-      at: pa,
-      mode: "highest",
-      match(n, p) {
-        return TableLogic.isTd(n) && p.length > commonNode[1].length;
-      },
-    });
-    if (!tda) return;
-    Transforms.setNodes(editor, { start: true }, { at: tda[1] });
-    const tdb = Editor.above(editor, {
-      at: pb,
-      mode: "highest",
-      match(n, p) {
-        return TableLogic.isTd(n) && p.length > commonNode[1].length;
-      },
-    });
-    if (!tdb) return;
-    Transforms.setNodes(editor, { start: true }, { at: tdb[1] });
-
-    const tbody = Editor.above(editor, {
-      at: tda[1],
-      mode: "lowest",
-      match(n) {
-        return Element.isElement(n) && n.type == CET.TBODY;
-      },
-    });
-    if (!tbody || !Element.isElement(tbody[0])) return;
-
-    const selectedTds = TableLogic.getSelectedTd(tbody);
-    if (selectedTds == null) return;
-
-    const tbodyPath = tbody[1];
-    for (const td of selectedTds.keys()) {
-      const tdPath = [...tbodyPath, td.originRow, td.originCol];
-      Transforms.setNodes(editor, { selected: true }, { at: tdPath });
-      ref.current.selectedTds.push(tdPath);
-    }
-  }, 10);
-
   return (
-    <div className="RichEditor">
-      <Slate editor={editor} value={value} onChange={setValue}>
+    <div className="RichEditor" style={{ position: "relative" }}>
+      <Slate
+        editor={editor}
+        value={value}
+        onChange={(value) => {
+          setValue(value);
+        }}
+      >
         <ToolBar></ToolBar>
-        <Editable
-          className="cyEditor"
-          renderElement={renderElement}
-          renderLeaf={renderLeaf}
-          autoFocus
-          onKeyDown={(e) => {
-            try {
-              bindKeyDownEvent(e);
-            } catch (error) {
-              console.error(error);
-            }
-          }}
-          onDragStart={(e) => {
-            e.preventDefault();
-          }}
+        <div
           style={{
-            marginTop: 4,
-            padding: 12,
+            overflow: "auto",
+            height: window.screen.availHeight - 200,
             border: "1px solid",
+            padding: 12,
           }}
-        />
+        >
+          <Editable
+            className="cyEditor"
+            renderElement={renderElement}
+            renderLeaf={renderLeaf}
+            autoFocus
+            onDOMBeforeInput={(e) => {}}
+            onKeyDown={(e) => {
+              try {
+                // console.log("keydown ", e);
+                bindKeyDownEvent(e);
+              } catch (error) {
+                console.error(error);
+              }
+            }}
+            onMouseDown={(e) => {
+              if (!e.nativeEvent.target) return;
+              // 取消所有表格的选中状态，因为表格部分已经阻止了自己的mousedown事件传递到父组件，所以只要能在这里触发的，都肯定不是在表格里
+              TdLogic.deselectAllTd(editor);
+            }}
+            onDragStart={(e) => {
+              e.preventDefault();
+            }}
+          />
+        </div>
       </Slate>
     </div>
   );
