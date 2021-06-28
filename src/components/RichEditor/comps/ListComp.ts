@@ -7,7 +7,6 @@ import {
   Editor,
   Node,
   NodeEntry,
-  Point,
 } from "slate";
 import { ReactEditor } from "slate-react";
 import { CET, EditorType } from "../common/Defines";
@@ -269,64 +268,6 @@ export const ListLogic = {
       }
     }
     return false;
-  },
-  /**
-   * 对应键盘Delete事件
-   */
-  deleteEvent(editor: EditorType) {
-    if (editor.selection && Range.isCollapsed(editor.selection)) {
-      const textWrapper = Editor.parent(editor, editor.selection);
-      if (
-        utils.isTextWrapper(textWrapper[0]) &&
-        Editor.string(editor, textWrapper[1], { voids: true }) == ""
-      ) {
-        Transforms.removeNodes(editor, { at: textWrapper[1] });
-        return;
-      }
-      Editor.deleteForward(editor);
-    }
-  },
-  /**
-   * 对应键盘Backspace事件
-   * 屏蔽了默认的退格事件，只针对没有选区的退格事件
-   */
-  backspaceEvent(editor: EditorType) {
-    const { selection } = editor;
-    if (selection && Range.isCollapsed(selection)) {
-      // 如果光标在textWrapper的开头第一个位置，那么直接lift li
-      const textWrapper = utils.getParent(editor, selection.anchor.path);
-      if (!textWrapper[0]) return;
-      const li = utils.getParent(editor, textWrapper[1]);
-      if (!li[0]) return;
-
-      if (Point.equals(selection.anchor, Editor.start(editor, li[1]))) {
-        Transforms.liftNodes(editor, { at: li[1] });
-      } else {
-        Editor.deleteBackward(editor);
-      }
-    }
-  },
-  /**
-   * 拦截回车事件，
-   * 如果当前的li的子元素只有一个，且子元素的文本为空，那么往上抬一个层级
-   * 只有父节点的父节点是列表元素的时候才能抬，否则，就是unwrap li
-   * 如果当前li的子元素大于1，那么在下方插入一个新的li
-   */
-  enterEvent(editor: EditorType) {
-    if (!editor.selection) return;
-    // 如果光标位置在li的第一个textWrapper的第一个位置，向上提升，如果向上提升后是处于非list元素内，取消li包裹
-    const textWrapper = utils.getParent(editor, editor.selection.anchor.path);
-    if (!textWrapper[0]) return;
-    const li = utils.getParent(editor, textWrapper[1]);
-    if (!li[0]) return;
-    const list = utils.getParent(editor, li[1]);
-    if (!list[0]) return;
-
-    if (Editor.string(editor, li[1], { voids: true }) == "") {
-      Transforms.liftNodes(editor, { at: li[1] });
-    } else {
-      Editor.insertBreak(editor);
-    }
   },
   tabEvent(editor: EditorType) {
     Editor.withoutNormalizing(editor, () => {

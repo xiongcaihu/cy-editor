@@ -27,6 +27,7 @@ export const InLineTypes = [CET.IMG, CET.LINK];
 export enum Marks {
   BOLD = "bold",
   ITALIC = "italic",
+  FontSize = "fontSize",
 }
 
 export type CustomElement = {

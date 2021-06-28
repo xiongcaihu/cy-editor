@@ -1,5 +1,4 @@
 /* eslint-disable eqeqeq */
-import { useCallback } from "react";
 import { Editor, Node, Element, Transforms, Path, NodeEntry } from "slate";
 import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
 import { CET, CustomElement, EditorType } from "../common/Defines";
@@ -29,75 +28,6 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
   children,
 }) => {
   const editor = useSlateStatic();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const selectColumn = useCallback((e) => {
-    if (e?.parentNode?.parentNode?.rowIndex > 0) {
-      e.style.visibility = "hidden";
-    }
-  }, []);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const selectedColumn = (e: any) => {
-    Transforms.unsetNodes(editor, ["selected", "start"], {
-      at: [],
-      mode: "all",
-      match(n) {
-        return TableLogic.isTd(n) && (n.selected == true || n.start == true);
-      },
-    });
-
-    const tdDom = e?.target?.parentNode;
-    if (!tdDom) return;
-    const td = ReactEditor.toSlateNode(editor, tdDom);
-    const tdPath = ReactEditor.findPath(editor, td);
-
-    if (!td || !tdPath) return;
-
-    const [tdRow, tdCol] = tdPath.slice(tdPath.length - 2);
-
-    let tbody = Editor.above(editor, {
-      at: tdPath,
-      mode: "lowest",
-      match(n) {
-        return Element.isElement(n) && n.type == CET.TBODY;
-      },
-    });
-    if (!tbody) return;
-
-    const { tdMap } = TdLogic.getTdMap(tbody);
-
-    for (let i = 0; i < tdMap[0].length; i++) {
-      const tempTd = tdMap[0][i];
-      if (tempTd.originCol == tdCol && tempTd.originRow == tdRow) {
-        Transforms.setNodes(editor, { start: true }, { at: tdPath });
-        const lastTd = tdMap[tdMap.length - 1][tempTd.col];
-        Transforms.setNodes(
-          editor,
-          { start: true },
-          { at: [...tbody[1], lastTd.originRow, lastTd.originCol] }
-        );
-        break;
-      }
-    }
-    tbody = Editor.above(editor, {
-      at: tdPath,
-      mode: "lowest",
-      match(n) {
-        return Element.isElement(n) && n.type == CET.TBODY;
-      },
-    });
-    if (!tbody) return;
-
-    const selectedTds = TdLogic.getSelectedTd(tbody);
-    if (!selectedTds) return;
-    for (const td of selectedTds.keys()) {
-      Transforms.setNodes(
-        editor,
-        { selected: true },
-        { at: [...tbody[1], td.originRow, td.originCol] }
-      );
-    }
-  };
 
   const tdMouseDown = (e: any) => {
     if (["resizer", "columnSelector"].includes(e.target.className)) return;
@@ -140,6 +70,117 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 
     TdLogic.editTd(editor, [td, tdPath]);
   };
+  const resizeTdX = (e: any) => {
+    let x = 0;
+    let cell: any = null,
+      table: any = null;
+    x = e.clientX;
+
+    for (let i = 0, paths = e.nativeEvent.path; i < paths.length; i++) {
+      const ele = paths[i];
+      if (ele.tagName == "TD") {
+        cell = ele;
+      }
+      if (ele.tagName == "TABLE") {
+        table = ele;
+        break;
+      }
+    }
+
+    if (cell == null || table == null) return;
+
+    const getLeftTotalColSpan = (td: any) => {
+      let sum = td.colSpan,
+        nowTd = td;
+      while (nowTd.previousElementSibling != null) {
+        nowTd = nowTd.previousElementSibling;
+        sum += nowTd.colSpan;
+      }
+      return sum;
+    };
+
+    const cells: any[] = Array.from(
+      table.querySelectorAll(":scope>tbody>tr>td")
+    ).filter((c: any) => {
+      if (
+        c.tagName == "TD" &&
+        c.cellIndex + getLeftTotalColSpan(c) ==
+          cell.cellIndex + getLeftTotalColSpan(cell)
+      ) {
+        c.initX = c.offsetWidth;
+        return true;
+      }
+      return false;
+    });
+
+    const tableInitX = parseInt(window.getComputedStyle(table).width);
+
+    const mouseMoveHandler = function (e: any) {
+      const dx = e.clientX - x;
+      cells.forEach((c) => {
+        c.style.minWidth =
+          (c.initX + dx < tdMinWidth ? tdMinWidth : c.initX + dx) + "px";
+      });
+      table.style.width = tableInitX + dx + "px";
+    };
+
+    const mouseUpHandler = function () {
+      document.removeEventListener("mousemove", mouseMoveHandler);
+      document.removeEventListener("mouseup", mouseUpHandler);
+    };
+
+    document.addEventListener("mousemove", mouseMoveHandler);
+    document.addEventListener("mouseup", mouseUpHandler);
+  };
+  const resizeTdY = (e: any) => {
+    let y = e.clientY;
+    let h = 0;
+    let cell: any = null,
+      row: any = null,
+      table: any = null;
+
+    for (let i = 0, paths = e.nativeEvent.path; i < paths.length; i++) {
+      const ele = paths[i];
+      if (ele.tagName == "TD") {
+        cell = ele;
+      }
+      if (ele.tagName == "TR") {
+        row = ele;
+      }
+      if (ele.tagName == "TABLE") {
+        table = ele;
+        break;
+      }
+    }
+
+    if (cell == null || row == null || table == null) return;
+
+    const cells: any[] = Array.from(row.querySelectorAll(":scope>td"));
+
+    const styles = window.getComputedStyle(cell);
+    h = parseInt(styles.height, 10);
+
+    const tableInitY = parseInt(window.getComputedStyle(table).minHeight);
+
+    const mouseMoveHandler = function (e: any) {
+      e.preventDefault();
+      const dy = e.clientY - y;
+      cells.forEach(
+        (c) =>
+          (c.style.height =
+            (h + dy <= tdMinHeight ? tdMinHeight : h + dy) + "px")
+      );
+      table.style.height = tableInitY + dy + "px";
+    };
+
+    const mouseUpHandler = function () {
+      document.removeEventListener("mousemove", mouseMoveHandler);
+      document.removeEventListener("mouseup", mouseUpHandler);
+    };
+
+    document.addEventListener("mousemove", mouseMoveHandler);
+    document.addEventListener("mouseup", mouseUpHandler);
+  };
   const otherAttr: any = {
     contentEditable: false,
   };
@@ -177,68 +218,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
           userSelect: "none",
         }}
         contentEditable={false}
-        onMouseDown={(e: any) => {
-          let x = 0;
-          let cell: any = null,
-            table: any = null;
-          x = e.clientX;
-
-          for (let i = 0, paths = e.nativeEvent.path; i < paths.length; i++) {
-            const ele = paths[i];
-            if (ele.tagName == "TD") {
-              cell = ele;
-            }
-            if (ele.tagName == "TABLE") {
-              table = ele;
-              break;
-            }
-          }
-
-          if (cell == null || table == null) return;
-
-          const getLeftTotalColSpan = (td: any) => {
-            let sum = td.colSpan,
-              nowTd = td;
-            while (nowTd.previousElementSibling != null) {
-              nowTd = nowTd.previousElementSibling;
-              sum += nowTd.colSpan;
-            }
-            return sum;
-          };
-
-          const cells: any[] = Array.from(
-            table.querySelectorAll(":scope>tbody>tr>td")
-          ).filter((c: any) => {
-            if (
-              c.tagName == "TD" &&
-              c.cellIndex + getLeftTotalColSpan(c) ==
-                cell.cellIndex + getLeftTotalColSpan(cell)
-            ) {
-              c.initX = c.offsetWidth;
-              return true;
-            }
-            return false;
-          });
-
-          const tableInitX = parseInt(window.getComputedStyle(table).width);
-
-          const mouseMoveHandler = function (e: any) {
-            const dx = e.clientX - x;
-            cells.forEach((c) => {
-              c.style.minWidth =
-                (c.initX + dx < tdMinWidth ? tdMinWidth : c.initX + dx) + "px";
-            });
-            table.style.width = tableInitX + dx + "px";
-          };
-
-          const mouseUpHandler = function () {
-            document.removeEventListener("mousemove", mouseMoveHandler);
-            document.removeEventListener("mouseup", mouseUpHandler);
-          };
-
-          document.addEventListener("mousemove", mouseMoveHandler);
-          document.addEventListener("mouseup", mouseUpHandler);
-        }}
+        onMouseDown={resizeTdX}
       ></span>
       <span
         className="resizer"
@@ -252,55 +232,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
           userSelect: "none",
         }}
         contentEditable={false}
-        onMouseDown={(e: any) => {
-          let y = e.clientY;
-          let h = 0;
-          let cell: any = null,
-            row: any = null,
-            table: any = null;
-
-          for (let i = 0, paths = e.nativeEvent.path; i < paths.length; i++) {
-            const ele = paths[i];
-            if (ele.tagName == "TD") {
-              cell = ele;
-            }
-            if (ele.tagName == "TR") {
-              row = ele;
-            }
-            if (ele.tagName == "TABLE") {
-              table = ele;
-              break;
-            }
-          }
-
-          if (cell == null || row == null || table == null) return;
-
-          const cells: any[] = Array.from(row.querySelectorAll(":scope>td"));
-
-          const styles = window.getComputedStyle(cell);
-          h = parseInt(styles.height, 10);
-
-          const tableInitY = parseInt(window.getComputedStyle(table).minHeight);
-
-          const mouseMoveHandler = function (e: any) {
-            e.preventDefault();
-            const dy = e.clientY - y;
-            cells.forEach(
-              (c) =>
-                (c.style.height =
-                  (h + dy <= tdMinHeight ? tdMinHeight : h + dy) + "px")
-            );
-            table.style.height = tableInitY + dy + "px";
-          };
-
-          const mouseUpHandler = function () {
-            document.removeEventListener("mousemove", mouseMoveHandler);
-            document.removeEventListener("mouseup", mouseUpHandler);
-          };
-
-          document.addEventListener("mousemove", mouseMoveHandler);
-          document.addEventListener("mouseup", mouseUpHandler);
-        }}
+        onMouseDown={resizeTdY}
       ></span>
     </td>
   );
@@ -596,7 +528,7 @@ export const TdLogic = {
     );
   },
   clearTd(editor: EditorType) {
-    // 处理带有selected属性的td
+    // 清空带有selected属性的td
     for (const [, p] of Editor.nodes(editor, {
       at: [],
       match(n) {

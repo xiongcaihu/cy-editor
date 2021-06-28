@@ -1,24 +1,37 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable eqeqeq */
-import { Button } from "antd";
+import { Button, Dropdown, Menu, Tooltip, Row, Select } from "antd";
 import {
   Editor,
   Node,
   Transforms,
   Element,
+  Selection,
   Range,
   NodeEntry,
   Path,
 } from "slate";
-import { useSlate } from "slate-react";
+import { ReactEditor, useSlate } from "slate-react";
 import { CET, Marks } from "../common/Defines";
 import { ListLogic } from "./ListComp";
 import { TableLogic } from "../comps/Table";
 import { utils } from "../common/utils";
 import _ from "lodash";
 import { TdLogic } from "./Td";
+import { CaretDownOutlined, CaretUpOutlined } from "@ant-design/icons";
+import "./ToolBar.css";
+import { useEffect, useRef, useState } from "react";
 
 export const ToolBar = () => {
   const editor = useSlate();
+  const ref = useRef<{
+    preSelection: Selection | null;
+  }>({
+    preSelection: null,
+  });
+  const [dropdownMenuVisible, setDmvVisible] = useState(false);
+
   const setNumberList = () => {
     ListLogic.toggleList(editor, CET.NUMBER_LIST);
   };
@@ -37,11 +50,20 @@ export const ToolBar = () => {
     }
   };
 
+  const getMarkValue = (mark: Marks) => {
+    try {
+      const marks = Editor.marks(editor);
+      return marks?.[mark];
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  };
+
   const isBlockActive = (type: CET) => {
     try {
       const [match] = Editor.nodes(editor, {
-        match: (n) =>
-          !Editor.isEditor(n) && Element.isElement(n) && n.type === type,
+        match: (n) => Element.isElement(n) && n.type === type,
       });
       return !!match;
     } catch (error) {
@@ -766,197 +788,245 @@ export const ToolBar = () => {
   };
 
   return (
-    <div style={{ position: "relative" }}>
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          backgroundColor: "gray",
-          opacity: 0.5,
-          display: "none",
-          position: "absolute",
-          left: 0,
-          zIndex: 9,
-          cursor: "not-allowed",
-        }}
-      ></div>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          clearTd();
-        }}
-      >
-        清空单元格
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          deleteColumn();
-        }}
-      >
-        删除列
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          deleteRow();
-        }}
-      >
-        删除行
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          insertColumnAfter();
-        }}
-      >
-        后插入列
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          insertColumnBefore();
-        }}
-      >
-        前插入列
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          insertRowAfter();
-        }}
-      >
-        后插入行
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          insertRowBefore();
-        }}
-      >
-        前插入行
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
+    <div
+      className="cyEditor__toolBar"
+      style={{ position: "relative", marginBottom: 4 }}
+    >
+      <Row>
+        <Button
+          type={isBlockActive(CET.H1) ? "link" : "text"}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleBlock(CET.H1);
+          }}
+        >
+          H1
+        </Button>
+        <Button
+          type={isBlockActive(CET.H2) ? "link" : "text"}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleBlock(CET.H2);
+          }}
+        >
+          H2
+        </Button>
+        <Tooltip title="字体大小" zIndex={99}>
+          <div>
+            <Select
+              placeholder="字体大小"
+              value={String(getMarkValue(Marks.FontSize) || 14)}
+              style={{ width: 100 }}
+              bordered={false}
+              open={dropdownMenuVisible}
+              onClick={(e: any) => {
+                e.preventDefault();
+                const isClickItem = e.nativeEvent.path.find((ele: any) => {
+                  return ele.className == "rc-virtual-list-holder-inner";
+                });
+                if (editor.selection) {
+                  ref.current.preSelection = editor.selection;
+                }
+                setTimeout(() => {
+                  if (isClickItem) return;
+                  ReactEditor.focus(editor);
+                  ref.current.preSelection &&
+                    Transforms.select(editor, ref.current.preSelection);
+                  setDmvVisible(true);
+                }, 0);
+              }}
+              onSelect={(value) => {
+                ReactEditor.focus(editor);
+                ref.current.preSelection &&
+                  Transforms.select(editor, ref.current.preSelection);
+                Editor.addMark(editor, Marks.FontSize, Number(value));
+                setDmvVisible(false);
+              }}
+            >
+              {[12, 13, 14, 15, 16, 19, 22, 24, 29, 32, 40, 48].map(
+                (fontSize) => {
+                  return (
+                    <Select.Option value={String(fontSize)} key={fontSize}>
+                      {fontSize}px
+                    </Select.Option>
+                  );
+                }
+              )}
+            </Select>
+          </div>
+        </Tooltip>
+        {/* 
+        <Button
+          size="small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            clearTd();
+          }}
+          type="link"
+        >
+          清空单元格
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            deleteColumn();
+          }}
+        >
+          删除列
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            deleteRow();
+          }}
+        >
+          删除行
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertColumnAfter();
+          }}
+        >
+          后插入列
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertColumnBefore();
+          }}
+        >
+          前插入列
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertRowAfter();
+          }}
+        >
+          后插入行
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertRowBefore();
+          }}
+        >
+          前插入行
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
 
-          insertDivAfterTable();
-        }}
-      >
-        表格后插入文本
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
+            insertDivAfterTable();
+          }}
+        >
+          表格后插入文本
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
 
-          insertDivBeforeTable();
-        }}
-      >
-        表格前插入文本
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
+            insertDivBeforeTable();
+          }}
+        >
+          表格前插入文本
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
 
-          deleteTable();
-        }}
-      >
-        删除表格
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
+            deleteTable();
+          }}
+        >
+          删除表格
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
 
-          mergeTd();
-        }}
-      >
-        合并单元格
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
+            mergeTd();
+          }}
+        >
+          合并单元格
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
 
-          splitTd();
-        }}
-      >
-        拆分单元格
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setNumberList();
-        }}
-      >
-        有序列表
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setNormalList();
-        }}
-      >
-        无序列表
-      </Button>
-      <Button
-        type={isMarkActive(Marks.BOLD) ? "primary" : "default"}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          toggleMark(Marks.BOLD);
-        }}
-      >
-        B
-      </Button>
-      <Button
-        type={isMarkActive(Marks.ITALIC) ? "primary" : "default"}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          toggleMark(Marks.ITALIC);
-        }}
-      >
-        ITALIC
-      </Button>
-      <Button
-        type={isBlockActive(CET.H1) ? "primary" : "default"}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          toggleBlock(CET.H1);
-        }}
-      >
-        H1
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          insertImg();
-        }}
-      >
-        img
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          insertLink();
-        }}
-      >
-        link
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
-          insertTable();
-        }}
-      >
-        Table
-      </Button>
-      <Button
-        onMouseDown={(e) => {
-          e.preventDefault();
+            splitTd();
+          }}
+        >
+          拆分单元格
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setNumberList();
+          }}
+        >
+          有序列表
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setNormalList();
+          }}
+        >
+          无序列表
+        </Button>
+        <Button
+          type={isMarkActive(Marks.BOLD) ? "primary" : "default"}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleMark(Marks.BOLD);
+          }}
+        >
+          B
+        </Button>
+        <Button
+          type={isMarkActive(Marks.ITALIC) ? "primary" : "default"}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleMark(Marks.ITALIC);
+          }}
+        >
+          ITALIC
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertImg();
+          }}
+        >
+          img
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertLink();
+          }}
+        >
+          link
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
+            insertTable();
+          }}
+        >
+          Table
+        </Button>
+        <Button
+          onMouseDown={(e) => {
+            e.preventDefault();
 
-          console.log(JSON.stringify(editor.children));
-        }}
-      >
-        output
-      </Button>
+            console.log(JSON.stringify(editor.children));
+          }}
+        >
+          output
+        </Button> */}
+      </Row>
     </div>
   );
 };

@@ -114,11 +114,8 @@ export const utils = {
   removeRangeElement(editor: EditorType) {
     const { selection } = editor;
     if (!selection) return;
-
-    if (Point.equals(selection.anchor, selection.focus)) {
-      Transforms.collapse(editor);
-      return;
-    }
+    if (Range.isCollapsed(selection)) return;
+    
     // 如果全选了表格，那么直接删除表格
     const tables = Editor.nodes(editor, {
       at: selection,
@@ -193,13 +190,7 @@ export const utils = {
       }
     }
 
-    // 为了在normalize之后运行
-    setTimeout(() => {
-      Transforms.select(
-        editor,
-        editor.selection ? Range.start(editor.selection) : []
-      );
-    }, 0);
+    Transforms.collapse(editor, { edge: "start" });
   },
   isTextWrapper(node: Node) {
     return Element.isElement(node) && TextWrappers.includes(node.type);
