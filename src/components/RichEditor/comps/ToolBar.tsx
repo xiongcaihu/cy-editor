@@ -31,6 +31,7 @@ export const ToolBar = () => {
     preSelection: null,
   });
   const [dropdownMenuVisible, setDmvVisible] = useState(false);
+  const toolDom = useRef<any>();
 
   const setNumberList = () => {
     ListLogic.toggleList(editor, CET.NUMBER_LIST);
@@ -812,35 +813,34 @@ export const ToolBar = () => {
           H2
         </Button>
         <Tooltip title="字体大小" zIndex={99}>
-          <div>
+          <div ref={toolDom}>
             <Select
               placeholder="字体大小"
               value={String(getMarkValue(Marks.FontSize) || 14)}
               style={{ width: 100 }}
               bordered={false}
               open={dropdownMenuVisible}
-              onClick={(e: any) => {
-                e.preventDefault();
-                const isClickItem = e.nativeEvent.path.find((ele: any) => {
-                  return ele.className == "rc-virtual-list-holder-inner";
-                });
+              onMouseEnter={(e) => {
                 if (editor.selection) {
                   ref.current.preSelection = editor.selection;
                 }
+                setDmvVisible(true);
+              }}
+              onMouseLeave={() => {
+                // setDmvVisible(false);
+              }}
+              dropdownRender={(Node) => {
+                return <div className="cy">{Node}</div>;
+              }}
+              getPopupContainer={(triggerNode) => triggerNode.parentElement}
+              onChange={(value) => {
+                setDmvVisible(false);
                 setTimeout(() => {
-                  if (isClickItem) return;
                   ReactEditor.focus(editor);
                   ref.current.preSelection &&
                     Transforms.select(editor, ref.current.preSelection);
-                  setDmvVisible(true);
+                  Editor.addMark(editor, Marks.FontSize, Number(value));
                 }, 0);
-              }}
-              onSelect={(value) => {
-                ReactEditor.focus(editor);
-                ref.current.preSelection &&
-                  Transforms.select(editor, ref.current.preSelection);
-                Editor.addMark(editor, Marks.FontSize, Number(value));
-                setDmvVisible(false);
               }}
             >
               {[12, 13, 14, 15, 16, 19, 22, 24, 29, 32, 40, 48].map(
