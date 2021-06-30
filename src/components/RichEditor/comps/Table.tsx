@@ -211,6 +211,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         style={{
           tableLayout: "auto",
           wordBreak: "break-all",
+          width:'100%'
         }}
         onMouseDown={mousedownFunc}
       >

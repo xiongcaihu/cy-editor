@@ -65,15 +65,17 @@ import { SketchPicker, CompactPicker } from "react-color";
 const ColorPicker: React.FC<{
   title: string;
   onChange?: (color: string) => void;
+  icon?: any;
+  mark: Marks;
 }> = (props) => {
   const editor = useSlate();
   const getColor = () => {
     const marks = Editor.marks(editor);
-    return marks && marks[Marks.Color];
+    return marks && marks[props.mark];
   };
 
   const [color, setColor] = useState<{ hex: any }>({
-    hex: getColor() || window.getComputedStyle(document.body).color,
+    hex: getColor() || window.getComputedStyle(document.body).backgroundColor,
   });
 
   const [visible, setVisible] = useState(false);
@@ -128,7 +130,7 @@ const ColorPicker: React.FC<{
               ref.current.preSelection = editor.selection;
             }}
           >
-            <FontColorsOutlined />
+            {props.icon}
           </AntButton>
         </Dropdown>
       </div>
@@ -550,21 +552,24 @@ export const ToolBar = () => {
           />
         </Col>
         <Col>
-          {/* <Button title="字体颜色" mousedownFunc={() => {}}>
-            <FontColorsOutlined />
-            <SketchPicker/>
-          </Button> */}
           <ColorPicker
             title="字体颜色"
             onChange={(color) => {
               Editor.addMark(editor, Marks.Color, color);
             }}
+            mark={Marks.Color}
+            icon={<FontColorsOutlined />}
           ></ColorPicker>
         </Col>
         <Col>
-          <Button title="背景颜色" mousedownFunc={() => {}}>
-            <BgColorsOutlined />
-          </Button>
+          <ColorPicker
+            title="背景颜色"
+            onChange={(color) => {
+              Editor.addMark(editor, Marks.BGColor, color);
+            }}
+            mark={Marks.BGColor}
+            icon={<BgColorsOutlined />}
+          ></ColorPicker>
         </Col>
         <Col>
           <Button

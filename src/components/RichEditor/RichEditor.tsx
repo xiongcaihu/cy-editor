@@ -424,7 +424,8 @@ const EditorComp: EditorCompShape = () => {
         style.textDecoration = `${leaf[Marks.Underline] ? "underline" : ""} ${
           leaf[Marks.LineThrough] ? "line-through" : ""
         }`;
-      if (leaf[Marks.Color]) style.color = leaf.color;
+      if (leaf[Marks.Color]) style.color = leaf[Marks.Color];
+      if (leaf[Marks.BGColor]) style.backgroundColor = leaf[Marks.BGColor];
 
       return (
         <span {...attributes} style={style}>

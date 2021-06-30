@@ -31,6 +31,7 @@ export enum Marks {
   Underline = "underline",
   LineThrough = "line-through",
   Color = "color",
+  BGColor = "backgroundColor",
 }
 
 export type CustomElement = {
