@@ -2,7 +2,7 @@
 /* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/ban-types */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createEditor,
   Transforms,
@@ -12,10 +12,11 @@ import {
   Editor,
   NodeEntry,
   Operation,
+  Node,
+  Path,
 } from "slate";
 import { Slate, Editable, withReact } from "slate-react";
 import { withHistory } from "slate-history";
-import "./RichEditor.css";
 
 import _ from "lodash";
 import {
@@ -27,6 +28,8 @@ import {
   InLineTypes,
   EditorCompShape,
   StateShape,
+  Marks,
+  TextWrappers,
 } from "./common/Defines";
 import { ListLogic } from "./comps/ListComp";
 import { TableLogic } from "./comps/Table";
@@ -38,6 +41,7 @@ import { ImgComp } from "./comps/ImgComp";
 import { LinkComp } from "./comps/LinkComp";
 
 import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
+import "./RichEditor.css";
 
 declare module "slate" {
   interface CustomTypes {
@@ -311,6 +315,10 @@ const withCyWrap = (editor: EditorType) => {
 
 const MyElements: EditableProps["renderElement"] = (props) => {
   const { attributes, children, element } = props;
+  const style: any = {};
+  if (TextWrappers.includes(element.type) && element.textAlign)
+    style.textAlign = element.textAlign;
+
   switch (element.type) {
     case CET.NUMBER_LIST:
       return <ol {...attributes}>{children}</ol>;
@@ -319,9 +327,35 @@ const MyElements: EditableProps["renderElement"] = (props) => {
     case CET.LIST_ITEM:
       return <li {...attributes}>{children}</li>;
     case CET.DIV:
-      return <div {...attributes}>{children}</div>;
+      return (
+        <div {...attributes} style={style}>
+          {children}
+        </div>
+      );
     case CET.H1:
-      return <h1 {...attributes}>{children}</h1>;
+      return (
+        <h1 {...attributes} style={style}>
+          {children}
+        </h1>
+      );
+    case CET.H2:
+      return (
+        <h2 {...attributes} style={style}>
+          {children}
+        </h2>
+      );
+    case CET.H3:
+      return (
+        <h3 {...attributes} style={style}>
+          {children}
+        </h3>
+      );
+    case CET.H4:
+      return (
+        <h4 {...attributes} style={style}>
+          {children}
+        </h4>
+      );
     case CET.IMG:
       return <ImgComp {...props}>{children}</ImgComp>;
     case CET.LINK:
@@ -382,15 +416,18 @@ const EditorComp: EditorCompShape = () => {
 
   const renderLeaf: EditableProps["renderLeaf"] = useCallback(
     ({ attributes, children, leaf }) => {
+      const style: any = {};
+      if (leaf[Marks.BOLD]) style.fontWeight = "bold";
+      if (leaf[Marks.ITALIC]) style.fontStyle = "italic";
+      if (leaf[Marks.FontSize]) style.fontSize = leaf.fontSize;
+      if (leaf[Marks.Underline] || leaf[Marks.LineThrough])
+        style.textDecoration = `${leaf[Marks.Underline] ? "underline" : ""} ${
+          leaf[Marks.LineThrough] ? "line-through" : ""
+        }`;
+      if (leaf[Marks.Color]) style.color = leaf.color;
+
       return (
-        <span
-          {...attributes}
-          style={{
-            fontWeight: leaf.bold ? "bold" : "normal",
-            fontStyle: leaf.italic ? "italic" : "normal",
-            fontSize: leaf.fontSize || 14,
-          }}
-        >
+        <span {...attributes} style={style}>
           {children}
         </span>
       );
@@ -398,8 +435,12 @@ const EditorComp: EditorCompShape = () => {
     []
   );
 
+  const MyToolBar = useMemo(() => {
+    return <ToolBar></ToolBar>;
+  }, []);
+
   const bindKeyDownEvent: EditableProps["onKeyDown"] = (e) => {
-    let { selection } = editor;
+    const { selection } = editor;
     if (!selection) {
       // 当没有选区的时候，查看是否已经选中表格
       const [td, isNotOnlyOneTd] = Editor.nodes(editor, {
@@ -532,13 +573,94 @@ const EditorComp: EditorCompShape = () => {
           TdLogic.chooseTd(editor, td);
           break;
         }
+        case "ArrowUp": {
+          const [td] = Editor.nodes(editor, {
+            at: [],
+            mode: "lowest",
+            match(n) {
+              return Element.isElement(n) && n.canTdEdit == true;
+            },
+          });
+          if (td) {
+            const first = Node.child(td[0], 0);
+            const cursor = Editor.parent(editor, selection.anchor);
+            if (first == cursor[0]) {
+              TdLogic.findTargetTd(editor, td, "up");
+              Transforms.deselect(editor);
+              e.preventDefault();
+              return;
+            }
+            return;
+          }
+          e.preventDefault();
+          return;
+        }
+        case "ArrowDown": {
+          const [td] = Editor.nodes(editor, {
+            at: [],
+            match(n) {
+              return Element.isElement(n) && n.canTdEdit == true;
+            },
+          });
+          if (td) {
+            const last = Node.child(td[0], td[0].children.length - 1);
+            const cursor = Editor.parent(editor, selection.anchor);
+            if (last == cursor[0]) {
+              TdLogic.findTargetTd(editor, td, "down");
+              Transforms.deselect(editor);
+              e.preventDefault();
+              return;
+            }
+            return;
+          }
+          e.preventDefault();
+          return;
+        }
+        case "ArrowLeft": {
+          const [td] = Editor.nodes(editor, {
+            at: [],
+            match(n) {
+              return Element.isElement(n) && n.canTdEdit == true;
+            },
+          });
+          if (td) {
+            if (Editor.isStart(editor, selection.anchor, td[1])) {
+              TdLogic.findTargetTd(editor, td, "left");
+              Transforms.deselect(editor);
+              e.preventDefault();
+              return;
+            }
+            return;
+          }
+          e.preventDefault();
+          return;
+        }
+        case "ArrowRight": {
+          const [td] = Editor.nodes(editor, {
+            at: [],
+            match(n) {
+              return Element.isElement(n) && n.canTdEdit == true;
+            },
+          });
+          if (td) {
+            if (Editor.isEnd(editor, selection.anchor, td[1])) {
+              TdLogic.findTargetTd(editor, td, "right");
+              Transforms.deselect(editor);
+              e.preventDefault();
+              return;
+            }
+            return;
+          }
+          e.preventDefault();
+          return;
+        }
       }
       return;
     }
   };
 
   return (
-    <div className="RichEditor" style={{ position: "relative" }}>
+    <div className="cyEditor" style={{ position: "relative" }}>
       <Slate
         editor={editor}
         value={value}
@@ -546,7 +668,7 @@ const EditorComp: EditorCompShape = () => {
           setValue(value);
         }}
       >
-        <ToolBar></ToolBar>
+        {MyToolBar}
         <div
           style={{
             overflow: "auto",
@@ -556,7 +678,6 @@ const EditorComp: EditorCompShape = () => {
           }}
         >
           <Editable
-            className="cyEditor"
             renderElement={renderElement}
             renderLeaf={renderLeaf}
             autoFocus

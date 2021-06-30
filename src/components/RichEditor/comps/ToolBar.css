@@ -1,4 +1,9 @@
-.cyEditor__toolBar__dropdown .ant-dropdown-arrow {
+.cyEditor__toolbar__dropdown {
   /* border-left-color: #21242a !important;
   border-top-color: #21242a !important; */
+  top: 30px !important;
+}
+
+.cyEditor__toolbar__button:hover {
+  background-color: rgba(0, 0, 0, 0.05)!important;
 }

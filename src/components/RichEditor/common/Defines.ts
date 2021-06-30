@@ -28,6 +28,9 @@ export enum Marks {
   BOLD = "bold",
   ITALIC = "italic",
   FontSize = "fontSize",
+  Underline = "underline",
+  LineThrough = "line-through",
+  Color = "color",
 }
 
 export type CustomElement = {
@@ -44,10 +47,11 @@ export type CustomElement = {
     row: number;
     col: number;
   };
+  textAlign?: "left" | "right" | "center"; // textWrapper的属性
   tdMap?: any; // 用于计算tdMap
   children: (CustomText | CustomElement)[];
 };
-export type CustomText = { text: string; bold?: boolean; [key: string]: any };
+export type CustomText = { text: string; [key: string]: any };
 export type EditorType = BaseEditor & ReactEditor & HistoryEditor;
 
 export type StateShape = Parameters<typeof Slate>[0]["value"];

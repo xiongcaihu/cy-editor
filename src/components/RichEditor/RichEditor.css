@@ -1,4 +1,18 @@
-.RichEditor ul,
-.RichEditor ol {
+.cyEditor ul,
+.cyEditor ol {
+  margin-bottom: 0;
+}
+
+.cyEditor * {
+  animation-duration: 0s !important;
+  -webkit-animation-duration: 0s !important;
+  transition-duration: 0s !important;
+  transition: 0s !important;
+}
+
+.cyEditor h1,
+.cyEditor h2,
+.cyEditor h3,
+.cyEditor h4{
   margin-bottom: 0;
 }
