@@ -67,11 +67,6 @@ export const withCyWrap = (editor: EditorType) => {
           const savedEditingTds = getEditingTdsPath();
           savedEditingTds.add(path.join(","));
         }
-      } else if (e.type == "remove_node") {
-        if (TableLogic.isTd(e.node) && e.node.selected) {
-          const savedTds = getStrPathSetOfSelectedTds();
-          savedTds.delete(e.path.join(","));
-        }
       }
     } catch (error) {
       console.warn(error);
