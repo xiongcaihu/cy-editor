@@ -32,6 +32,7 @@ export enum Marks {
   LineThrough = "line-through",
   Color = "color",
   BGColor = "backgroundColor",
+  TextAlign = 'textAlign'
 }
 
 export type CustomElement = {
@@ -43,6 +44,7 @@ export type CustomElement = {
   rowSpan?: number; // td 属性
   selected?: boolean; // td是否被选中
   canTdEdit?: boolean; // td是否可以编辑
+  liColor?: string; // li color
   preSelectedTdPos?: {
     // tbody的属性，上一次选中的td在tdMap中的位置
     row: number;

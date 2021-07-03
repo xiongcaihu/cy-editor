@@ -9,7 +9,7 @@ import {
   NodeEntry,
 } from "slate";
 import { ReactEditor } from "slate-react";
-import { CET, EditorType } from "../common/Defines";
+import { CET, EditorType, Marks } from "../common/Defines";
 import { utils } from "../common/utils";
 
 export const ListLogic = {
@@ -200,6 +200,18 @@ export const ListLogic = {
         );
         Transforms.liftNodes(editor, { at: secChildPath });
         return true;
+      }
+
+      // 如果所有的text都是一样的Color，那么设置li的color也为该color
+      const colors = new Set();
+      for (const [child] of Node.texts(node)) {
+        colors.add(child[Marks.Color]);
+      }
+      if (colors.size == 1) {
+        const onlyColor = Array.from(colors).pop();
+        onlyColor &&
+          Transforms.setNodes(editor, { liColor: onlyColor }, { at: path });
+        return;
       }
     }
 

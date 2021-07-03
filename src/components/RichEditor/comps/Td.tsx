@@ -1,10 +1,10 @@
 /* eslint-disable eqeqeq */
 import { Editor, Node, Element, Transforms, Path, NodeEntry } from "slate";
 import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
-import { CET, CustomElement, EditorType } from "../common/Defines";
+import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
 import { TableLogic } from "./Table";
 
-type customTdShape = {
+export type customTdShape = {
   start: boolean;
   colSpan: number;
   rowSpan: number;
@@ -20,8 +20,9 @@ type getTdMapReturn = {
   startPoins: customTdShape[];
 };
 
-const tdMinWidth = 100;
+const tdMinWidth = 50;
 const tdMinHeight = 30;
+
 export const TD: (props: RenderElementProps) => JSX.Element = ({
   attributes,
   element,
@@ -45,19 +46,22 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     const clickNodePath = ReactEditor.findPath(editor, clickNode);
     const isClickSelf = Path.equals(clickNodePath, tdPath);
 
+    let finallyTd: NodeEntry;
     if (isClickSelf) {
-      TdLogic.chooseTd(editor, [clickNode, clickNodePath]);
-      return;
+      finallyTd = [clickNode, clickNodePath];
+    } else {
+      const tdWrapper = Editor.above(editor, {
+        at: clickNodePath,
+        mode: "lowest",
+        match(n) {
+          return TableLogic.isTd(n);
+        },
+      });
+      if (!tdWrapper) return;
+      finallyTd = tdWrapper;
     }
-    const tdWrapper = Editor.above(editor, {
-      at: clickNodePath,
-      mode: "lowest",
-      match(n) {
-        return TableLogic.isTd(n);
-      },
-    });
-    if (!tdWrapper) return;
-    TdLogic.chooseTd(editor, tdWrapper);
+    if (!finallyTd) return;
+    TdLogic.chooseTd(editor, finallyTd);
   };
   const tdDBClick = (e: any) => {
     // 防止事件冒泡到父元素的td
@@ -71,10 +75,9 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     TdLogic.editTd(editor, [td, tdPath]);
   };
   const resizeTdX = (e: any) => {
-    let x = 0;
+    let x = e.clientX;
     let cell: any = null,
       table: any = null;
-    x = e.clientX;
 
     for (let i = 0, paths = e.nativeEvent.path; i < paths.length; i++) {
       const ele = paths[i];
@@ -89,31 +92,47 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 
     if (cell == null || table == null) return;
 
-    const getLeftTotalColSpan = (td: any) => {
-      let sum = td.colSpan,
-        nowTd = td;
-      while (nowTd.previousElementSibling != null) {
-        nowTd = nowTd.previousElementSibling;
-        sum += nowTd.colSpan;
-      }
-      return sum;
-    };
-
-    const cells: any[] = Array.from(
-      table.querySelectorAll(":scope>tbody>tr>td")
-    ).filter((c: any) => {
-      if (
-        c.tagName == "TD" &&
-        c.cellIndex + getLeftTotalColSpan(c) ==
-          cell.cellIndex + getLeftTotalColSpan(cell)
-      ) {
-        c.initX = c.offsetWidth;
-        return true;
-      }
-      return false;
+    const cellNode = ReactEditor.toSlateNode(editor, cell);
+    const cellPath = ReactEditor.findPath(editor, cellNode);
+    const tbody = Editor.above(editor, {
+      at: cellPath,
+      match(n) {
+        return Element.isElement(n) && n.type == CET.TBODY;
+      },
     });
+    if (!tbody) return;
 
-    const tableInitX = parseInt(window.getComputedStyle(table).width);
+    // 找到tdMap中在当前cell的最右边的cells
+    const { tdMap } = TdLogic.getTdMap(tbody);
+    // 先找到当前的cell在tdMap中的位置
+    const [tdOriginRow, tdOriginCol] = cellPath.slice(cellPath.length - 2);
+    let targetCol: number = -1;
+    for (let i = 0; i < tdMap.length; i++) {
+      for (let j = 0; j < tdMap[i].length; j++) {
+        const td = tdMap[i][j];
+        if (td.originCol == tdOriginCol && td.originRow == tdOriginRow) {
+          targetCol = td.col + td.colSpan - 1;
+          break;
+        }
+      }
+      if (targetCol != -1) break;
+    }
+    if (targetCol == -1) return;
+
+    const cells: any[] = [];
+    for (let i = 0; i < tdMap.length; i++) {
+      const tdInMap = tdMap[i][targetCol];
+      const td = Editor.node(editor, [
+        ...tbody[1],
+        tdInMap.originRow,
+        tdInMap.originCol,
+      ]);
+      const tdDom: any = ReactEditor.toDOMNode(editor, td[0]);
+      tdDom.initX = tdDom.offsetWidth;
+      cells.push(tdDom);
+    }
+
+    // const tableInitWidth = parseInt(window.getComputedStyle(table).width);
 
     const mouseMoveHandler = function (e: any) {
       const dx = e.clientX - x;
@@ -121,7 +140,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         c.style.minWidth =
           (c.initX + dx < tdMinWidth ? tdMinWidth : c.initX + dx) + "px";
       });
-      table.style.width = tableInitX + dx + "px";
+      // table.style.width = tableInitWidth + dx + "px";
     };
 
     const mouseUpHandler = function () {
@@ -132,9 +151,9 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     document.addEventListener("mousemove", mouseMoveHandler);
     document.addEventListener("mouseup", mouseUpHandler);
   };
+
   const resizeTdY = (e: any) => {
     let y = e.clientY;
-    let h = 0;
     let cell: any = null,
       row: any = null,
       table: any = null;
@@ -155,22 +174,60 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 
     if (cell == null || row == null || table == null) return;
 
-    const cells: any[] = Array.from(row.querySelectorAll(":scope>td"));
+    const cellNode = ReactEditor.toSlateNode(editor, cell);
+    const cellPath = ReactEditor.findPath(editor, cellNode);
+    const tbody = Editor.above(editor, {
+      at: cellPath,
+      match(n) {
+        return Element.isElement(n) && n.type == CET.TBODY;
+      },
+    });
+    if (!tbody) return;
 
-    const styles = window.getComputedStyle(cell);
-    h = parseInt(styles.height, 10);
+    // 找到tdMap中在当前cell的最右边的cells
+    const { tdMap } = TdLogic.getTdMap(tbody);
 
-    const tableInitY = parseInt(window.getComputedStyle(table).minHeight);
+    // 先找到当前的cell在tdMap中的位置
+    const [tdOriginRow, tdOriginCol] = cellPath.slice(cellPath.length - 2);
+    let targetRow: number = -1;
+    for (let i = 0; i < tdMap.length; i++) {
+      for (let j = 0; j < tdMap[i].length; j++) {
+        const td = tdMap[i][j];
+        if (td.originCol == tdOriginCol && td.originRow == tdOriginRow) {
+          targetRow = td.row + td.rowSpan - 1;
+          break;
+        }
+      }
+      if (targetRow != -1) break;
+    }
+    if (targetRow == -1) return;
+
+    const cells: any[] = [];
+    for (let i = 0; i < tdMap[0].length; i++) {
+      const tdInMap = tdMap[targetRow][i];
+      const td = Editor.node(editor, [
+        ...tbody[1],
+        tdInMap.originRow,
+        tdInMap.originCol,
+      ]);
+      const tdDom: any = ReactEditor.toDOMNode(editor, td[0]);
+      tdDom.initY = tdDom.offsetHeight;
+      cells.push(tdDom);
+    }
+
+    // const tableInitY = parseInt(window.getComputedStyle(table).minHeight);
 
     const mouseMoveHandler = function (e: any) {
       e.preventDefault();
       const dy = e.clientY - y;
       cells.forEach(
         (c) =>
-          (c.style.height =
-            (h + dy <= tdMinHeight ? tdMinHeight : h + dy) + "px")
+          (c.style.minHeight =
+            c.style.height =
+            c.style.maxHeight =
+              (c.initY + dy <= tdMinHeight ? tdMinHeight : c.initY + dy) + "px")
       );
-      table.style.height = tableInitY + dy + "px";
+      // table.style.height = tableInitY + dy + "px";
     };
 
     const mouseUpHandler = function () {
@@ -195,11 +252,24 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       style={{
         padding: 4,
         minWidth: tdMinWidth,
+        width: tdMinWidth,
+        maxHeight: tdMinWidth,
         minHeight: tdMinHeight,
+        height: tdMinHeight,
         position: "relative",
-        cursor: element.canTdEdit ? "text" : "pointer",
-        backgroundColor: element.selected ? "rgba(180,215,255,.7)" : "unset",
+        cursor: element.canTdEdit ? "inherit" : "cell",
+        color: element[Marks.Color] || "unset",
+        backgroundColor: element.selected
+          ? "rgba(180,215,255,.7)"
+          : element[Marks.BGColor] || "unset",
         userSelect: element.canTdEdit ? "unset" : "none",
+        textAlign: element[Marks.TextAlign] || "unset",
+        fontSize: element[Marks.FontSize] || "unset",
+        fontWeight: element[Marks.BOLD] ? "bold" : "unset",
+        fontStyle: element[Marks.ITALIC] ? "italic" : "unset",
+        textDecoration: `${element[Marks.Underline] ? "underline" : ""} ${
+          element[Marks.LineThrough] ? "line-through" : ""
+        }`,
       }}
       {...otherAttr}
       onDoubleClick={tdDBClick}
@@ -323,7 +393,7 @@ export const TdLogic = {
       startPoins,
     };
   },
-  getSelectedTd(tbody: NodeEntry) {
+  getSelectedTdInTdMap(tbody: NodeEntry) {
     const { tdMap, startPoins } = TdLogic.getTdMap(tbody);
     if (startPoins.length < 1) return null;
     if (startPoins.length == 1) startPoins[1] = startPoins[0];
@@ -389,16 +459,21 @@ export const TdLogic = {
     return td;
   },
   deselectAllTd(editor: EditorType) {
-    Transforms.unsetNodes(editor, ["selected", "start", "canTdEdit"], {
-      at: [],
-      mode: "all",
-      match(n) {
-        return (
-          TableLogic.isTd(n) &&
-          (n.selected == true || n.start == true || n.canTdEdit == true)
-        );
-      },
-    });
+    const selectedTdsPath = TableLogic.getSelectedTdsPath();
+    for (const path of selectedTdsPath) {
+      Transforms.unsetNodes(editor, ["selected", "start", "canTdEdit"], {
+        at: path,
+      });
+    }
+
+    const editingTdsPath = TableLogic.getEditingTdsPath();
+    for (const tdStrPath of editingTdsPath) {
+      const path: Path = tdStrPath.split(",").map((o) => +o);
+      Transforms.unsetNodes(editor, ["selected", "start", "canTdEdit"], {
+        at: path,
+      });
+    }
+
     Transforms.unsetNodes(editor, ["preSelectedTdPos"], {
       at: [],
       mode: "all",
@@ -529,12 +604,8 @@ export const TdLogic = {
   },
   clearTd(editor: EditorType) {
     // 清空带有selected属性的td
-    for (const [, p] of Editor.nodes(editor, {
-      at: [],
-      match(n) {
-        return TableLogic.isTd(n) && n.selected == true;
-      },
-    })) {
+    const selectedTds = TableLogic.getSelectedTds(editor);
+    for (const [, p] of selectedTds) {
       for (const [, childP] of Node.children(editor, p, {
         reverse: true,
       })) {

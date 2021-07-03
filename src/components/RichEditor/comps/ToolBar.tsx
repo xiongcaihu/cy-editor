@@ -5,22 +5,12 @@ import {
   Col,
   Button as AntButton,
   Dropdown,
-  Menu,
   Tooltip,
   Row,
   Select,
   Divider,
 } from "antd";
-import {
-  Editor,
-  Node,
-  Transforms,
-  Element,
-  Selection,
-  Range,
-  NodeEntry,
-  Path,
-} from "slate";
+import { Editor, Transforms, Element, Range } from "slate";
 import { ReactEditor, useSlate, useSlateStatic } from "slate-react";
 import { CET, EditorType, Marks } from "../common/Defines";
 import { ListLogic } from "./ListComp";
@@ -31,16 +21,12 @@ import { TdLogic } from "./Td";
 import {
   BgColorsOutlined,
   BoldOutlined,
-  CaretDownOutlined,
   SaveOutlined,
-  CaretUpOutlined,
   ClearOutlined,
   DeleteColumnOutlined,
   DeleteOutlined,
   DeleteRowOutlined,
-  DisconnectOutlined,
   FontColorsOutlined,
-  HighlightOutlined,
   InsertRowAboveOutlined,
   InsertRowBelowOutlined,
   InsertRowLeftOutlined,
@@ -57,33 +43,51 @@ import {
   UnorderedListOutlined,
   VerticalAlignBottomOutlined,
   VerticalAlignTopOutlined,
+  FolderOpenOutlined,
+  FormatPainterOutlined,
 } from "@ant-design/icons";
 import "./ToolBar.css";
-import React, { useEffect, useRef, useState } from "react";
-import { SketchPicker, CompactPicker } from "react-color";
+import React, { useContext, useRef, useState } from "react";
+import { CompactPicker } from "react-color";
+import { EditorContext } from "../RichEditor";
+import { useEffect } from "react";
+
+const calcStatusDelay = 50;
 
 const ColorPicker: React.FC<{
   title: string;
-  onChange?: (color: string) => void;
+  onChange?: (color?: string) => void;
   icon?: any;
   mark: Marks;
 }> = (props) => {
   const editor = useSlate();
+  const [color, setColor] = useState("");
+  const [visible, setVisible] = useState(false);
+  const ref = useRef<any>({
+    _getColor: _.debounce(() => {
+      setColor(getColor());
+    }, calcStatusDelay),
+  });
+
   const getColor = () => {
+    const td = TableLogic.getFirstSelectedTd(editor);
+    if (td) {
+      return Element.isElement(td[0]) && (td[0][props.mark] || "unset");
+    }
+
+    if (!editor.selection) return "unset";
+    if (!props.mark) return "unset";
     const marks = Editor.marks(editor);
-    return marks && marks[props.mark];
+    return (
+      (marks && marks?.[props?.mark]) ||
+      window.getComputedStyle(document.body).color
+    );
   };
 
-  const [color, setColor] = useState<{ hex: any }>({
-    hex: getColor() || window.getComputedStyle(document.body).backgroundColor,
+  useEffect(() => {
+    ref.current._getColor();
   });
 
-  const [visible, setVisible] = useState(false);
-  const ref = useRef<{
-    preSelection: Selection | null;
-  }>({
-    preSelection: null,
-  });
   return (
     <Tooltip
       title={props.title}
@@ -102,19 +106,13 @@ const ColorPicker: React.FC<{
           visible={visible}
           overlay={() => {
             return (
-              <CompactPicker
-                color={color.hex}
+              <ColorPickerCore
+                value={color}
                 onChange={(color) => {
-                  setColor(color);
+                  props?.onChange?.(color);
                   setVisible(false);
-                  ReactEditor.focus(editor);
-                  ref.current.preSelection &&
-                    Transforms.select(editor, ref.current.preSelection);
                 }}
-                onChangeComplete={(color) => {
-                  props?.onChange?.(color.hex);
-                }}
-              ></CompactPicker>
+              ></ColorPickerCore>
             );
           }}
           trigger={["click"]}
@@ -124,10 +122,10 @@ const ColorPicker: React.FC<{
         >
           <AntButton
             type="text"
-            style={{ color: getColor() }}
-            onClick={() => {
+            style={{ color }}
+            onMouseDown={(e) => {
+              e.preventDefault();
               setVisible(true);
-              ref.current.preSelection = editor.selection;
             }}
           >
             {props.icon}
@@ -138,8 +136,55 @@ const ColorPicker: React.FC<{
   );
 };
 
+const ColorPickerCore: React.FC<{
+  value: string;
+  onChange?: (color?: string) => void;
+}> = (props) => {
+  const [color, setColor] = useState<{ hex: any }>({
+    hex: props.value,
+  });
+
+  return (
+    <div
+      style={{
+        padding: 8,
+        display: "flex",
+        justifyContent: "flex-start",
+        backgroundColor: "white",
+        flexDirection: "column",
+      }}
+      className="cyEditor__toolbar__colorPanelWrapper"
+    >
+      <CompactPicker
+        color={color.hex}
+        onChange={(color) => {
+          setColor(color);
+        }}
+        onChangeComplete={(color) => {
+          props?.onChange?.(color.hex);
+        }}
+      ></CompactPicker>
+      <AntButton
+        icon={<DeleteOutlined></DeleteOutlined>}
+        size="small"
+        onClick={() => {
+          props?.onChange?.("unset");
+          setColor({ hex: "" });
+        }}
+      >
+        重置
+      </AntButton>
+    </div>
+  );
+};
+
 const getMarkValue = (editor: EditorType, mark: Marks) => {
   try {
+    const td = TableLogic.getFirstSelectedTd(editor);
+    if (td && Element.isElement(td[0])) {
+      return td[0][mark];
+    }
+    if (!editor.selection) return null;
     const marks = Editor.marks(editor);
     return marks?.[mark];
   } catch (error) {
@@ -150,6 +195,12 @@ const getMarkValue = (editor: EditorType, mark: Marks) => {
 
 const isMarkActive = (editor: EditorType, mark: Marks) => {
   try {
+    const td = TableLogic.getFirstSelectedTd(editor);
+    if (td && Element.isElement(td[0])) {
+      return td[0][mark];
+    }
+
+    if (!editor.selection) return null;
     const marks = Editor.marks(editor);
     return marks?.[mark] === true ? true : false;
   } catch (error) {
@@ -158,7 +209,7 @@ const isMarkActive = (editor: EditorType, mark: Marks) => {
   }
 };
 
-const CySelector = (props: {
+const ValueSelector = (props: {
   options: (string | number)[];
   optionLabelRender?: (value: string | number) => any;
   title: string;
@@ -167,13 +218,17 @@ const CySelector = (props: {
 }) => {
   const editor = useSlate();
   const [visible, setVisible] = useState(false);
+  const [value, setValue] = useState("");
   const toolDom = useRef<any>();
-  const ref = useRef<{
-    preSelection: Selection | null;
-  }>({
-    preSelection: null,
+  const ref = useRef<any>({
+    getValue: _.debounce(() => {
+      setValue(props.getValue(editor));
+    }, calcStatusDelay),
   });
 
+  useEffect(() => {
+    ref.current.getValue();
+  });
   return (
     <Tooltip
       title={props.title}
@@ -204,13 +259,12 @@ const CySelector = (props: {
           }}
           onMouseDown={(e) => {
             e.preventDefault();
-            ref.current.preSelection = editor.selection;
-            setVisible(true);
+            setVisible(!visible);
           }}
         ></div>
         <Select
           placeholder={props.title}
-          value={props.getValue(editor)}
+          value={value}
           bordered={false}
           style={{ width: "100%" }}
           open={visible}
@@ -220,8 +274,6 @@ const CySelector = (props: {
           }
           onSelect={(value) => {
             ReactEditor.focus(editor);
-            ref.current.preSelection &&
-              Transforms.select(editor, ref.current.preSelection);
             props?.afterSelect?.(value);
             setVisible(false);
           }}
@@ -239,20 +291,58 @@ const CySelector = (props: {
   );
 };
 
-const Button: React.FC<{
+const MarkButton: React.FC<{
   title: string;
   mark?: Marks;
-  mousedownFunc: () => void;
 }> = (props) => {
   const editor = useSlate();
+  const [type, setType] = useState("text");
+  const ref = useRef<any>({
+    getType: _.debounce(() => {
+      setType(props.mark && isMarkActive(editor, props.mark) ? "link" : "text");
+    }, calcStatusDelay),
+  });
+
+  useEffect(() => {
+    ref.current.getType();
+  });
+
+  const toggleMark = (mark: Marks) => {
+    // 针对选中表格的情况
+    const tds = TableLogic.getSelectedTds(editor);
+
+    if (tds.length > 0) {
+      ReactEditor.focus(editor);
+      tds.forEach((td) => {
+        if (!Element.isElement(td[0])) return;
+        if (td[0][mark]) {
+          Transforms.unsetNodes(editor, [mark], { at: td[1] });
+        } else {
+          Transforms.setNodes(editor, { [mark]: true }, { at: td[1] });
+        }
+      });
+      return;
+    }
+
+    if (!editor.selection) return;
+
+    const marks = Editor.marks(editor);
+
+    if (marks?.[mark]) {
+      Editor.removeMark(editor, mark);
+    } else {
+      Editor.addMark(editor, mark, true);
+    }
+  };
+
   return (
     <Tooltip title={props.title} mouseEnterDelay={0} mouseLeaveDelay={0}>
       <AntButton
         className="cyEditor__toolbar__button"
-        type={props.mark && isMarkActive(editor, props.mark) ? "link" : "text"}
+        type={type as any}
         onMouseDown={(e) => {
           e.preventDefault();
-          props.mousedownFunc();
+          props.mark && toggleMark(props.mark);
         }}
       >
         {props.children}
@@ -261,14 +351,17 @@ const Button: React.FC<{
   );
 };
 
-const StaticButton: React.FC<{ title: string; mousedownFunc: () => void }> = (
-  props
-) => {
+const StaticButton: React.FC<{
+  title: string;
+  mousedownFunc: () => void;
+  disabled?: boolean;
+}> = (props) => {
   return (
     <Tooltip title={props.title} mouseEnterDelay={0} mouseLeaveDelay={0}>
       <AntButton
         className="cyEditor__toolbar__button"
         type={"text"}
+        disabled={props.disabled}
         onMouseDown={(e) => {
           e.preventDefault();
           props.mousedownFunc();
@@ -280,7 +373,58 @@ const StaticButton: React.FC<{ title: string; mousedownFunc: () => void }> = (
   );
 };
 
-export const ToolBar = () => {
+const CopyFormat: React.FC<{}> = (props) => {
+  const editor = useSlate();
+  const { setSavedMarks } = useContext(EditorContext);
+  const [disabled, setDisabled] = useState(false);
+  const ref = useRef<any>({
+    isDisabled: _.debounce(() => {
+      const isNotOnlyOne = TableLogic.getSelectedTdsSize() > 1;
+      const td = TableLogic.getFirstSelectedTd(editor);
+      setDisabled(!(editor.selection != null || (td && !isNotOnlyOne)));
+    }, calcStatusDelay),
+  });
+
+  useEffect(() => {
+    ref.current.isDisabled();
+  });
+
+  const copyMark = () => {
+    try {
+      const isNotOnlyOne = TableLogic.getSelectedTdsSize() > 1;
+      const td = TableLogic.getFirstSelectedTd(editor);
+      if (td && !isNotOnlyOne && Element.isElement(td[0])) {
+        setSavedMarks(td[0] || null);
+        return;
+      }
+      if (!editor.selection) return null;
+      const marks = Editor.marks(editor);
+      const textWrapper = Editor.above(editor, {
+        mode: "lowest",
+        match(n) {
+          return utils.isTextWrapper(n);
+        },
+      });
+      if (textWrapper) setSavedMarks({ ...marks, ...textWrapper[0] } || null);
+      else setSavedMarks(marks || null);
+    } catch (error) {
+      console.warn(error);
+    }
+  };
+  return (
+    <StaticButton
+      title="格式刷"
+      disabled={disabled}
+      mousedownFunc={() => {
+        copyMark();
+      }}
+    >
+      <FormatPainterOutlined />
+    </StaticButton>
+  );
+};
+
+export const ToolBar: React.FC<{}> = (props) => {
   const editor = useSlateStatic();
 
   const setNumberList = () => {
@@ -291,54 +435,57 @@ export const ToolBar = () => {
     ListLogic.toggleList(editor, CET.NORMAL_LIST);
   };
 
-  const isBlockActive = (type: CET) => {
-    try {
-      const [match] = Editor.nodes(editor, {
-        match: (n) => Element.isElement(n) && n.type === type,
-      });
-      return !!match;
-    } catch (error) {
-      console.error(error);
-      return false;
-    }
-  };
-
-  const toggleMark = (mark: Marks) => {
-    const marks = Editor.marks(editor);
-
-    if (marks?.[mark]) {
-      Editor.removeMark(editor, mark);
-    } else {
-      Editor.addMark(editor, mark, true);
-    }
-  };
-
   const setTextWrapper = (type: CET) => {
-    Transforms.setNodes(
-      editor,
-      { type: type },
-      {
-        hanging: true,
-        mode: "lowest",
-        match(n) {
-          return utils.isTextWrapper(n);
-        },
-      }
-    );
+    const tds = TableLogic.getSelectedTds(editor);
+    if (tds.length > 0) {
+      tds.forEach((td) => {
+        Transforms.setNodes(
+          editor,
+          {
+            type,
+          },
+          {
+            at: td[1],
+            match(n) {
+              return utils.isTextWrapper(n);
+            },
+          }
+        );
+      });
+    } else {
+      Transforms.setNodes(
+        editor,
+        { type: type },
+        {
+          hanging: true,
+          mode: "lowest",
+          match(n) {
+            return utils.isTextWrapper(n);
+          },
+        }
+      );
+    }
   };
 
-  const insertLink = () => {
-    Transforms.insertNodes(editor, {
-      type: CET.LINK,
-      url: "http://www.baidu.com",
-      content: "百度百度百度百度",
-      children: [
-        {
-          text: "百度百度百度百度",
-        },
-      ],
+  const setLink = () => {
+    const [isLinkActive] = Editor.nodes(editor, {
+      match(n) {
+        return Element.isElement(n) && n.type == CET.LINK;
+      },
     });
-    Transforms.move(editor);
+    if (!isLinkActive) {
+      Transforms.wrapNodes(
+        editor,
+        {
+          type: CET.LINK,
+          url: "http://www.baidu.com",
+          children: [],
+        },
+        {
+          split: true,
+        }
+      );
+    }
   };
 
   const insertImg = () => {
@@ -502,7 +649,7 @@ export const ToolBar = () => {
       <Row align="middle">
         {/* 设置字体规格 */}
         <Col>
-          <CySelector
+          <ValueSelector
             getValue={(editor: EditorType) => {
               const [node] = Editor.nodes(editor, {
                 match(n) {
@@ -527,11 +674,11 @@ export const ToolBar = () => {
               if (value == "H4") setTextWrapper(CET.H4);
               if (value == "正文") setTextWrapper(CET.DIV);
             }}
-          ></CySelector>
+          ></ValueSelector>
         </Col>
         {/* 设置字体大小 */}
         <Col>
-          <CySelector
+          <ValueSelector
             getValue={(editor) => {
               return String(getMarkValue(editor, Marks.FontSize) || 14);
             }}
@@ -541,84 +688,35 @@ export const ToolBar = () => {
             }}
             title="字体大小"
             afterSelect={(value) => {
+              const tds = TableLogic.getSelectedTds(editor);
+              if (tds.length > 0) {
+                for (const td of tds) {
+                  Transforms.setNodes(
+                    editor,
+                    {
+                      [Marks.FontSize]: Number(value),
+                    },
+                    {
+                      at: td[1],
+                    }
+                  );
+                }
+                return;
+              }
+              if (!editor.selection) return;
               Editor.addMark(editor, Marks.FontSize, Number(value));
             }}
-          ></CySelector>
-        </Col>
-        <Col>
-          <Divider
-            style={{ height: 20, backgroundColor: "rgb(0 0 0 / 10%)" }}
-            type="vertical"
-          />
-        </Col>
-        <Col>
-          <ColorPicker
-            title="字体颜色"
-            onChange={(color) => {
-              Editor.addMark(editor, Marks.Color, color);
-            }}
-            mark={Marks.Color}
-            icon={<FontColorsOutlined />}
-          ></ColorPicker>
-        </Col>
-        <Col>
-          <ColorPicker
-            title="背景颜色"
-            onChange={(color) => {
-              Editor.addMark(editor, Marks.BGColor, color);
-            }}
-            mark={Marks.BGColor}
-            icon={<BgColorsOutlined />}
-          ></ColorPicker>
-        </Col>
-        <Col>
-          <Button
-            title="加粗"
-            mark={Marks.BOLD}
-            mousedownFunc={() => {
-              toggleMark(Marks.BOLD);
-            }}
-          >
-            <BoldOutlined />
-          </Button>
-        </Col>
-        <Col>
-          <Button
-            title="斜体"
-            mark={Marks.ITALIC}
-            mousedownFunc={() => {
-              toggleMark(Marks.ITALIC);
-            }}
-          >
-            <ItalicOutlined />
-          </Button>
-        </Col>
-        <Col>
-          <Button
-            title="下划线"
-            mark={Marks.Underline}
-            mousedownFunc={() => {
-              toggleMark(Marks.Underline);
-            }}
-          >
-            <UnderlineOutlined />
-          </Button>
-        </Col>
-        <Col>
-          <Button
-            title="删除线"
-            mark={Marks.LineThrough}
-            mousedownFunc={() => {
-              toggleMark(Marks.LineThrough);
-            }}
-          >
-            <StrikethroughOutlined />
-          </Button>
+          ></ValueSelector>
         </Col>
         {/* 设置对齐方式 */}
         <Col>
-          <CySelector
+          <ValueSelector
             getValue={(editor) => {
+              const td = TableLogic.getFirstSelectedTd(editor);
+              if (td && Element.isElement(td[0])) {
+                return td[0][Marks.TextAlign] || "左对齐";
+              }
+
               const [node] = Editor.nodes(editor, {
                 match(n) {
                   return utils.isTextWrapper(n);
@@ -639,7 +737,21 @@ export const ToolBar = () => {
             }}
             title="对齐方式"
             afterSelect={(value) => {
-              console.log(value);
+              ReactEditor.focus(editor);
+              const tds = TableLogic.getSelectedTds(editor);
+              if (tds.length > 0) {
+                for (const td of tds) {
+                  Transforms.setNodes(
+                    editor,
+                    { textAlign: value },
+                    {
+                      at: td[1],
+                    }
+                  );
+                }
+                return;
+              }
+              if (!editor.selection) return;
               Transforms.setNodes(
                 editor,
                 { textAlign: value },
@@ -651,7 +763,90 @@ export const ToolBar = () => {
                 }
               );
             }}
-          ></CySelector>
+          ></ValueSelector>
+        </Col>
+        <Col>
+          <Divider
+            style={{ height: 20, backgroundColor: "rgb(0 0 0 / 10%)" }}
+            type="vertical"
+          />
+        </Col>
+        <Col>
+          <CopyFormat></CopyFormat>
+        </Col>
+        <Col>
+          <ColorPicker
+            title="字体颜色"
+            onChange={(color) => {
+              ReactEditor.focus(editor);
+              const tds = TableLogic.getSelectedTds(editor);
+              if (tds.length > 0) {
+                for (const td of tds) {
+                  Transforms.setNodes(
+                    editor,
+                    {
+                      [Marks.Color]: color,
+                    },
+                    {
+                      at: td[1],
+                    }
+                  );
+                }
+                return;
+              }
+              if (!editor.selection) return;
+              Editor.addMark(editor, Marks.Color, color);
+            }}
+            mark={Marks.Color}
+            icon={<FontColorsOutlined />}
+          ></ColorPicker>
+        </Col>
+        <Col>
+          <ColorPicker
+            title="背景色"
+            onChange={(color) => {
+              ReactEditor.focus(editor);
+              const tds = TableLogic.getSelectedTds(editor);
+              if (tds.length > 0) {
+                for (const td of tds) {
+                  Transforms.setNodes(
+                    editor,
+                    {
+                      [Marks.BGColor]: color,
+                    },
+                    {
+                      at: td[1],
+                    }
+                  );
+                }
+                return;
+              }
+              if (!editor.selection) return;
+              Editor.addMark(editor, Marks.BGColor, color);
+            }}
+            mark={Marks.BGColor}
+            icon={<BgColorsOutlined />}
+          ></ColorPicker>
+        </Col>
+        <Col>
+          <MarkButton title="加粗" mark={Marks.BOLD}>
+            <BoldOutlined />
+          </MarkButton>
+        </Col>
+        <Col>
+          <MarkButton title="斜体" mark={Marks.ITALIC}>
+            <ItalicOutlined />
+          </MarkButton>
+        </Col>
+        <Col>
+          <MarkButton title="下划线" mark={Marks.Underline}>
+            <UnderlineOutlined />
+          </MarkButton>
+        </Col>
+        <Col>
+          <MarkButton title="删除线" mark={Marks.LineThrough}>
+            <StrikethroughOutlined />
+          </MarkButton>
         </Col>
         <Col>
           <Divider
@@ -681,22 +876,12 @@ export const ToolBar = () => {
         </Col>
         <Col>
           <StaticButton
-            title="插入链接"
+            title="设置链接"
             mousedownFunc={() => {
-              insertLink();
+              setLink();
             }}
           >
             <LinkOutlined />
-          </StaticButton>
-        </Col>
-        <Col>
-          <StaticButton
-            title="取消链接"
-            mousedownFunc={() => {
-              insertLink();
-            }}
-          >
-            <DisconnectOutlined />
           </StaticButton>
         </Col>
         <Col>
@@ -707,6 +892,11 @@ export const ToolBar = () => {
             }}
           >
             <PictureOutlined />
+          </StaticButton>
+        </Col>
+        <Col>
+          <StaticButton title="插入资源文件" mousedownFunc={() => {}}>
+            <FolderOpenOutlined />
           </StaticButton>
         </Col>
         <Col>
@@ -747,6 +937,16 @@ export const ToolBar = () => {
         </Col>
         <Col>
           <StaticButton
+            title="删除行"
+            mousedownFunc={() => {
+              deleteRow();
+            }}
+          >
+            <DeleteRowOutlined />
+          </StaticButton>
+        </Col>
+        <Col>
+          <StaticButton
             title="表格后插入文本"
             mousedownFunc={() => {
               insertDivAfterTable();
@@ -763,16 +963,6 @@ export const ToolBar = () => {
             }}
           >
             <VerticalAlignTopOutlined />
-          </StaticButton>
-        </Col>
-        <Col>
-          <StaticButton
-            title="删除行"
-            mousedownFunc={() => {
-              deleteRow();
-            }}
-          >
-            <DeleteRowOutlined />
           </StaticButton>
         </Col>
         <Col>

@@ -1,8 +1,11 @@
 /* eslint-disable eqeqeq */
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useState, useEffect } from "react";
-import { Transforms } from "slate";
+import { DisconnectOutlined, SelectOutlined } from "@ant-design/icons";
+import { Button, Col, Form, Input, Popover, Row } from "antd";
+import { useState } from "react";
+import { Editor, Element, Transforms } from "slate";
 import { RenderElementProps, ReactEditor, useSlateStatic } from "slate-react";
+import { CET } from "../common/Defines";
 
 export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
   attributes,
@@ -10,131 +13,109 @@ export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
   element,
 }) => {
   const editor = useSlateStatic();
-  const [state, setState] = useState<{
-    url?: string;
-    content?: string;
-    showTool?: boolean;
-  }>(() => ({
-    url: element.url,
-    content: element.content,
-    showTool: false,
-  }));
+  const [content, setContent] = useState<string>();
+  const [url, setUrl] = useState<string>();
 
-  useEffect(() => {
-    setState((t) => ({
-      ...t,
-      url: element.url,
-      content: element.content,
-    }));
-    return () => {
-      window.onclick = () => {};
-    };
-  }, []);
-
-  const showTool = () => {
-    if (state.showTool) return;
-    setState((t) => ({
-      ...t,
-      showTool: true,
-      url: element.url,
-      content: element.content,
-    }));
-
-    setTimeout(() => {
-      window.onclick = (e: any) => {
-        if (e.path.findIndex((o: any) => o?.dataset?.cylinkcomptool == 1) != -1)
-          return;
-        else {
-          hideTool();
-        }
-      };
-    }, 0);
+  const visitLink = () => {
+    window.open(element.url);
   };
 
-  const hideTool = () => {
-    setState((t) => ({
-      ...t,
-      showTool: false,
-    }));
-    window.onclick = () => {};
+  const cancelLink = (e: any) => {
+    e.preventDefault();
+    ReactEditor.focus(editor);
+
+    const { selection } = editor;
+    if (!selection) return;
+
+    Transforms.unwrapNodes(editor, {
+      match(n) {
+        return Element.isElement(n) && n.type == CET.LINK;
+      },
+    });
   };
 
-  const openUrl = () => {
-    element.url && ReactEditor.isReadOnly(editor) && window.open(element.url);
-  };
+  const formItemStyle = { marginBottom: 6 };
 
   const submitChange = () => {
-    const path = ReactEditor.findPath(editor, element);
-    Transforms.setNodes(
-      editor,
-      {
-        children: [],
-        content: state.content,
-        url: state.url,
-      },
-      { at: path }
-    );
-    hideTool();
+    ReactEditor.focus(editor);
+    const link = ReactEditor.toSlateNode(editor, attributes.ref.current);
+    const linkPath = ReactEditor.findPath(editor, link);
+    if (link && linkPath) {
+      Transforms.insertText(editor, content || "link", {
+        at: Editor.range(editor, linkPath),
+      });
+      Transforms.setNodes(editor, { url }, { at: linkPath });
+    }
+  };
+
+  const editPanel = (
+    <Form size="small">
+      <Row gutter={8} style={{ flexDirection: "column", width: 300 }}>
+        <Col flex="1">
+          <Form.Item label="操作" style={formItemStyle}>
+            <Button size="small" onClick={visitLink}>
+              <SelectOutlined title="访问链接" /> 访问链接
+            </Button>
+            &nbsp;
+            <Button size="small" onMouseDown={cancelLink}>
+              <DisconnectOutlined title="取消链接" /> 取消链接
+            </Button>
+          </Form.Item>
+        </Col>
+        <Col flex="1">
+          <Form.Item label="文字" style={formItemStyle}>
+            <Input
+              value={content}
+              onChange={(el: any) => {
+                setContent(el.target.value);
+              }}
+            />
+          </Form.Item>
+        </Col>
+        <Col>
+          <Form.Item label="链接" style={formItemStyle}>
+            <Input
+              value={url}
+              onChange={(el: any) => {
+                setUrl(el.target.value);
+              }}
+            />
+          </Form.Item>
+        </Col>
+        <Row justify="end">
+          <Button
+            type="primary"
+            style={{ width: 100, marginRight: 4 }}
+            onClick={submitChange}
+          >
+            确定
+          </Button>
+        </Row>
+      </Row>
+    </Form>
+  );
+
+  const initEditPanel = () => {
+    const linkWrapper = attributes.ref.current;
+    const link = linkWrapper.querySelector("a");
+
+    if (!link) return;
+
+    setUrl(link.href);
+    setContent(link.innerText);
   };
 
   return (
-    <div
-      contentEditable={false}
-      {...attributes}
-      style={{
-        display: "inline-block",
-        userSelect: "auto",
-        position: "relative",
-      }}
-      onClick={showTool}
-    >
-      <span
-        style={{
-          textDecoration: "underline",
-          cursor: "pointer",
-          color: "#69c0ff",
-        }}
-        onClick={openUrl}
-      >
-        {element.content}
-      </span>
-      <div
-        data-cylinkcomptool="1"
-        style={{
-          position: "absolute",
-          userSelect: "none",
-          fontSize: 12,
-          backgroundColor: "#fff",
-          display:
-            !state.showTool || ReactEditor.isReadOnly(editor)
-              ? "none"
-              : "block",
-          left: 0,
-          width: 300,
-          top: "100%",
-          border: "1px solid",
-          color: "unset",
-        }}
-        contentEditable={false}
-      >
-        设置链接：
-        <input
-          type="text"
-          value={state.url}
-          onChange={(e) => setState((t) => ({ ...t, url: e?.target?.value }))}
-        />
-        <br></br>
-        设置文字：
-        <input
-          type="text"
-          value={state.content}
-          onChange={(e) =>
-            setState((t) => ({ ...t, content: e?.target?.value }))
-          }
-        />
-        <button onClick={submitChange}>确定</button>
-      </div>
-      {children}
+    <div {...attributes} style={{ display: "inline", position: "relative" }}>
+      <Popover placement="right" content={editPanel} trigger="hover">
+        <a
+          href={element.url}
+          target="__blank"
+          onMouseEnter={() => initEditPanel()}
+        >
+          {children}
+        </a>
+      </Popover>
     </div>
   );
 };

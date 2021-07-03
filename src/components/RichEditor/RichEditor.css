@@ -13,6 +13,30 @@
 .cyEditor h1,
 .cyEditor h2,
 .cyEditor h3,
-.cyEditor h4{
+.cyEditor h4 {
   margin-bottom: 0;
+}
+
+.cyEditor {
+  font-family: "Chinese Quote", "Segoe UI", Roboto, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,
+    sans-serif;
+}
+
+.cyEditor .cyEditor__toolbar__dropdown {
+  /* border-left-color: #21242a !important;
+  border-top-color: #21242a !important; */
+  top: 30px !important;
+}
+
+.cyEditor .cyEditor__toolbar__button:hover {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+.cyEditor .cyEditor__toolbar__colorPanelWrapper > div > div {
+  box-shadow: none !important;
+}
+
+.cyEditor .cyEditor__toolbar__colorPanelWrapper {
+  box-shadow: rgb(0 0 0 / 12%) 0px 2px 10px, rgb(0 0 0 / 16%) 0px 2px 5px;
 }

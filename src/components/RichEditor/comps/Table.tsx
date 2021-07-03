@@ -1,6 +1,6 @@
 /* eslint-disable eqeqeq */
 import _ from "lodash";
-import { useRef } from "react";
+import { useContext, useRef } from "react";
 import {
   Node,
   NodeEntry,
@@ -13,10 +13,16 @@ import {
   Point,
 } from "slate";
 import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
-import { CET, EditorType } from "../common/Defines";
+import { CET, EditorType, Marks } from "../common/Defines";
 import { utils } from "../common/utils";
-import { TdLogic } from "./Td";
-
+import { EditorContext } from "../RichEditor";
+import { customTdShape, TdLogic } from "./Td";
+import {
+  getStrPathSetOfSelectedTds,
+  getEditingTdsPath,
+  setStrPathSetOfSelectedTds,
+  setEditingTdsPath,
+} from "../common/globalStore";
 declare module "react" {
   interface HTMLAttributes<T> extends DOMAttributes<T> {
     border?: any;
@@ -42,6 +48,8 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     lastSelectedPaths: [],
     preMouseOnTdPath: null,
   });
+
+  const { savedMarks, setSavedMarks } = useContext(EditorContext);
 
   const editor = useSlateStatic();
   const selectTd = _.debounce((pa: Point, pb: Point) => {
@@ -101,7 +109,11 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
       },
     });
     if (!tda) return;
-    Transforms.setNodes(editor, { start: true }, { at: tda[1] });
+    Transforms.setNodes(
+      editor,
+      { start: true, selected: true },
+      { at: tda[1] }
+    );
     const tdb = Editor.above(editor, {
       at: pb,
       mode: "highest",
@@ -110,7 +122,11 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
       },
     });
     if (!tdb) return;
-    Transforms.setNodes(editor, { start: true }, { at: tdb[1] });
+    Transforms.setNodes(
+      editor,
+      { start: true, selected: true },
+      { at: tdb[1] }
+    );
 
     const tbody = Editor.above(editor, {
       at: tda[1],
@@ -121,7 +137,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     });
     if (!tbody || !Element.isElement(tbody[0])) return;
 
-    const selectedTds = TdLogic.getSelectedTd(tbody);
+    const selectedTds = TdLogic.getSelectedTdInTdMap(tbody);
     if (selectedTds == null) return;
 
     const tbodyPath = tbody[1];
@@ -211,81 +227,61 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         style={{
           tableLayout: "auto",
           wordBreak: "break-all",
-          width:'100%'
+          overflowX: "auto",
+          overflowY: "hidden",
         }}
         onMouseDown={mousedownFunc}
+        onMouseUp={() => {
+          if (savedMarks) {
+            const copyMarks: any = {};
+            const hasSelectTd = TableLogic.getSelectedTdsSize();
+            for (const key of Object.values(Marks)) {
+              copyMarks[key] = savedMarks[key];
+            }
+            if (hasSelectTd > 0) {
+              const selectedTdsPath = TableLogic.getSelectedTdsPath();
+              for (const path of selectedTdsPath) {
+                Transforms.setNodes(editor, copyMarks, {
+                  at: path,
+                });
+              }
+              setSavedMarks(null);
+              return;
+            }
+          }
+        }}
       >
         {children}
       </table>
-      <span
-        style={{
-          position: "absolute",
-          width: 10,
-          height: 10,
-          right: -5,
-          bottom: -5,
-          display: "none",
-          cursor: "se-resize",
-          userSelect: "none",
-        }}
-        contentEditable={false}
-        onMouseDown={(e: any) => {
-          let y = e.clientY,
-            x = e.clientX,
-            h = 0,
-            w = 0,
-            table: any = e.target.previousElementSibling;
-
-          if (table == null) return;
-
-          const styles = window.getComputedStyle(table);
-          w = parseInt(styles.width, 10);
-          h = parseInt(styles.height, 10);
-          const tableWidth = parseInt(window.getComputedStyle(table).width);
-          const tableHeight = parseInt(window.getComputedStyle(table).height);
-          Array.from(table.querySelectorAll(":scope>tbody>tr>td")).forEach(
-            (td: any) => {
-              td.initXPer =
-                parseInt(window.getComputedStyle(td).width) / tableWidth;
-              td.initYPer =
-                parseInt(window.getComputedStyle(td).height) / tableHeight;
-            }
-          );
-
-          const mouseMoveHandler = function (e: any) {
-            e.preventDefault();
-            const dx = e.clientX - x;
-            const dy = e.clientY - y;
-            const width = w + dx;
-            const height = h + dy;
-            table.style.width = width + "px";
-            table.style.height = height + "px";
-            Array.from(table.querySelectorAll(":scope>tbody>tr>td")).forEach(
-              (td: any) => {
-                if (td.nextElementSibling != null) {
-                  td.style.width = td.initXPer * width + "px";
-                  td.style.height = td.initYPer * height + "px";
-                }
-              }
-            );
-          };
-
-          const mouseUpHandler = function () {
-            document.removeEventListener("mousemove", mouseMoveHandler);
-            document.removeEventListener("mouseup", mouseUpHandler);
-          };
-
-          document.addEventListener("mousemove", mouseMoveHandler);
-          document.addEventListener("mouseup", mouseUpHandler);
-        }}
-      ></span>
     </div>
   );
 };
 
+const getEditingOrSelectedTdBelongTable = (editor: Editor) => {
+  const td = TableLogic.getFirstSelectedTd(editor);
+  let table;
+  if (td) {
+    table = Editor.above(editor, {
+      mode: "lowest",
+      at: td[1],
+      match(n) {
+        return TableLogic.isTable(n);
+      },
+    });
+  } else if (editor.selection) {
+    table = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTable(n);
+      },
+    });
+  }
+  return table;
+};
+
 export const TableLogic = {
   testModel: JSON.parse(
-    `[{"type":"div","children":[{"text":"12131232"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string1"}]}],"colSpan":2,"rowSpan":2}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"string3d"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsad"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"sadas"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"asd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]}]}]}]}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sad"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsa"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"sd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"adsa"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"das"}]}]}]}]}]}]}]}]}]}]}]}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]},{"type":"div","children":[{"text":"string4"}]}],"colSpan":2,"rowSpan":1},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}],"shouldEmpty":false}]}]},{"type":"div","children":[{"text":"1"}]}]`
+    `[{"type":"div","children":[{"text":""},{"type":"link","url":"http://www.baidu.com","children":[{"text":"12131232"}]},{"text":""}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}],"textAlign":"left"},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]}],"colSpan":2,"rowSpan":2,"canTdEdit":true,"start":true}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"string3d"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsad"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"sadas"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"asd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]}]}]}]}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sad"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsa"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"sd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"adsa"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"das"}]}]}]}]}]}]}]}]}]}]}]}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]},{"type":"div","children":[{"text":"string4"}]}],"colSpan":2,"rowSpan":1},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}],"shouldEmpty":false}],"preSelectedTdPos":{"row":1,"col":1}}]},{"type":"div","children":[{"text":"1dffsfdsaffdsfsd"}]},{"type":"div","children":[{"text":"fsdfsdfsdfsdfsdfsd"}]}]`
   ),
   model: [
     {
@@ -293,7 +289,7 @@ export const TableLogic = {
       children: [
         {
           type: CET.TBODY,
-          children: new Array(100).fill(0).map((item, fatherIndex) => {
+          children: new Array(10).fill(0).map((item, fatherIndex) => {
             return {
               type: CET.TR,
               children: new Array(10).fill(0).map((item, index) => {
@@ -417,13 +413,7 @@ export const TableLogic = {
   deleteRow(editor: EditorType) {
     // 删除选区对应的列
     let deleteVArea: number[] = [Infinity, -Infinity];
-    const [selectedTd] = Editor.nodes(editor, {
-      at: [],
-      reverse: true,
-      match(n) {
-        return TableLogic.isTd(n) && n.selected == true;
-      },
-    });
+    const selectedTd = TableLogic.getFirstSelectedTd(editor);
     if (!selectedTd) return;
 
     const tbody = Editor.above(editor, {
@@ -435,7 +425,9 @@ export const TableLogic = {
     if (!tbody) return;
     const { tdMap } = TdLogic.getTdMap(tbody);
     if (!tdMap) return;
-    const selectedTds = Array.from(TdLogic.getSelectedTd(tbody)?.keys() || []);
+    const selectedTds = Array.from(
+      TdLogic.getSelectedTdInTdMap(tbody)?.keys() || []
+    );
     if (selectedTds.length == 0) return;
 
     selectedTds.forEach((td) => {
@@ -507,17 +499,13 @@ export const TableLogic = {
     removePath.forEach((path) => {
       Transforms.removeNodes(editor, { at: path });
     });
+
+    TableLogic.resetSelectedTds(editor);
   },
   deleteColumn(editor: EditorType) {
     // 删除选区对应的列
     let deleteHArea: number[] = [Infinity, -Infinity];
-    const [selectedTd] = Editor.nodes(editor, {
-      at: [],
-      reverse: true,
-      match(n) {
-        return TableLogic.isTd(n) && n.selected == true;
-      },
-    });
+    const selectedTd = TableLogic.getFirstSelectedTd(editor);
     if (!selectedTd) return;
 
     const tbody = Editor.above(editor, {
@@ -529,7 +517,9 @@ export const TableLogic = {
     if (!tbody) return;
     const { tdMap } = TdLogic.getTdMap(tbody);
     if (!tdMap) return;
-    const selectedTds = Array.from(TdLogic.getSelectedTd(tbody)?.keys() || []);
+    const selectedTds = Array.from(
+      TdLogic.getSelectedTdInTdMap(tbody)?.keys() || []
+    );
     if (selectedTds.length == 0) return;
 
     selectedTds.forEach((td) => {
@@ -580,132 +570,159 @@ export const TableLogic = {
     removePath.forEach((path) => {
       Transforms.removeNodes(editor, { at: path });
     });
+
+    TableLogic.resetSelectedTds(editor);
   },
   insertColumn(
     editor: EditorType,
     type: "before" | "after",
     count: number = 1
   ) {
-    if (editor.selection && Range.isCollapsed(editor.selection)) {
-      const [nowTd] = Editor.nodes(editor, {
+    let nowTd = TableLogic.getFirstSelectedTd(editor);
+    // 如果没有选中的td，那么就从光标位置找
+    if (!nowTd && editor.selection) {
+      [nowTd] = Editor.nodes(editor, {
         mode: "lowest",
         match(n) {
           return TableLogic.isTd(n);
         },
       });
-      if (!nowTd) return;
-      const nowTr = Editor.parent(editor, nowTd[1]);
-      if (!nowTr) return;
-      const tbody = Editor.parent(editor, nowTr[1]);
-      if (!tbody) return;
-      const { tdMap } = TdLogic.getTdMap(tbody);
-      if (
-        !Element.isElement(nowTd[0]) ||
-        !Element.isElement(nowTd[0]) ||
-        !Element.isElement(tbody[0])
-      )
-        return;
+    }
+    if (!nowTd) return;
+    const nowTr = Editor.parent(editor, nowTd[1]);
+    if (!nowTr) return;
+    const tbody = Editor.parent(editor, nowTr[1]);
+    if (!tbody) return;
+    const { tdMap } = TdLogic.getTdMap(tbody);
+    const selectedTds = TdLogic.getSelectedTdInTdMap(tbody);
+    if (
+      !Element.isElement(nowTd[0]) ||
+      !Element.isElement(nowTd[0]) ||
+      !Element.isElement(tbody[0])
+    )
+      return;
 
-      const getInsertCells = () => {
-        return _.cloneDeep(
-          new Array(count).fill(0).map(() => {
-            return _.cloneDeep({
-              type: CET.TD,
-              children: [
-                {
-                  type: CET.DIV,
-                  children: [{ text: "" }],
-                },
-              ],
-            });
-          })
-        );
-      };
+    const getInsertCells = () => {
+      return _.cloneDeep(
+        new Array(count).fill(0).map(() => {
+          return _.cloneDeep({
+            type: CET.TD,
+            children: [
+              {
+                type: CET.DIV,
+                children: [{ text: "" }],
+              },
+            ],
+          });
+        })
+      );
+    };
 
-      // 首先找到第一插入点
-      const [nowTdRow, nowTdCol] = nowTd[1].slice(nowTd[1].length - 2);
-      let insertPos: number[] = []; // [row,col]
+    // 首先找到第一插入点
+    const [nowTdRow, nowTdCol] = nowTd[1].slice(nowTd[1].length - 2);
+    let insertCol;
+    if (selectedTds && selectedTds.size > 0) {
+      insertCol = type == "after" ? -Infinity : Infinity;
+      for (const tdInTdMap of selectedTds.keys()) {
+        insertCol =
+          type == "after"
+            ? Math.max(insertCol, tdInTdMap.col + tdInTdMap.colSpan)
+            : Math.min(insertCol, tdInTdMap.col);
+      }
+    } else {
+      insertCol = -1;
       for (let i = 0; i < tdMap[nowTdRow].length; i++) {
         const td = tdMap[nowTdRow][i];
         // 找到当前td在tdMap中的位置
         if (td.originCol == nowTdCol && td.originRow == nowTdRow) {
-          insertPos = [td.row, td.col + (type == "after" ? td.colSpan : 0)];
+          insertCol = td.col + (type == "after" ? td.colSpan : 0);
           break;
         }
       }
-      if (insertPos.length == 0) return;
-      // 从上到下遍历整个表格当前列
-      for (let row = 0; row < tdMap.length; row++) {
-        const downTd = tdMap[row][insertPos[1]];
-        // 如果不存在，那么说明是插在最后
-        if (!downTd) {
-          Transforms.insertNodes(editor, getInsertCells(), {
-            at: [
-              ...tbody[1],
-              row,
-              tbody[0]?.children?.[row]?.children?.length || 0,
-            ],
-          });
-          continue;
-        }
-        const downTdOriginPos = [
-          ...tbody[1],
-          downTd.originRow,
-          downTd.originCol,
-        ];
-        if (downTd.col == insertPos[1]) {
-          Transforms.insertNodes(editor, getInsertCells(), {
-            at: [...tbody[1], row, downTd.originCol],
-          });
-        } else {
-          Transforms.setNodes(
-            editor,
-            {
-              colSpan: downTd.colSpan + 1,
-            },
-            {
-              at: downTdOriginPos,
-            }
-          );
-          row += downTd.rowSpan - 1;
-        }
+    }
+    if (insertCol == null || !Number.isFinite(insertCol)) return;
+    // 从上到下遍历整个表格当前列
+    for (let row = 0; row < tdMap.length; row++) {
+      const downTd = tdMap[row][insertCol] as customTdShape;
+      // 如果不存在，那么说明是插在最后
+      if (!downTd) {
+        Transforms.insertNodes(editor, getInsertCells(), {
+          at: [
+            ...tbody[1],
+            row,
+            tbody[0]?.children?.[row]?.children?.length || 0,
+          ],
+        });
+        continue;
+      }
+      const downTdOriginPos = [...tbody[1], downTd.originRow, downTd.originCol];
+      if (downTd.col == insertCol) {
+        Transforms.insertNodes(editor, getInsertCells(), {
+          at: [...tbody[1], row, downTd.originCol],
+        });
+      } else {
+        Transforms.setNodes(
+          editor,
+          {
+            colSpan: downTd.colSpan + 1,
+          },
+          {
+            at: downTdOriginPos,
+          }
+        );
+        row += downTd.rowSpan - 1;
       }
     }
+    TableLogic.resetSelectedTds(editor);
   },
   insertRow(editor: EditorType, type: "after" | "before", count: number = 1) {
-    if (editor.selection && Range.isCollapsed(editor.selection)) {
-      const [nowTd] = Editor.nodes(editor, {
+    let nowTd = TableLogic.getFirstSelectedTd(editor);
+    // 如果没有选中的td，那么就从光标位置找
+    if (!nowTd && editor.selection) {
+      [nowTd] = Editor.nodes(editor, {
         mode: "lowest",
         match(n) {
           return TableLogic.isTd(n);
         },
       });
-      if (!nowTd) return;
-      const nowTr = Editor.parent(editor, nowTd[1]);
-      if (!nowTr) return;
-      const tbody = Editor.parent(editor, nowTr[1]);
-      if (!tbody) return;
-      const { tdMap } = TdLogic.getTdMap(tbody);
-      if (
-        !Element.isElement(nowTd[0]) ||
-        !Element.isElement(nowTd[0]) ||
-        !Element.isElement(tbody[0])
-      )
-        return;
+    }
+    if (!nowTd) return;
+    const nowTr = Editor.parent(editor, nowTd[1]);
+    if (!nowTr) return;
+    const tbody = Editor.parent(editor, nowTr[1]);
+    if (!tbody) return;
+    const { tdMap } = TdLogic.getTdMap(tbody);
+    const selectedTds = TdLogic.getSelectedTdInTdMap(tbody);
+    if (
+      !Element.isElement(nowTd[0]) ||
+      !Element.isElement(nowTd[0]) ||
+      !Element.isElement(tbody[0])
+    )
+      return;
 
-      const insertNode = {
-        type: CET.TD,
-        children: [
-          {
-            type: CET.DIV,
-            children: [{ text: "" }],
-          },
-        ],
-      };
+    const insertNode = {
+      type: CET.TD,
+      children: [
+        {
+          type: CET.DIV,
+          children: [{ text: "" }],
+        },
+      ],
+    };
 
-      // 首先找到第一插入点
-      const [nowTdRow, nowTdCol] = nowTd[1].slice(nowTd[1].length - 2);
-      let insertRow = -1;
+    // 首先找到第一插入点
+    const [nowTdRow, nowTdCol] = nowTd[1].slice(nowTd[1].length - 2);
+    let insertRow;
+    if (selectedTds && selectedTds.size > 0) {
+      insertRow = type == "after" ? -Infinity : Infinity;
+      for (const tdInTdMap of selectedTds.keys()) {
+        insertRow =
+          type == "after"
+            ? Math.max(insertRow, tdInTdMap.row + tdInTdMap.rowSpan)
+            : Math.min(insertRow, tdInTdMap.row);
+      }
+    } else {
+      insertRow = -1;
       for (let i = 0; i < tdMap[nowTdRow].length; i++) {
         const td = tdMap[nowTdRow][i];
         // 找到当前td在tdMap中的位置
@@ -714,58 +731,59 @@ export const TableLogic = {
           break;
         }
       }
-      if (insertRow == -1) return;
+    }
+    if (insertRow == -1 || !Number.isFinite(insertRow)) return;
 
-      const getInsertRow = (tdCount: number) => {
-        return new Array(count).fill(0).map(() => {
-          return _.cloneDeep({
-            type: CET.TR,
-            children: new Array(tdCount).fill(0).map(() => {
-              return _.cloneDeep(insertNode);
-            }),
-          });
+    const getInsertRow = (tdCount: number) => {
+      return new Array(count).fill(0).map(() => {
+        return _.cloneDeep({
+          type: CET.TR,
+          children: new Array(tdCount).fill(0).map(() => {
+            return _.cloneDeep(insertNode);
+          }),
         });
-      };
+      });
+    };
 
-      // 最后一行的插入
-      if (tdMap[insertRow] == null) {
-        Transforms.insertNodes(editor, getInsertRow(tdMap[0].length), {
-          at: [...tbody[1], insertRow],
-        });
-        return;
-      }
-
-      // 找到tdMap中的当前行
-      let tdCount = 0;
-      for (let i = 0; i < tdMap[insertRow].length; i++) {
-        const td = tdMap[insertRow][i];
-        if (td.row == insertRow) {
-          tdCount++;
-        } else {
-          Transforms.setNodes(
-            editor,
-            {
-              rowSpan: td.rowSpan + 1,
-            },
-            {
-              at: [...tbody[1], td.originRow, td.originCol],
-            }
-          );
-          i += td.colSpan - 1;
-        }
-      }
-
-      Transforms.insertNodes(editor, getInsertRow(tdCount), {
+    // 最后一行的插入
+    if (tdMap[insertRow] == null) {
+      Transforms.insertNodes(editor, getInsertRow(tdMap[0].length), {
         at: [...tbody[1], insertRow],
       });
+      return;
     }
+
+    // 找到tdMap中的当前行
+    let tdCount = 0;
+    for (let i = 0; i < tdMap[insertRow].length; i++) {
+      const td = tdMap[insertRow][i] as customTdShape;
+      if (td.row == insertRow) {
+        tdCount++;
+      } else {
+        Transforms.setNodes(
+          editor,
+          {
+            rowSpan: td.rowSpan + 1,
+          },
+          {
+            at: [...tbody[1], td.originRow, td.originCol],
+          }
+        );
+        i += td.colSpan - 1;
+      }
+    }
+
+    Transforms.insertNodes(editor, getInsertRow(tdCount), {
+      at: [...tbody[1], insertRow],
+    });
+
+    TableLogic.resetSelectedTds(editor);
   },
   splitTd(editor: EditorType) {
-    let selectedTds = Editor.nodes(editor, {
+    const selectedTds = Editor.nodes(editor, {
       at: [],
-      reverse: true,
       match(n) {
-        return TableLogic.isTd(n) && n.selected == true;
+        return TableLogic.isSelectedTd(n);
       },
     });
     if (!selectedTds) return;
@@ -837,19 +855,15 @@ export const TableLogic = {
         );
       }
       TableLogic.splitTd(editor);
+      TableLogic.resetSelectedTds(editor);
       return;
     }
   },
   mergeTd(editor: EditorType) {
-    if (editor.selection && !Range.isExpanded(editor.selection)) return;
+    const isOnlyOne = TableLogic.getSelectedTdsSize() == 1;
 
-    const [selectedTd, secTd] = Editor.nodes(editor, {
-      at: [],
-      match(n) {
-        return TableLogic.isTd(n) && n.selected == true;
-      },
-    });
-    if (!selectedTd || secTd == null) return;
+    const selectedTd = TableLogic.getFirstSelectedTd(editor);
+    if (!selectedTd || isOnlyOne == null) return;
 
     const tbody = Editor.above(editor, {
       at: selectedTd[1],
@@ -860,7 +874,7 @@ export const TableLogic = {
     });
     if (!tbody) return;
 
-    const selectedTds = TdLogic.getSelectedTd(tbody);
+    const selectedTds = TdLogic.getSelectedTdInTdMap(tbody);
     if (!selectedTds) return;
     const tbodyPath = tbody[1];
     const tds = Array.from(selectedTds?.keys());
@@ -915,52 +929,110 @@ export const TableLogic = {
         return TableLogic.isTd(n) && n.toBeDeleted == true;
       },
     });
+
+    TableLogic.resetSelectedTds(editor);
   },
   deleteTable(editor: EditorType) {
-    const table = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return TableLogic.isTable(n);
-      },
-    });
+    const table = getEditingOrSelectedTdBelongTable(editor);
     if (!table) return;
     Transforms.removeNodes(editor, { at: table[1] });
+    TableLogic.resetSelectedTds(editor);
   },
   insertDivAfterTable(editor: EditorType) {
-    if (editor.selection && !Range.isCollapsed(editor.selection)) return;
-    const table = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return TableLogic.isTable(n);
-      },
-    });
+    const table = getEditingOrSelectedTdBelongTable(editor);
+
     if (!table) return;
     const nextPath = utils.getPath(table[1], "next");
     Transforms.insertNodes(
       editor,
       {
         type: CET.DIV,
-        children: [{ text: "" }],
+        children: [{ text: "write something..." }],
       },
       { at: nextPath }
     );
+    TableLogic.resetSelectedTds(editor);
   },
   insertDivBeforeTable(editor: EditorType) {
-    if (editor.selection && !Range.isCollapsed(editor.selection)) return;
-    const table = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return TableLogic.isTable(n);
-      },
-    });
+    const table = getEditingOrSelectedTdBelongTable(editor);
+
     if (!table) return;
     Transforms.insertNodes(
       editor,
       {
         type: CET.DIV,
-        children: [{ text: "" }],
+        children: [{ text: "write something..." }],
       },
       { at: table[1] }
     );
+    TableLogic.resetSelectedTds(editor);
+  },
+  getSelectedTdsPath() {
+    const selectedTds = getStrPathSetOfSelectedTds();
+    const pathArr = [];
+    for (const tdStrPath of selectedTds) {
+      const path: Path = tdStrPath.split(",").map((o) => +o);
+      pathArr.push(path);
+    }
+    return pathArr;
+  },
+  getSelectedTds(editor: EditorType) {
+    const selectedTds = getStrPathSetOfSelectedTds();
+    const tdArr = [];
+    for (const tdStrPath of selectedTds) {
+      const path: Path = tdStrPath.split(",").map((o) => +o);
+      const td = Editor.node(editor, path);
+      tdArr.push(td);
+    }
+    return tdArr;
+  },
+  getFirstSelectedTd(editor: EditorType) {
+    const selectedTds = getStrPathSetOfSelectedTds();
+    const arr = Array.from(selectedTds).sort((a, b) =>
+      a > b ? 1 : a === b ? 0 : -1
+    );
+    if (arr.length == 0) return null;
+
+    const path: Path = arr[0].split(",").map((o) => +o);
+    const td = Editor.node(editor, path);
+    return td;
+  },
+  getEditingTds(editor: EditorType) {
+    const editingTdsPath = getEditingTdsPath();
+    const arr = [];
+    for (const tdStrPath of editingTdsPath) {
+      const path: Path = tdStrPath.split(",").map((o) => +o);
+      arr.push(Editor.node(editor, path));
+    }
+    return arr;
+  },
+  getEditingTdsPath() {
+    return getEditingTdsPath();
+  },
+  getSelectedTdsSize() {
+    return getStrPathSetOfSelectedTds().size;
+  },
+  resetSelectedTds(editor: EditorType) {
+    const tdsPath = Array.from(
+      Editor.nodes(editor, {
+        at: [],
+        match(n) {
+          return TableLogic.isSelectedTd(n);
+        },
+      })
+    ).map((o) => o[1].join(","));
+
+    setStrPathSetOfSelectedTds(new Set(tdsPath));
+
+    const editingTdsPath = Array.from(
+      Editor.nodes(editor, {
+        at: [],
+        match(n) {
+          return TableLogic.isTd(n) && n.canTdEdit == true;
+        },
+      })
+    ).map((o) => o[1].join(","));
+
+    setEditingTdsPath(new Set(editingTdsPath));
   },
 };
