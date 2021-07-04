@@ -46,11 +46,10 @@ export const withCyWrap = (editor: EditorType) => {
     // const array = JSON.parse(window.localStorage.getItem("history") || "[]");
     try {
       apply(e);
-      // array.push(e);
       // window.localStorage.setItem("history", JSON.stringify(array));
       // 判断是不是设置td的selected属性
       if (e.type == "set_node") {
-        const savedTds = getStrPathSetOfSelectedTds();
+        const savedTds = getStrPathSetOfSelectedTds(editor);
         const path = e.path;
         const newProperties = e.newProperties as Partial<CustomElement>;
         if (newProperties.selected === true) {
@@ -63,9 +62,11 @@ export const withCyWrap = (editor: EditorType) => {
           savedTds.delete(path.join(","));
         }
 
+        const savedEditingTds = getEditingTdsPath(editor);
         if (newProperties.canTdEdit === true) {
-          const savedEditingTds = getEditingTdsPath();
           savedEditingTds.add(path.join(","));
+        } else if (newProperties.canTdEdit == null) {
+          savedEditingTds.delete(path.join(","));
         }
       }
     } catch (error) {

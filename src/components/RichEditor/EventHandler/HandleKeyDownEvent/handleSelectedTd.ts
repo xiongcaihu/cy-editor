@@ -4,7 +4,7 @@ import { TableLogic } from "../../comps/Table";
 
 export const handleSelectedTd = (e: any, editor: EditorType) => {
   // 当没有选区的时候，查看是否已经选中表格
-  const isNotOnlyOneTd = TableLogic.getSelectedTdsSize() > 1;
+  const isNotOnlyOneTd = TableLogic.getSelectedTdsSize(editor) > 1;
 
   const getFirstTd = () => TableLogic.getFirstSelectedTd(editor);
 
@@ -12,57 +12,57 @@ export const handleSelectedTd = (e: any, editor: EditorType) => {
     case "Delete":
     case "Backspace": {
       TdLogic.clearTd(editor);
-      return;
+      break;
     }
     case "Tab": {
       e.preventDefault();
-      if (isNotOnlyOneTd) return;
+      if (isNotOnlyOneTd) break;
       const td = getFirstTd();
       td && TdLogic.findTargetTd(editor, td, e.shiftKey ? "left" : "right");
-      return;
+      break;
     }
     case "Escape": {
       e.preventDefault();
       TdLogic.deselectAllTd(editor);
-      return;
+      break;
     }
     // 直接全选选中的td的内容，进入编辑状态
     case " ":
     case "Enter":
       {
         e.preventDefault();
-        if (isNotOnlyOneTd) return;
+        if (isNotOnlyOneTd) break;
         const td = getFirstTd();
         td && TdLogic.editTd(editor, td);
       }
-      return;
+      break;
     case "ArrowUp": {
       e.preventDefault();
-      if (isNotOnlyOneTd) return;
+      if (isNotOnlyOneTd) break;
       const td = getFirstTd();
       td && TdLogic.findTargetTd(editor, td, "up");
-      return;
+      break;
     }
     case "ArrowDown": {
       e.preventDefault();
-      if (isNotOnlyOneTd) return;
+      if (isNotOnlyOneTd) break;
       const td = getFirstTd();
       td && TdLogic.findTargetTd(editor, td, "down");
-      return;
+      break;
     }
     case "ArrowLeft": {
       e.preventDefault();
-      if (isNotOnlyOneTd) return;
+      if (isNotOnlyOneTd) break;
       const td = getFirstTd();
       td && TdLogic.findTargetTd(editor, td, "left");
-      return;
+      break;
     }
     case "ArrowRight": {
       e.preventDefault();
-      if (isNotOnlyOneTd) return;
+      if (isNotOnlyOneTd) break;
       const td = getFirstTd();
       td && TdLogic.findTargetTd(editor, td, "right");
-      return;
+      break;
     }
   }
   if (!e.ctrlKey && (e.key.length === 1 || e.key === "Process")) {
@@ -70,6 +70,14 @@ export const handleSelectedTd = (e: any, editor: EditorType) => {
     const td = getFirstTd();
     TdLogic.clearTd(editor);
     td && TdLogic.editTd(editor, td);
+  }
+
+  if (e.ctrlKey && e.key === "c") {
+    return;
+  }
+
+  if (e.ctrlKey && e.key === "v") {
+    return;
   }
   return;
 };

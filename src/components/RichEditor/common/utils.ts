@@ -12,6 +12,7 @@ import {
 import { TextWrappers, EditorType, CET } from "./Defines";
 import { TableLogic } from "../comps/Table";
 import { jsx } from "slate-hyperscript";
+import { ListLogic } from "../comps/ListComp";
 
 const deserialize: any = (el: any) => {
   // text node
@@ -115,42 +116,42 @@ export const utils = {
     if (Range.isCollapsed(selection)) return;
 
     // 如果全选了表格，那么直接删除表格
-    // const tables = Editor.nodes(editor, {
-    //   at: selection,
-    //   match(n) {
-    //     return TableLogic.isTable(n);
-    //   },
-    // });
-    // for (const table of tables) {
-    //   if (table) {
-    //     const tableRange = Editor.range(editor, table[1]);
-    //     const inte = Range.intersection(selection, tableRange);
-    //     if (inte && Range.equals(tableRange, inte)) {
-    //       Transforms.removeNodes(editor, { at: table[1] });
-    //       utils.removeRangeElement(editor);
-    //       return;
-    //     }
-    //   }
-    // }
+    const tables = Editor.nodes(editor, {
+      at: selection,
+      match(n) {
+        return TableLogic.isTable(n);
+      },
+    });
+    for (const table of tables) {
+      if (table) {
+        const tableRange = Editor.range(editor, table[1]);
+        const inte = Range.intersection(selection, tableRange);
+        if (inte && Range.equals(tableRange, inte)) {
+          Transforms.removeNodes(editor, { at: table[1] });
+          utils.removeRangeElement(editor);
+          return;
+        }
+      }
+    }
 
     // 如果全选了列表，那么直接删除列表即可
-    // const lists = Editor.nodes(editor, {
-    //   at: selection,
-    //   match(n) {
-    //     return ListLogic.isOrderList(n);
-    //   },
-    // });
-    // for (const list of lists) {
-    //   if (!!list) {
-    //     const listRange = Editor.range(editor, list[1]);
-    //     const inte = Range.intersection(selection, listRange);
-    //     if (inte && Range.equals(listRange, inte)) {
-    //       Transforms.removeNodes(editor, { at: list[1] });
-    //       utils.removeRangeElement(editor);
-    //       return;
-    //     }
-    //   }
-    // }
+    const lists = Editor.nodes(editor, {
+      at: selection,
+      match(n) {
+        return ListLogic.isOrderList(n);
+      },
+    });
+    for (const list of lists) {
+      if (!!list) {
+        const listRange = Editor.range(editor, list[1]);
+        const inte = Range.intersection(selection, listRange);
+        if (inte && Range.equals(listRange, inte)) {
+          Transforms.removeNodes(editor, { at: list[1] });
+          utils.removeRangeElement(editor);
+          return;
+        }
+      }
+    }
 
     // 部分删除，此部分最耗费性能，因为考虑到列表和表格可能杂糅在一起，所以需要从textWrapper一个个处理
     for (const [, p] of Editor.nodes(editor, {

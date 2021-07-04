@@ -32,7 +32,7 @@ export enum Marks {
   LineThrough = "line-through",
   Color = "color",
   BGColor = "backgroundColor",
-  TextAlign = 'textAlign'
+  TextAlign = "textAlign",
 }
 
 export type CustomElement = {
@@ -42,14 +42,11 @@ export type CustomElement = {
   content?: string; // Link组件的参数
   colSpan?: number; // td属性
   rowSpan?: number; // td 属性
+  width?: number; // td样式属性
+  height?: number; // td样式属性
   selected?: boolean; // td是否被选中
   canTdEdit?: boolean; // td是否可以编辑
   liColor?: string; // li color
-  preSelectedTdPos?: {
-    // tbody的属性，上一次选中的td在tdMap中的位置
-    row: number;
-    col: number;
-  };
   textAlign?: "left" | "right" | "center"; // textWrapper的属性
   tdMap?: any; // 用于计算tdMap
   children: (CustomText | CustomElement)[];

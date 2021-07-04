@@ -6,11 +6,12 @@ import {
   Button as AntButton,
   Dropdown,
   Tooltip,
+  Popover,
   Row,
   Select,
   Divider,
 } from "antd";
-import { Editor, Transforms, Element, Range } from "slate";
+import { Editor, Transforms, Element, Range, Text } from "slate";
 import { ReactEditor, useSlate, useSlateStatic } from "slate-react";
 import { CET, EditorType, Marks } from "../common/Defines";
 import { ListLogic } from "./ListComp";
@@ -18,7 +19,7 @@ import { TableLogic } from "../comps/Table";
 import { utils } from "../common/utils";
 import _ from "lodash";
 import { TdLogic } from "./Td";
-import {
+import Icon, {
   BgColorsOutlined,
   BoldOutlined,
   SaveOutlined,
@@ -53,6 +54,26 @@ import { EditorContext } from "../RichEditor";
 import { useEffect } from "react";
 
 const calcStatusDelay = 50;
+
+export const cleanFormat = (editor: EditorType) => {
+  const tds = TableLogic.getSelectedTds(editor);
+  if (tds.length > 0) {
+    for (const td of tds) {
+      Transforms.unsetNodes(editor, Object.values(Marks), { at: td[1] });
+    }
+    return;
+  }
+
+  const all = Editor.nodes(editor, {
+    mode: "lowest",
+    match(n) {
+      return utils.isTextWrapper(n) || Text.isText(n);
+    },
+  });
+  for (const el of all) {
+    Transforms.unsetNodes(editor, Object.values(Marks), { at: el[1] });
+  }
+};
 
 const ColorPicker: React.FC<{
   title: string;
@@ -159,8 +180,6 @@ const ColorPickerCore: React.FC<{
         color={color.hex}
         onChange={(color) => {
           setColor(color);
-        }}
-        onChangeComplete={(color) => {
           props?.onChange?.(color.hex);
         }}
       ></CompactPicker>
@@ -379,7 +398,7 @@ const CopyFormat: React.FC<{}> = (props) => {
   const [disabled, setDisabled] = useState(false);
   const ref = useRef<any>({
     isDisabled: _.debounce(() => {
-      const isNotOnlyOne = TableLogic.getSelectedTdsSize() > 1;
+      const isNotOnlyOne = TableLogic.getSelectedTdsSize(editor) > 1;
       const td = TableLogic.getFirstSelectedTd(editor);
       setDisabled(!(editor.selection != null || (td && !isNotOnlyOne)));
     }, calcStatusDelay),
@@ -391,7 +410,7 @@ const CopyFormat: React.FC<{}> = (props) => {
 
   const copyMark = () => {
     try {
-      const isNotOnlyOne = TableLogic.getSelectedTdsSize() > 1;
+      const isNotOnlyOne = TableLogic.getSelectedTdsSize(editor) > 1;
       const td = TableLogic.getFirstSelectedTd(editor);
       if (td && !isNotOnlyOne && Element.isElement(td[0])) {
         setSavedMarks(td[0] || null);
@@ -421,6 +440,167 @@ const CopyFormat: React.FC<{}> = (props) => {
     >
       <FormatPainterOutlined />
     </StaticButton>
+  );
+};
+
+const InsertTableButton: React.FC<{
+  title: string;
+  onChange?: (color?: string) => void;
+  icon?: any;
+}> = (props) => {
+  const editor = useSlateStatic();
+  const [visible, setVisible] = useState(false);
+  const [counts, setCounts] = useState<string>("");
+  const tableDom = useRef<any>();
+
+  const rowCount = 10,
+    cellCount = 10;
+
+  const tdMouseEnter = (e: any) => {
+    const table: any = tableDom.current;
+    const td = e.target;
+    const tr = e.target.parentNode;
+    if (!table || !td || !tr) return;
+
+    Array.from(table.querySelectorAll("td")).forEach((td: any) => {
+      td.style.backgroundColor = "unset";
+    });
+    const trs = Array.from(table.querySelectorAll("tr"));
+
+    for (let i = 0; i <= tr.rowIndex; i++) {
+      const nowTr: any = trs[i];
+      const tds: any = Array.from(nowTr.querySelectorAll("td"));
+      for (let j = 0; j <= td.cellIndex; j++) {
+        const nowTd = tds[j];
+        nowTd.style.backgroundColor = "rgba(180,215,255,.7)";
+      }
+    }
+
+    setCounts(`${td.cellIndex + 1}x${tr.rowIndex + 1}`);
+  };
+
+  const addTable = () => {
+    const cellCount = Number(counts.split("x")[0]);
+    const rowCount = Number(counts.split("x")[1]);
+    if (!Number.isInteger(cellCount) || !Number.isInteger(rowCount)) return;
+
+    ReactEditor.focus(editor);
+
+    if (!editor.selection) return;
+
+    const [tw] = Editor.nodes(editor, {
+      mode: "lowest",
+      match(n) {
+        return utils.isTextWrapper(n);
+      },
+    });
+    if (!tw) return;
+    const twDom = ReactEditor.toDOMNode(editor, tw[0]);
+    const parent = twDom.offsetParent;
+    if (!parent) return;
+    const tableWidth = twDom.offsetWidth - 2;
+
+    Transforms.insertNodes(editor, {
+      type: CET.TABLE,
+      children: [
+        {
+          type: CET.TBODY,
+          children: new Array(rowCount).fill("0").map(() => {
+            return {
+              type: CET.TR,
+              children: new Array(cellCount).fill("0").map(() => {
+                return {
+                  type: CET.TD,
+                  width: tableWidth / cellCount,
+                  children: [
+                    {
+                      type: CET.DIV,
+                      children: [{ text: "" }],
+                    },
+                  ],
+                };
+              }),
+            };
+          }),
+        },
+      ],
+    });
+
+    Transforms.deselect(editor);
+    setVisible(false);
+  };
+
+  return (
+    <div
+      onMouseLeave={() => {
+        setVisible(false);
+      }}
+    >
+      <Dropdown
+        placement="bottomCenter"
+        overlayStyle={{ zIndex: 999 }}
+        visible={visible}
+        overlay={() => {
+          return (
+            <div
+              className="cyEditor__toolbar__talePanelWrapper"
+              style={{
+                width: 200,
+                padding: 8,
+                display: "flex",
+                justifyContent: "flex-start",
+                backgroundColor: "white",
+                flexDirection: "column",
+              }}
+            >
+              {visible ? (
+                <table border="1" ref={tableDom}>
+                  <tbody>
+                    {new Array(rowCount).fill(0).map((item, index) => {
+                      return (
+                        <tr key={index}>
+                          {new Array(cellCount).fill(0).map((item, index) => {
+                            return (
+                              <td
+                                key={index}
+                                onMouseEnter={tdMouseEnter}
+                                onClick={addTable}
+                              ></td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : null}
+              <div style={{ textAlign: "right" }}>{counts}</div>
+            </div>
+          );
+        }}
+        trigger={["click"]}
+        getPopupContainer={(triggerNode) =>
+          triggerNode.parentElement || document.body
+        }
+      >
+        <Tooltip
+          title={props.title}
+          zIndex={99}
+          mouseLeaveDelay={0}
+          mouseEnterDelay={0}
+        >
+          <AntButton
+            type="text"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setVisible(true);
+            }}
+          >
+            {props.icon}
+          </AntButton>
+        </Tooltip>
+      </Dropdown>
+    </div>
   );
 };
 
@@ -775,6 +955,36 @@ export const ToolBar: React.FC<{}> = (props) => {
           <CopyFormat></CopyFormat>
         </Col>
         <Col>
+          <StaticButton
+            title="清除格式"
+            mousedownFunc={() => {
+              cleanFormat(editor);
+            }}
+          >
+            <Icon
+              component={() => (
+                <svg
+                  viewBox="0 0 1084 1024"
+                  version="1.1"
+                  xmlns="http://www.w3.org/2000/svg"
+                  p-id="853"
+                  width="14"
+                  height="14"
+                >
+                  <defs>
+                    <style type="text/css"></style>
+                  </defs>
+                  <path
+                    d="M719.329882 422.249412l-255.578353 255.578353 234.315295 234.315294 255.518117-255.638588-234.315294-234.255059zM59.151059 315.813647l298.164706-298.164706a60.235294 60.235294 0 0 1 85.172706 0l596.329411 596.329412a60.235294 60.235294 0 0 1 0 85.172706l-298.164706 298.164706a60.235294 60.235294 0 0 1-85.232941 0l-596.329411-596.329412a60.235294 60.235294 0 0 1 0-85.172706z"
+                    fill="#333333"
+                    p-id="854"
+                  ></path>
+                </svg>
+              )}
+            ></Icon>
+          </StaticButton>
+        </Col>
+        <Col>
           <ColorPicker
             title="字体颜色"
             onChange={(color) => {
@@ -906,14 +1116,10 @@ export const ToolBar: React.FC<{}> = (props) => {
           />
         </Col>
         <Col>
-          <StaticButton
+          <InsertTableButton
             title="表格"
-            mousedownFunc={() => {
-              insertTable();
-            }}
-          >
-            <TableOutlined />
-          </StaticButton>
+            icon={<TableOutlined />}
+          ></InsertTableButton>
         </Col>
         <Col>
           <StaticButton

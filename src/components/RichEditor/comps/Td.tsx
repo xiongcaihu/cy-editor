@@ -2,6 +2,12 @@
 import { Editor, Node, Element, Transforms, Path, NodeEntry } from "slate";
 import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
 import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
+import {
+  getPreSelectedTdPos,
+  setEditingTdsPath,
+  setPreSelectedTdPos,
+  setStrPathSetOfSelectedTds,
+} from "../common/globalStore";
 import { TableLogic } from "./Table";
 
 export type customTdShape = {
@@ -132,18 +138,33 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       cells.push(tdDom);
     }
 
-    // const tableInitWidth = parseInt(window.getComputedStyle(table).width);
+    // const tableInitWidth = table.offsetWidth;
 
     const mouseMoveHandler = function (e: any) {
       const dx = e.clientX - x;
       cells.forEach((c) => {
-        c.style.minWidth =
+        c.style.maxWidth = c.style.width = c.style.minWidth =
           (c.initX + dx < tdMinWidth ? tdMinWidth : c.initX + dx) + "px";
       });
       // table.style.width = tableInitWidth + dx + "px";
     };
 
     const mouseUpHandler = function () {
+      const trs = Array.from(table.querySelectorAll(":scope>tbody>tr"));
+      trs.forEach((tr: any, rowIndex) => {
+        const tds = Array.from(tr.querySelectorAll(":scope>td"));
+        tds.forEach((td: any, cellIndex) => {
+          const width = parseInt(td.style.minWidth);
+          const tdNode = ReactEditor.toSlateNode(editor, td);
+          if (Element.isElement(tdNode) && tdNode.width != width) {
+            Transforms.setNodes(
+              editor,
+              { width },
+              { at: [...tbody[1], rowIndex, cellIndex] }
+            );
+          }
+        });
+      });
       document.removeEventListener("mousemove", mouseMoveHandler);
       document.removeEventListener("mouseup", mouseUpHandler);
     };
@@ -231,6 +252,21 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     };
 
     const mouseUpHandler = function () {
+      const trs = Array.from(table.querySelectorAll(":scope>tbody>tr"));
+      trs.forEach((tr: any, rowIndex) => {
+        const tds = Array.from(tr.querySelectorAll(":scope>td"));
+        tds.forEach((td: any, cellIndex) => {
+          const height = parseInt(td.style.height);
+          const tdNode = ReactEditor.toSlateNode(editor, td);
+          if (Element.isElement(tdNode) && tdNode.height != height) {
+            Transforms.setNodes(
+              editor,
+              { height },
+              { at: [...tbody[1], rowIndex, cellIndex] }
+            );
+          }
+        });
+      });
       document.removeEventListener("mousemove", mouseMoveHandler);
       document.removeEventListener("mouseup", mouseUpHandler);
     };
@@ -251,11 +287,10 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       rowSpan={element.rowSpan}
       style={{
         padding: 4,
-        minWidth: tdMinWidth,
-        width: tdMinWidth,
-        maxHeight: tdMinWidth,
-        minHeight: tdMinHeight,
-        height: tdMinHeight,
+        minWidth: element.width || tdMinWidth,
+        maxWidth: element.width || tdMinWidth,
+        width: element.width || tdMinWidth,
+        height: element.height || tdMinHeight,
         position: "relative",
         cursor: element.canTdEdit ? "inherit" : "cell",
         color: element[Marks.Color] || "unset",
@@ -335,25 +370,10 @@ export const TdLogic = {
     );
     Transforms.select(editor, td[1]);
 
-    const tbody = Editor.above(editor, {
-      at: td[1],
-      mode: "lowest",
-      match(n) {
-        return Element.isElement(n) && n.type == CET.TBODY;
-      },
+    setPreSelectedTdPos({
+      row: td[1][td[1].length - 2],
+      col: td[1][td[1].length - 1],
     });
-    if (!tbody) return;
-
-    Transforms.setNodes(
-      editor,
-      {
-        preSelectedTdPos: {
-          row: td[1][td[1].length - 2],
-          col: td[1][td[1].length - 1],
-        },
-      },
-      { at: tbody[1] }
-    );
   },
   getTdMap(tbody: NodeEntry): getTdMapReturn {
     const trs = tbody[0].children as Element[];
@@ -459,32 +479,24 @@ export const TdLogic = {
     return td;
   },
   deselectAllTd(editor: EditorType) {
-    const selectedTdsPath = TableLogic.getSelectedTdsPath();
+    const selectedTdsPath = TableLogic.getSelectedTdsPath(editor);
     for (const path of selectedTdsPath) {
       Transforms.unsetNodes(editor, ["selected", "start", "canTdEdit"], {
         at: path,
       });
     }
+    setStrPathSetOfSelectedTds(new Set());
 
-    const editingTdsPath = TableLogic.getEditingTdsPath();
+    const editingTdsPath = TableLogic.getEditingTdsPath(editor);
     for (const tdStrPath of editingTdsPath) {
       const path: Path = tdStrPath.split(",").map((o) => +o);
       Transforms.unsetNodes(editor, ["selected", "start", "canTdEdit"], {
         at: path,
       });
     }
+    setEditingTdsPath(new Set());
 
-    Transforms.unsetNodes(editor, ["preSelectedTdPos"], {
-      at: [],
-      mode: "all",
-      match(n) {
-        return (
-          Element.isElement(n) &&
-          n.type == CET.TBODY &&
-          n.preSelectedTdPos != null
-        );
-      },
-    });
+    setPreSelectedTdPos(null);
   },
   /**
    * 找到下一个位置的td
@@ -505,7 +517,7 @@ export const TdLogic = {
     });
     if (!tbody || !Element.isElement(tbody[0])) return;
     const { tdMap } = TdLogic.getTdMap(tbody);
-    const preSelectedTdPos = tbody[0].preSelectedTdPos;
+    const preSelectedTdPos = getPreSelectedTdPos();
     if (!preSelectedTdPos) return;
 
     let row, col;
@@ -548,18 +560,10 @@ export const TdLogic = {
     }
     const targetTd = tdMap[targetRow][targetCol];
 
-    Transforms.setNodes(
-      editor,
-      {
-        preSelectedTdPos: {
-          row: targetRow,
-          col: targetCol,
-        },
-      },
-      {
-        at: tbody[1],
-      }
-    );
+    setPreSelectedTdPos({
+      row: targetRow,
+      col: targetCol,
+    });
     Transforms.setNodes(
       editor,
       {
@@ -583,24 +587,10 @@ export const TdLogic = {
       },
       { at: td[1] }
     );
-    const tbody = Editor.above(editor, {
-      at: td[1],
-      mode: "lowest",
-      match(n) {
-        return Element.isElement(n) && n.type == CET.TBODY;
-      },
+    setPreSelectedTdPos({
+      row: td[1][td[1].length - 2],
+      col: td[1][td[1].length - 1],
     });
-    if (!tbody) return;
-    Transforms.setNodes(
-      editor,
-      {
-        preSelectedTdPos: {
-          row: td[1][td[1].length - 2],
-          col: td[1][td[1].length - 1],
-        },
-      },
-      { at: tbody[1] }
-    );
   },
   clearTd(editor: EditorType) {
     // 清空带有selected属性的td

@@ -1,5 +1,5 @@
 /* eslint-disable eqeqeq */
-import { Node, Transforms, Editor, Element } from "slate";
+import { Node, Transforms, Editor } from "slate";
 import { CET, EditorType } from "../../common/Defines";
 import { utils } from "../../common/utils";
 import { ListLogic } from "../../comps/ListComp";
@@ -14,14 +14,7 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
   const elementType = utils.getFirstAboveElementType(editor);
 
   const getEditingTd = () => {
-    const [td] = Editor.nodes(editor, {
-      at: [],
-      mode: "lowest",
-      match(n) {
-        return Element.isElement(n) && n.canTdEdit === true;
-      },
-    });
-    return td;
+    return TableLogic.getEditingTds(editor)?.[0];
   };
 
   // 如果默认事件没有被组件拦截掉，那么在这里重新定义拦截逻辑

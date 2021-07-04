@@ -70,7 +70,7 @@ const EditorComp: EditorCompShape = () => {
    */
   // const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
   const [editor] = useState(withCyWrap(withReact(createEditor())));
-  const [value, setValue] = useState<StateShape>(TableLogic.testModel);
+  const [value, setValue] = useState<StateShape>(TableLogic.model);
   const ref = useRef<{
     preUndos: Operation[][];
     preSelection: Selection | null;

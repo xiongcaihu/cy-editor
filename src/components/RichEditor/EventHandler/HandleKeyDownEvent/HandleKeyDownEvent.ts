@@ -7,7 +7,7 @@ import { handleRangeExpand } from "./handleRangeExpand";
 import { getStrPathSetOfSelectedTds } from "../../common/globalStore";
 
 export const HandleKeyDownEvent = (e: any, editor: EditorType) => {
-  const selectedTds = getStrPathSetOfSelectedTds();
+  const selectedTds = getStrPathSetOfSelectedTds(editor);
 
   if (selectedTds.size > 0) {
     handleSelectedTd(e, editor);

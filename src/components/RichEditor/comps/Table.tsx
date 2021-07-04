@@ -52,6 +52,28 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
   const { savedMarks, setSavedMarks } = useContext(EditorContext);
 
   const editor = useSlateStatic();
+
+  // 找到需要取消选择和新选择的td的完整的path
+  const findPath = (nowSelectedTds: Path[], preSelectedTds: Path[]) => {
+    const nowSelectedTdsPathSet = new Set(
+      nowSelectedTds.map((o) => o.slice(o.length - 2).join(","))
+    );
+
+    const preSelectedTdsPathSet = new Set(
+      preSelectedTds.map((o) => o.slice(o.length - 2).join(","))
+    );
+
+    const deselectedPath = preSelectedTds.filter((path) => {
+      return !nowSelectedTdsPathSet.has(path.slice(path.length - 2).join(","));
+    });
+
+    const newSelectedPath = nowSelectedTds.filter((path) => {
+      return !preSelectedTdsPathSet.has(path.slice(path.length - 2).join(","));
+    });
+
+    return { deselectedPath, newSelectedPath };
+  };
+
   const selectTd = _.debounce((pa: Point, pb: Point) => {
     const commonNode = Node.common(editor, pa.path, pb.path);
     if (!commonNode) return;
@@ -78,14 +100,26 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     if (!paTd) return;
 
     // 取消选择上一次选中的td
-    ref.current.lastSelectedPaths.forEach((p) => {
-      Transforms.unsetNodes(editor, ["selected", "start"], {
-        at: p,
+    const deselectTds = () => {
+      ref.current.lastSelectedPaths.forEach((p) => {
+        Transforms.unsetNodes(editor, ["selected", "start"], {
+          at: p,
+        });
       });
+      ref.current.lastSelectedPaths = [];
+    };
+
+    ref.current.lastSelectedPaths.forEach((p) => {
+      const td = Editor.node(editor, p);
+      if (td && Element.isElement(td[0]) && td[0].start == true) {
+        Transforms.unsetNodes(editor, ["start"], {
+          at: p,
+        });
+      }
     });
-    ref.current.lastSelectedPaths = [];
 
     if (Path.equals(paTd[1], pbTd[1])) {
+      deselectTds();
       // 说明选区在一个td里
       Transforms.setNodes(
         editor,
@@ -97,8 +131,10 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     if (
       !Element.isElement(commonNode[0]) ||
       (commonNode[0].type != CET.TBODY && commonNode[0].type != CET.TR)
-    )
+    ) {
+      deselectTds();
       return;
+    }
 
     // 找到两个点同一层级的td
     const tda = Editor.above(editor, {
@@ -139,13 +175,26 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
 
     const selectedTds = TdLogic.getSelectedTdInTdMap(tbody);
     if (selectedTds == null) return;
+    const nowTdsPath = Array.from(selectedTds.keys()).map((o) => [
+      ...tbody[1],
+      o.originRow,
+      o.originCol,
+    ]);
 
-    const tbodyPath = tbody[1];
-    for (const td of selectedTds.keys()) {
-      const tdPath = [...tbodyPath, td.originRow, td.originCol];
-      Transforms.setNodes(editor, { selected: true }, { at: tdPath });
-      ref.current.lastSelectedPaths.push(tdPath);
+    const { deselectedPath, newSelectedPath } = findPath(
+      nowTdsPath,
+      ref.current.lastSelectedPaths
+    );
+
+    for (const path of newSelectedPath) {
+      Transforms.setNodes(editor, { selected: true }, { at: path });
     }
+
+    for (const path of deselectedPath) {
+      Transforms.unsetNodes(editor, ["selected", "start"], { at: path });
+    }
+
+    ref.current.lastSelectedPaths = nowTdsPath;
   }, 5);
 
   const mousedownFunc = (e: any) => {
@@ -234,12 +283,12 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         onMouseUp={() => {
           if (savedMarks) {
             const copyMarks: any = {};
-            const hasSelectTd = TableLogic.getSelectedTdsSize();
+            const hasSelectTd = TableLogic.getSelectedTdsSize(editor);
             for (const key of Object.values(Marks)) {
               copyMarks[key] = savedMarks[key];
             }
             if (hasSelectTd > 0) {
-              const selectedTdsPath = TableLogic.getSelectedTdsPath();
+              const selectedTdsPath = TableLogic.getSelectedTdsPath(editor);
               for (const path of selectedTdsPath) {
                 Transforms.setNodes(editor, copyMarks, {
                   at: path,
@@ -292,7 +341,7 @@ export const TableLogic = {
           children: new Array(10).fill(0).map((item, fatherIndex) => {
             return {
               type: CET.TR,
-              children: new Array(10).fill(0).map((item, index) => {
+              children: new Array(20).fill(0).map((item, index) => {
                 return {
                   type: CET.TD,
                   children: [
@@ -860,7 +909,7 @@ export const TableLogic = {
     }
   },
   mergeTd(editor: EditorType) {
-    const isOnlyOne = TableLogic.getSelectedTdsSize() == 1;
+    const isOnlyOne = TableLogic.getSelectedTdsSize(editor) == 1;
 
     const selectedTd = TableLogic.getFirstSelectedTd(editor);
     if (!selectedTd || isOnlyOne == null) return;
@@ -967,8 +1016,8 @@ export const TableLogic = {
     );
     TableLogic.resetSelectedTds(editor);
   },
-  getSelectedTdsPath() {
-    const selectedTds = getStrPathSetOfSelectedTds();
+  getSelectedTdsPath(editor: EditorType) {
+    const selectedTds = getStrPathSetOfSelectedTds(editor);
     const pathArr = [];
     for (const tdStrPath of selectedTds) {
       const path: Path = tdStrPath.split(",").map((o) => +o);
@@ -977,7 +1026,7 @@ export const TableLogic = {
     return pathArr;
   },
   getSelectedTds(editor: EditorType) {
-    const selectedTds = getStrPathSetOfSelectedTds();
+    const selectedTds = getStrPathSetOfSelectedTds(editor);
     const tdArr = [];
     for (const tdStrPath of selectedTds) {
       const path: Path = tdStrPath.split(",").map((o) => +o);
@@ -987,7 +1036,7 @@ export const TableLogic = {
     return tdArr;
   },
   getFirstSelectedTd(editor: EditorType) {
-    const selectedTds = getStrPathSetOfSelectedTds();
+    const selectedTds = getStrPathSetOfSelectedTds(editor);
     const arr = Array.from(selectedTds).sort((a, b) =>
       a > b ? 1 : a === b ? 0 : -1
     );
@@ -998,7 +1047,7 @@ export const TableLogic = {
     return td;
   },
   getEditingTds(editor: EditorType) {
-    const editingTdsPath = getEditingTdsPath();
+    const editingTdsPath = getEditingTdsPath(editor);
     const arr = [];
     for (const tdStrPath of editingTdsPath) {
       const path: Path = tdStrPath.split(",").map((o) => +o);
@@ -1006,11 +1055,11 @@ export const TableLogic = {
     }
     return arr;
   },
-  getEditingTdsPath() {
-    return getEditingTdsPath();
+  getEditingTdsPath(editor: EditorType): Set<string> {
+    return getEditingTdsPath(editor);
   },
-  getSelectedTdsSize() {
-    return getStrPathSetOfSelectedTds().size;
+  getSelectedTdsSize(editor: EditorType) {
+    return getStrPathSetOfSelectedTds(editor).size;
   },
   resetSelectedTds(editor: EditorType) {
     const tdsPath = Array.from(
