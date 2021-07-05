@@ -68,9 +68,9 @@ const EditorComp: EditorCompShape = () => {
    * 解决live refresh问题的链接
    * https://github.com/ianstormtaylor/slate/issues/4081
    */
-  // const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
-  const [editor] = useState(withCyWrap(withReact(createEditor())));
-  const [value, setValue] = useState<StateShape>(TableLogic.model);
+  const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
+  // const [editor] = useState(withCyWrap(withReact(createEditor())));
+  const [value, setValue] = useState<StateShape>(TableLogic.tm2);
   const ref = useRef<{
     preUndos: Operation[][];
     preSelection: Selection | null;

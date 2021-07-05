@@ -1,4 +1,4 @@
-import { Editor } from "slate";
+import { Editor, Path } from "slate";
 import { EditorType } from "./Defines";
 
 type preSelectedTdPosShape = {
@@ -10,6 +10,9 @@ type globalStoreShape = {
   selectedTds: Set<string>;
   editingTdsPath: Set<string>;
   preSelectedTdPos: preSelectedTdPosShape;
+  copyedCellsPath: Path[] | null;
+  copyedMaxRow: number;
+  copyedMaxCol: number;
 };
 const globalStore: globalStoreShape = {
   selectedTds: new Set<string>(),
@@ -18,6 +21,34 @@ const globalStore: globalStoreShape = {
     row: 0,
     col: 0,
   },
+  copyedCellsPath: null,
+  copyedMaxRow: 0,
+  copyedMaxCol: 0,
+};
+
+export const getCopyedMaxRowAndCol = () => {
+  return {
+    copyedMaxRow: globalStore.copyedMaxRow,
+    copyedMaxCol: globalStore.copyedMaxCol,
+  };
+};
+
+export const setCopyedMaxRowAndCol = (value: {
+  copyedMaxRow: globalStoreShape["copyedMaxRow"];
+  copyedMaxCol: globalStoreShape["copyedMaxCol"];
+}) => {
+  globalStore.copyedMaxRow = value.copyedMaxRow;
+  globalStore.copyedMaxCol = value.copyedMaxCol;
+};
+
+export const setCopyedCellsPath = (
+  value: globalStoreShape["copyedCellsPath"]
+) => {
+  globalStore.copyedCellsPath = value;
+};
+
+export const getCopyedCellsPath = () => {
+  return globalStore.copyedCellsPath;
 };
 
 export const getPreSelectedTdPos = () => {
