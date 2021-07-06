@@ -52,6 +52,7 @@ import React, { useContext, useRef, useState } from "react";
 import { CompactPicker } from "react-color";
 import { EditorContext } from "../RichEditor";
 import { useEffect } from "react";
+import { slateToHtml } from "../common/slateToHtml";
 
 const calcStatusDelay = 50;
 
@@ -372,7 +373,7 @@ const MarkButton: React.FC<{
 
 const StaticButton: React.FC<{
   title: string;
-  mousedownFunc: () => void;
+  mousedownFunc: (e: any) => void;
   disabled?: boolean;
 }> = (props) => {
   return (
@@ -383,7 +384,7 @@ const StaticButton: React.FC<{
         disabled={props.disabled}
         onMouseDown={(e) => {
           e.preventDefault();
-          props.mousedownFunc();
+          props.mousedownFunc(e);
         }}
       >
         {props.children}
@@ -498,10 +499,11 @@ const InsertTableButton: React.FC<{
     const twDom = ReactEditor.toDOMNode(editor, tw[0]);
     const parent = twDom.offsetParent;
     if (!parent) return;
-    const tableWidth = twDom.offsetWidth - 2;
+    const tableWrapperWidth = twDom.offsetWidth - 2;
 
     Transforms.insertNodes(editor, {
       type: CET.TABLE,
+      wrapperWidthWhenCreated: tableWrapperWidth,
       children: [
         {
           type: CET.TBODY,
@@ -511,7 +513,7 @@ const InsertTableButton: React.FC<{
               children: new Array(cellCount).fill("0").map(() => {
                 return {
                   type: CET.TD,
-                  width: tableWidth / cellCount,
+                  width: tableWrapperWidth / cellCount,
                   children: [
                     {
                       type: CET.DIV,
@@ -1255,6 +1257,21 @@ export const ToolBar: React.FC<{}> = (props) => {
             }}
           >
             <SaveOutlined />
+          </StaticButton>
+        </Col>
+        <Col>
+          <StaticButton
+            title="输出内容HTML"
+            mousedownFunc={(e) => {
+              // const editorDom = e.nativeEvent.path.find((o: any) => o.className == "cyEditor");
+              // if(!editorDom) return;
+              // const content = editorDom.querySelector(':scope>.cyEditor__content');
+              // console.log(content.innerHTML);
+              console.log(slateToHtml(editor));
+            }}
+          >
+            <SaveOutlined />
+            (HTML)
           </StaticButton>
         </Col>
       </Row>

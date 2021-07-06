@@ -17,6 +17,8 @@ import { TableLogic } from "../comps/Table";
 import {
   getEditingTdsPath,
   getStrPathSetOfSelectedTds,
+  setCopyedCells,
+  setCopyedMaxRowAndCol,
 } from "../common/globalStore";
 
 export const withCyWrap = (editor: EditorType) => {
@@ -65,7 +67,7 @@ export const withCyWrap = (editor: EditorType) => {
         const savedEditingTds = getEditingTdsPath(editor);
         if (newProperties.canTdEdit === true) {
           savedEditingTds.add(path.join(","));
-        } else if (newProperties.canTdEdit == null) {
+        } else if (newProperties.canTdEdit === null) {
           savedEditingTds.delete(path.join(","));
         }
       }
@@ -77,13 +79,16 @@ export const withCyWrap = (editor: EditorType) => {
   // 在本编辑器复制的时候触发
   // dataTransfer 说明：https://developer.mozilla.org/zh-CN/docs/Web/API/DataTransfer
   editor.getFragment = () => {
+    setCopyedCells(null);
+    setCopyedMaxRowAndCol({ copyedAreaHeight: 0, copyedAreaWidth: 0 });
     // console.log("getFragment", getFragment());
-    return [
-      {
-        type: CET.DIV,
-        children: [{ text: "chenyu paste text" }],
-      },
-    ];
+    // return [
+    //   {
+    //     type: CET.DIV,
+    //     children: [{ text: "chenyu paste text" }],
+    //   },
+    // ];
+    return getFragment();
   };
 
   editor.insertBreak = () => {
@@ -232,7 +237,8 @@ export const withCyWrap = (editor: EditorType) => {
       ])
     );
     // newTransfer.setData("text/plain", "plan text");
-    return insertData(newTransfer);
+    return insertData(e);
+    // return insertData(newTransfer);
   };
 
   const normalizeList = _.debounce(() => {

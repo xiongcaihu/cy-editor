@@ -1,4 +1,5 @@
 /* eslint-disable eqeqeq */
+import { useEffect } from "react";
 import { Editor, Node, Element, Transforms, Path, NodeEntry } from "slate";
 import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
 import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
@@ -26,7 +27,7 @@ type getTdMapReturn = {
   startPoins: customTdShape[];
 };
 
-const tdMinWidth = 50;
+export const tdMinWidth = 100;
 const tdMinHeight = 30;
 
 export const TD: (props: RenderElementProps) => JSX.Element = ({

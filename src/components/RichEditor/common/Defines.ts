@@ -47,11 +47,16 @@ export type CustomElement = {
   selected?: boolean; // td是否被选中
   canTdEdit?: boolean; // td是否可以编辑
   liColor?: string; // li color
+  wrapperWidthWhenCreated?: number; // table创建时所在的容器宽度，用于动态计算td的宽度
   textAlign?: "left" | "right" | "center"; // textWrapper的属性
   tdMap?: any; // 用于计算tdMap
   children: (CustomText | CustomElement)[];
 };
-export type CustomText = { text: string; [key: string]: any };
+export type CustomText = { text: string; [key: string]: any } & Partial<
+  {
+    [key in Marks]: any;
+  }
+>;
 export type EditorType = BaseEditor & ReactEditor & HistoryEditor;
 
 export type StateShape = Parameters<typeof Slate>[0]["value"];

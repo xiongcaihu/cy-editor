@@ -10,14 +10,7 @@ import {
   useState,
   createContext,
 } from "react";
-import {
-  createEditor,
-  Transforms,
-  Editor,
-  Operation,
-  Selection,
-  Text,
-} from "slate";
+import { createEditor, Transforms, Editor, Operation, Selection } from "slate";
 import { Slate, Editable, withReact } from "slate-react";
 import { withHistory } from "slate-history";
 import {
@@ -70,7 +63,7 @@ const EditorComp: EditorCompShape = () => {
    */
   const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
   // const [editor] = useState(withCyWrap(withReact(createEditor())));
-  const [value, setValue] = useState<StateShape>(TableLogic.tm2);
+  const [value, setValue] = useState<StateShape>(TableLogic.tm3);
   const ref = useRef<{
     preUndos: Operation[][];
     preSelection: Selection | null;
@@ -158,7 +151,7 @@ const EditorComp: EditorCompShape = () => {
     ref.current.preSelection = editor.selection;
   };
   const handleMouseDown = (e: any) => {
-    if (!e.nativeEvent.target) return;
+    console.log('editor mousedown')
     // 取消所有表格的选中状态，因为表格部分已经阻止了自己的mousedown事件传递到父组件，所以只要能在这里触发的，都肯定不是在表格里
     TdLogic.deselectAllTd(editor);
   };
@@ -181,6 +174,7 @@ const EditorComp: EditorCompShape = () => {
         >
           {MyToolBar}
           <div
+            className="cyEditor__content"
             style={{
               overflow: "auto",
               height: window.screen.availHeight - 200,

@@ -1,4 +1,4 @@
-import { Editor, Path } from "slate";
+import { Editor, NodeEntry, Path } from "slate";
 import { EditorType } from "./Defines";
 
 type preSelectedTdPosShape = {
@@ -11,8 +11,9 @@ type globalStoreShape = {
   editingTdsPath: Set<string>;
   preSelectedTdPos: preSelectedTdPosShape;
   copyedCellsPath: Path[] | null;
-  copyedMaxRow: number;
-  copyedMaxCol: number;
+  copyedAreaHeight: number; // 复制的区域的高度
+  copyedAreaWidth: number; // 复制的区域的宽度
+  copyedCells: NodeEntry[] | null;
 };
 const globalStore: globalStoreShape = {
   selectedTds: new Set<string>(),
@@ -22,23 +23,32 @@ const globalStore: globalStoreShape = {
     col: 0,
   },
   copyedCellsPath: null,
-  copyedMaxRow: 0,
-  copyedMaxCol: 0,
+  copyedAreaHeight: 0,
+  copyedAreaWidth: 0,
+  copyedCells: [],
+};
+
+export const setCopyedCells = (value: globalStoreShape["copyedCells"]) => {
+  globalStore.copyedCells = value;
+};
+
+export const getCopyedCells = () => {
+  return globalStore.copyedCells;
 };
 
 export const getCopyedMaxRowAndCol = () => {
   return {
-    copyedMaxRow: globalStore.copyedMaxRow,
-    copyedMaxCol: globalStore.copyedMaxCol,
+    copyedAreaHeight: globalStore.copyedAreaHeight,
+    copyedAreaWidth: globalStore.copyedAreaWidth,
   };
 };
 
 export const setCopyedMaxRowAndCol = (value: {
-  copyedMaxRow: globalStoreShape["copyedMaxRow"];
-  copyedMaxCol: globalStoreShape["copyedMaxCol"];
+  copyedAreaHeight: globalStoreShape["copyedAreaHeight"];
+  copyedAreaWidth: globalStoreShape["copyedAreaWidth"];
 }) => {
-  globalStore.copyedMaxRow = value.copyedMaxRow;
-  globalStore.copyedMaxCol = value.copyedMaxCol;
+  globalStore.copyedAreaHeight = value.copyedAreaHeight;
+  globalStore.copyedAreaWidth = value.copyedAreaWidth;
 };
 
 export const setCopyedCellsPath = (

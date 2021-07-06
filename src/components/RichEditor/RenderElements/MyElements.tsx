@@ -19,6 +19,14 @@ declare module "slate" {
   }
 }
 
+const h1234Style = {
+  marginBottom: 0,
+};
+
+const olulStyle = {
+  marginBottom: 0,
+};
+
 export const MyElements: (props: RenderElementProps) => JSX.Element = (
   props
 ) => {
@@ -29,9 +37,17 @@ export const MyElements: (props: RenderElementProps) => JSX.Element = (
 
   switch (element.type) {
     case CET.NUMBER_LIST:
-      return <ol {...attributes}>{children}</ol>;
+      return (
+        <ol {...attributes} style={{ ...olulStyle }}>
+          {children}
+        </ol>
+      );
     case CET.NORMAL_LIST:
-      return <ul {...attributes}>{children}</ul>;
+      return (
+        <ul {...attributes} style={{ ...olulStyle }}>
+          {children}
+        </ul>
+      );
     case CET.LIST_ITEM:
       return (
         <li {...attributes} style={{ color: element.liColor || "unset" }}>
@@ -46,25 +62,25 @@ export const MyElements: (props: RenderElementProps) => JSX.Element = (
       );
     case CET.H1:
       return (
-        <h1 {...attributes} style={style}>
+        <h1 {...attributes} style={{ ...style, ...h1234Style }}>
           {children}
         </h1>
       );
     case CET.H2:
       return (
-        <h2 {...attributes} style={style}>
+        <h2 {...attributes} style={{ ...style, ...h1234Style }}>
           {children}
         </h2>
       );
     case CET.H3:
       return (
-        <h3 {...attributes} style={style}>
+        <h3 {...attributes} style={{ ...style, ...h1234Style }}>
           {children}
         </h3>
       );
     case CET.H4:
       return (
-        <h4 {...attributes} style={style}>
+        <h4 {...attributes} style={{ ...style, ...h1234Style }}>
           {children}
         </h4>
       );
