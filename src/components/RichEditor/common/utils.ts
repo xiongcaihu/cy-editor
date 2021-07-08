@@ -154,25 +154,28 @@ export const utils = {
     }
 
     // 部分删除，此部分最耗费性能，因为考虑到列表和表格可能杂糅在一起，所以需要从textWrapper一个个处理
-    for (const [, p] of Editor.nodes(editor, {
-      reverse: true,
-      universal: true,
-      match(n, p) {
-        return Text.isText(n) || Editor.isInline(editor, n);
-      },
-    })) {
+    const texts = Array.from(
+      Editor.nodes(editor, {
+        reverse: true,
+        match(n, p) {
+          return Text.isText(n) || Editor.isInline(editor, n);
+        },
+      })
+    );
+    for (const [, p] of texts) {
       const textWrapper = utils.getParent(editor, p);
       if (textWrapper.length > 0 && utils.isTextWrapper(textWrapper[0])) {
         const tRange = Editor.range(editor, textWrapper[1]);
         const inte =
           editor.selection && Range.intersection(editor.selection, tRange);
         if (!inte) continue;
-        const [tParent] = utils.getParent(editor, textWrapper[1]);
-        const isInTd = TableLogic.isTd(tParent);
+        const [twParent] = utils.getParent(editor, textWrapper[1]);
+        const isInTd = TableLogic.isTd(twParent);
         // 如果整个被包含，那么直接删除textWrapper
         if (
           Range.equals(inte, tRange) &&
-          !(isInTd && tParent.children.length == 1)
+          !(isInTd && twParent.children.length == 1) &&
+          !Path.equals(texts[0][1], p)
         ) {
           Transforms.removeNodes(editor, {
             at: textWrapper[1],

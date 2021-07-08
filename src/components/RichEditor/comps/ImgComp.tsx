@@ -95,6 +95,10 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
     }, 0);
   };
 
+  const showBigImg = () => {
+    window.open(element.url || testImg);
+  };
+
   return (
     <div
       {...attributes}
@@ -105,9 +109,10 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         marginRight: 5,
         marginLeft: 5,
         verticalAlign: "bottom",
-        boxShadow: state.showTool || selected ? "0 0 0 3px #B4D5FF" : "none",
+        boxShadow: state.showTool || selected ? "0 0 0 3px rgba(180,215,255,.7)" : "none",
       }}
       onClick={toggleShowTool}
+      onDoubleClick={showBigImg}
     >
       <Resizable
         enable={enableResize()}
@@ -123,39 +128,6 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         ></img>
         {children}
       </Resizable>
-      <div
-        data-cyimgcomptool="1"
-        style={{
-          position: "absolute",
-          display: state.showTool ? "block" : "none",
-          left: 0,
-          width: 300,
-          top: "100%",
-          fontSize: 12,
-          border: "1px solid",
-          color: "unset",
-        }}
-        contentEditable={false}
-      >
-        <button
-          onMouseDown={(e) => {
-            e.preventDefault();
-            window.open(element.url || testImg);
-          }}
-        >
-          查看大图
-        </button>
-        &nbsp;
-        <button
-          onMouseDown={(e) => {
-            e.preventDefault();
-            const path = ReactEditor.findPath(editor, element);
-            Transforms.removeNodes(editor, { at: path });
-          }}
-        >
-          删除
-        </button>
-      </div>
     </div>
   );
 };

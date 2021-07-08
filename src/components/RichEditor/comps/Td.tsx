@@ -1,10 +1,17 @@
 /* eslint-disable eqeqeq */
 import { useEffect } from "react";
 import { Editor, Node, Element, Transforms, Path, NodeEntry } from "slate";
-import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
+import {
+  ReactEditor,
+  RenderElementProps,
+  useReadOnly,
+  useSlateStatic,
+} from "slate-react";
 import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
 import {
+  getEditingTdsPath,
   getPreSelectedTdPos,
+  getStrPathSetOfSelectedTds,
   setEditingTdsPath,
   setPreSelectedTdPos,
   setStrPathSetOfSelectedTds,
@@ -27,8 +34,8 @@ type getTdMapReturn = {
   startPoins: customTdShape[];
 };
 
-export const tdMinWidth = 100;
-const tdMinHeight = 30;
+export let tdMinWidth = 100;
+export const tdMinHeight = 30;
 
 export const TD: (props: RenderElementProps) => JSX.Element = ({
   attributes,
@@ -36,9 +43,57 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
   children,
 }) => {
   const editor = useSlateStatic();
+  const readOnly = useReadOnly();
+
+  useEffect(() => {
+    const path = ReactEditor.findPath(editor, element);
+    if (element.width == null || element.height == null) {
+      Transforms.setNodes(
+        editor,
+        {
+          width: element.width || tdMinWidth,
+          height: element.height || tdMinHeight,
+        },
+        {
+          at: path,
+        }
+      );
+    }
+    // 销毁时，删除状态
+    return () => {
+      const path = ReactEditor.findPath(editor, element);
+      const pathStr = path.join(",");
+      const selectedTds = getStrPathSetOfSelectedTds(editor);
+      const editingTds = getEditingTdsPath(editor);
+      selectedTds.delete(pathStr);
+      editingTds.delete(pathStr);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const path = ReactEditor.findPath(editor, element);
+    const pathStr = path.join(",");
+    const selectedTds = getStrPathSetOfSelectedTds(editor);
+    const editingTds = getEditingTdsPath(editor);
+    const { canTdEdit: nowEdit, selected: nowSelected } = element;
+
+    if (nowEdit === true) {
+      editingTds.add(pathStr);
+    } else {
+      editingTds.delete(pathStr);
+    }
+
+    if (nowSelected === true) {
+      selectedTds.add(pathStr);
+    } else {
+      selectedTds.delete(pathStr);
+    }
+  });
 
   const tdMouseDown = (e: any) => {
-    if (["resizer", "columnSelector"].includes(e.target.className)) return;
+    if (["resizer", "columnSelector"].includes(e.target.className) || readOnly)
+      return;
     const selfDom = attributes.ref.current;
     if (!selfDom) return;
 
@@ -144,8 +199,10 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     const mouseMoveHandler = function (e: any) {
       const dx = e.clientX - x;
       cells.forEach((c) => {
-        c.style.maxWidth = c.style.width = c.style.minWidth =
-          (c.initX + dx < tdMinWidth ? tdMinWidth : c.initX + dx) + "px";
+        c.style.maxWidth =
+          c.style.width =
+          c.style.minWidth =
+            (c.initX + dx < tdMinWidth ? tdMinWidth : c.initX + dx) + "px";
       });
       // table.style.width = tableInitWidth + dx + "px";
     };
@@ -281,24 +338,25 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
   if (element.canTdEdit === true) {
     delete otherAttr.contentEditable;
   }
+
   return (
     <td
       {...attributes}
       colSpan={element.colSpan}
       rowSpan={element.rowSpan}
       style={{
-        padding: 4,
         minWidth: element.width || tdMinWidth,
         maxWidth: element.width || tdMinWidth,
         width: element.width || tdMinWidth,
         height: element.height || tdMinHeight,
-        position: "relative",
-        cursor: element.canTdEdit ? "inherit" : "cell",
+        cursor: element.canTdEdit || readOnly ? "inherit" : "cell",
         color: element[Marks.Color] || "unset",
-        backgroundColor: element.selected
+        backgroundColor: readOnly
+          ? "unset"
+          : element.selected
           ? "rgba(180,215,255,.7)"
           : element[Marks.BGColor] || "unset",
-        userSelect: element.canTdEdit ? "unset" : "none",
+        userSelect: element.canTdEdit || readOnly ? "unset" : "none",
         textAlign: element[Marks.TextAlign] || "unset",
         fontSize: element[Marks.FontSize] || "unset",
         fontWeight: element[Marks.BOLD] ? "bold" : "unset",
@@ -312,34 +370,38 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       onMouseDown={tdMouseDown}
     >
       {children}
-      <span
-        className="resizer"
-        style={{
-          position: "absolute",
-          width: 5,
-          right: 0,
-          top: 0,
-          height: "100%",
-          cursor: "col-resize",
-          userSelect: "none",
-        }}
-        contentEditable={false}
-        onMouseDown={resizeTdX}
-      ></span>
-      <span
-        className="resizer"
-        style={{
-          position: "absolute",
-          width: "100%",
-          height: 5,
-          left: 0,
-          bottom: 0,
-          cursor: "row-resize",
-          userSelect: "none",
-        }}
-        contentEditable={false}
-        onMouseDown={resizeTdY}
-      ></span>
+      {!readOnly ? (
+        <>
+          <span
+            className="resizer"
+            style={{
+              position: "absolute",
+              width: 5,
+              right: 0,
+              top: 0,
+              height: "100%",
+              cursor: "col-resize",
+              userSelect: "none",
+            }}
+            contentEditable={false}
+            onMouseDown={resizeTdX}
+          ></span>
+          <span
+            className="resizer"
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: 5,
+              left: 0,
+              bottom: 0,
+              cursor: "row-resize",
+              userSelect: "none",
+            }}
+            contentEditable={false}
+            onMouseDown={resizeTdY}
+          ></span>
+        </>
+      ) : null}
     </td>
   );
 };

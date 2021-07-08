@@ -13,61 +13,32 @@ import { CET, EditorType, Marks } from "../common/Defines";
 import { utils } from "../common/utils";
 
 export const ListLogic = {
-  model3: [
-    {
-      type: CET.NORMAL_LIST,
-      children: new Array(100).fill(0).map((item, index) => {
-        return {
-          type: CET.LIST_ITEM,
-          children: [
-            {
-              type: CET.DIV,
-              children: [
-                {
-                  text: String(index),
-                },
-              ],
-            },
-          ],
-        };
-      }),
-    },
-  ],
-  model2: JSON.parse(
-    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"2"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"3"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"4"}]}]}]}]}]}]`
-  ),
-  model: JSON.parse(
-    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsdf"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"sdf"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"sdfs"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dfsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fs"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"fs"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]}]}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":""}]}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsdfsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsd"},{"type":"img","children":[{"text":""}]},{"text":"fsdfsdfsd"},{"type":"link","url":"http://www.baidu.com","content":"百度百度百度百度","children":[{"text":"百度百度百度百度"}]},{"text":"fsdfsdfsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdf"}]}]},{"type":"td","children":[{"type":"ul","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsdfsdfsdffs"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ul","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsdfsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"ffsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ul","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsfsdfsd"}]}]}]}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sdfsd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fs"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdfsfsd"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsdf"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"fsd"}]}]}]}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dasd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"asd"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"as"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]}]}]
-  `
-  ),
-  arrayModel: [
-    ...new Array(10).fill(0).map((o, index) => {
-      return {
-        type: CET.DIV,
-        children: [{ text: String(index) }],
-      };
-    }),
-  ],
   toggleList(editor: EditorType, type: CET.NORMAL_LIST | CET.NUMBER_LIST) {
     // 判断当前是不是列表形态
-    const [root] = Editor.nodes(editor, {
+    const [text] = Editor.nodes(editor, {
+      mode: "lowest",
       match(n) {
-        return ListLogic.isListItem(n);
+        return Text.isText(n) || Editor.isInline(editor, n);
       },
     });
-    const isTurnOffList = !!root;
-    const parent = root && utils.getParent(editor, root[1]);
+    if (!text) return;
+    const textWrapper = Editor.parent(editor, text[1]);
+    if (!textWrapper) return;
+    const twParent = Editor.parent(editor, textWrapper[1]);
+    const li = ListLogic.isListItem(twParent[0]) && twParent;
+    const liParent = li && utils.getParent(editor, li[1]);
+
     const isSameTypeToggle =
-      isTurnOffList &&
-      parent[0] != null &&
-      Element.isElement(parent[0]) &&
-      parent[0].type == type;
+      li &&
+      liParent &&
+      Element.isElement(liParent[0]) &&
+      liParent?.[0].type == type;
     // 是否改变列表类型
-    const isChangeListType = isTurnOffList && !isSameTypeToggle;
+    const isChangeListType = li && !isSameTypeToggle;
     // 是否删除列表
-    const isCancelList = isTurnOffList && isSameTypeToggle;
+    const isCancelList = li && isSameTypeToggle;
     // 是否设置为列表
-    const isSetToList = !isTurnOffList;
+    const isSetToList = !li;
 
     const cancelList = () => {
       Transforms.unwrapNodes(editor, {
@@ -81,6 +52,7 @@ export const ListLogic = {
       Editor.withoutNormalizing(editor, () => {
         const parents = new Set<string>();
         const selectedListItems = Editor.nodes(editor, {
+          mode: "lowest",
           match(n) {
             return ListLogic.isListItem(n);
           },
@@ -107,14 +79,15 @@ export const ListLogic = {
 
     const setList = () => {
       Editor.withoutNormalizing(editor, () => {
-        const elementsInRange = Editor.nodes(editor, {
-          universal: true,
-          reverse: true,
-          mode: "lowest",
-          match(n) {
-            return utils.isTextWrapper(n);
-          },
-        });
+        const elementsInRange = Array.from(
+          Editor.nodes(editor, {
+            reverse: true,
+            mode: "lowest",
+            match(n) {
+              return utils.isTextWrapper(n);
+            },
+          })
+        );
 
         for (const [, path] of elementsInRange) {
           if (path.length == 0) continue;
@@ -285,6 +258,7 @@ export const ListLogic = {
     Editor.withoutNormalizing(editor, () => {
       const selectedListItems = Editor.nodes(editor, {
         universal: true,
+        mode: "lowest",
         match(n) {
           return ListLogic.isListItem(n);
         },
@@ -328,6 +302,7 @@ export const ListLogic = {
       const selectedListItems = Editor.nodes(editor, {
         universal: true,
         reverse: true,
+        mode: "lowest",
         match(n) {
           return ListLogic.isListItem(n);
         },

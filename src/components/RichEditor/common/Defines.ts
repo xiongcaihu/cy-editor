@@ -39,7 +39,6 @@ export type CustomElement = {
   type: CET;
   [key: string]: any;
   url?: string; // 图片，Link组件的参数
-  content?: string; // Link组件的参数
   colSpan?: number; // td属性
   rowSpan?: number; // td 属性
   width?: number; // td样式属性

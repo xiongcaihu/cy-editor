@@ -18,7 +18,7 @@ import { ListLogic } from "./ListComp";
 import { TableLogic } from "../comps/Table";
 import { utils } from "../common/utils";
 import _ from "lodash";
-import { TdLogic } from "./Td";
+import { TdLogic, tdMinHeight } from "./Td";
 import Icon, {
   BgColorsOutlined,
   BoldOutlined,
@@ -48,7 +48,7 @@ import Icon, {
   FormatPainterOutlined,
 } from "@ant-design/icons";
 import "./ToolBar.css";
-import React, { useContext, useRef, useState } from "react";
+import React, { useContext, useMemo, useRef, useState } from "react";
 import { CompactPicker } from "react-color";
 import { EditorContext } from "../RichEditor";
 import { useEffect } from "react";
@@ -110,52 +110,54 @@ const ColorPicker: React.FC<{
     ref.current._getColor();
   });
 
-  return (
-    <Tooltip
-      title={props.title}
-      zIndex={99}
-      mouseLeaveDelay={0}
-      mouseEnterDelay={0}
-    >
-      <div
-        onMouseLeave={() => {
-          setVisible(false);
-        }}
+  return useMemo(() => {
+    return (
+      <Tooltip
+        title={props.title}
+        zIndex={99}
+        mouseLeaveDelay={0}
+        mouseEnterDelay={0}
       >
-        <Dropdown
-          placement="bottomCenter"
-          overlayStyle={{ zIndex: 999 }}
-          visible={visible}
-          overlay={() => {
-            return (
-              <ColorPickerCore
-                value={color}
-                onChange={(color) => {
-                  props?.onChange?.(color);
-                  setVisible(false);
-                }}
-              ></ColorPickerCore>
-            );
+        <div
+          onMouseLeave={() => {
+            setVisible(false);
           }}
-          trigger={["click"]}
-          getPopupContainer={(triggerNode) =>
-            triggerNode.parentElement || document.body
-          }
         >
-          <AntButton
-            type="text"
-            style={{ color }}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setVisible(true);
+          <Dropdown
+            placement="bottomCenter"
+            overlayStyle={{ zIndex: 999 }}
+            visible={visible}
+            overlay={() => {
+              return (
+                <ColorPickerCore
+                  value={color}
+                  onChange={(color) => {
+                    props?.onChange?.(color);
+                    setVisible(false);
+                  }}
+                ></ColorPickerCore>
+              );
             }}
+            trigger={["click"]}
+            getPopupContainer={(triggerNode) =>
+              triggerNode.parentElement || document.body
+            }
           >
-            {props.icon}
-          </AntButton>
-        </Dropdown>
-      </div>
-    </Tooltip>
-  );
+            <AntButton
+              type="text"
+              style={{ color }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setVisible(true);
+              }}
+            >
+              {props.icon}
+            </AntButton>
+          </Dropdown>
+        </div>
+      </Tooltip>
+    );
+  }, [color, visible]);
 };
 
 const ColorPickerCore: React.FC<{
@@ -249,66 +251,68 @@ const ValueSelector = (props: {
   useEffect(() => {
     ref.current.getValue();
   });
-  return (
-    <Tooltip
-      title={props.title}
-      zIndex={99}
-      mouseEnterDelay={0}
-      mouseLeaveDelay={0}
-    >
-      <div
-        ref={toolDom}
-        style={{
-          width: 100,
-          position: "relative",
-        }}
-        className="cyEditor__toolbar__button"
-        onMouseLeave={() => {
-          setVisible(false);
-        }}
+  return useMemo(() => {
+    return (
+      <Tooltip
+        title={props.title}
+        zIndex={99}
+        mouseEnterDelay={0}
+        mouseLeaveDelay={0}
       >
         <div
+          ref={toolDom}
           style={{
-            width: "100%",
-            height: "100%",
-            position: "absolute",
-            top: 0,
-            left: 0,
-            zIndex: 1,
-            cursor: "pointer",
+            width: 100,
+            position: "relative",
           }}
-          onMouseDown={(e) => {
-            e.preventDefault();
-            setVisible(!visible);
-          }}
-        ></div>
-        <Select
-          placeholder={props.title}
-          value={value}
-          bordered={false}
-          style={{ width: "100%" }}
-          open={visible}
-          dropdownClassName="cyEditor__toolbar__dropdown"
-          getPopupContainer={(triggerNode) =>
-            triggerNode.parentElement || document.body
-          }
-          onSelect={(value) => {
-            ReactEditor.focus(editor);
-            props?.afterSelect?.(value);
+          className="cyEditor__toolbar__button"
+          onMouseLeave={() => {
             setVisible(false);
           }}
         >
-          {props.options.map((value) => {
-            return (
-              <Select.Option value={String(value)} key={value}>
-                {props?.optionLabelRender?.(value) || value}
-              </Select.Option>
-            );
-          })}
-        </Select>
-      </div>
-    </Tooltip>
-  );
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              position: "absolute",
+              top: 0,
+              left: 0,
+              zIndex: 1,
+              cursor: "pointer",
+            }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              setVisible(!visible);
+            }}
+          ></div>
+          <Select
+            placeholder={props.title}
+            value={value}
+            bordered={false}
+            style={{ width: "100%" }}
+            open={visible}
+            dropdownClassName="cyEditor__toolbar__dropdown"
+            getPopupContainer={(triggerNode) =>
+              triggerNode.parentElement || document.body
+            }
+            onSelect={(value) => {
+              ReactEditor.focus(editor);
+              props?.afterSelect?.(value);
+              setVisible(false);
+            }}
+          >
+            {props.options.map((value) => {
+              return (
+                <Select.Option value={String(value)} key={value}>
+                  {props?.optionLabelRender?.(value) || value}
+                </Select.Option>
+              );
+            })}
+          </Select>
+        </div>
+      </Tooltip>
+    );
+  }, [visible, value]);
 };
 
 const MarkButton: React.FC<{
@@ -355,20 +359,22 @@ const MarkButton: React.FC<{
     }
   };
 
-  return (
-    <Tooltip title={props.title} mouseEnterDelay={0} mouseLeaveDelay={0}>
-      <AntButton
-        className="cyEditor__toolbar__button"
-        type={type as any}
-        onMouseDown={(e) => {
-          e.preventDefault();
-          props.mark && toggleMark(props.mark);
-        }}
-      >
-        {props.children}
-      </AntButton>
-    </Tooltip>
-  );
+  return useMemo(() => {
+    return (
+      <Tooltip title={props.title} mouseEnterDelay={0} mouseLeaveDelay={0}>
+        <AntButton
+          className="cyEditor__toolbar__button"
+          type={type as any}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            props.mark && toggleMark(props.mark);
+          }}
+        >
+          {props.children}
+        </AntButton>
+      </Tooltip>
+    );
+  }, [type]);
 };
 
 const StaticButton: React.FC<{
@@ -431,17 +437,19 @@ const CopyFormat: React.FC<{}> = (props) => {
       console.warn(error);
     }
   };
-  return (
-    <StaticButton
-      title="格式刷"
-      disabled={disabled}
-      mousedownFunc={() => {
-        copyMark();
-      }}
-    >
-      <FormatPainterOutlined />
-    </StaticButton>
-  );
+  return useMemo(() => {
+    return (
+      <StaticButton
+        title="格式刷"
+        disabled={disabled}
+        mousedownFunc={() => {
+          copyMark();
+        }}
+      >
+        <FormatPainterOutlined />
+      </StaticButton>
+    );
+  }, [disabled]);
 };
 
 const InsertTableButton: React.FC<{
@@ -497,7 +505,7 @@ const InsertTableButton: React.FC<{
     });
     if (!tw) return;
     const twDom = ReactEditor.toDOMNode(editor, tw[0]);
-    const parent = twDom.offsetParent;
+    const parent: any = twDom.offsetParent;
     if (!parent) return;
     const tableWrapperWidth = twDom.offsetWidth - 2;
 
@@ -514,6 +522,7 @@ const InsertTableButton: React.FC<{
                 return {
                   type: CET.TD,
                   width: tableWrapperWidth / cellCount,
+                  height: tdMinHeight,
                   children: [
                     {
                       type: CET.DIV,
@@ -606,6 +615,21 @@ const InsertTableButton: React.FC<{
   );
 };
 
+const ReadOnlyButton: React.FC<{}> = (props) => {
+  const { readOnly, setReadOnly } = useContext(EditorContext);
+  const title = readOnly ? "编辑模式" : "只读模式";
+  return (
+    <StaticButton
+      title={title}
+      mousedownFunc={() => {
+        setReadOnly(!readOnly);
+      }}
+    >
+      {title}
+    </StaticButton>
+  );
+};
+
 export const ToolBar: React.FC<{}> = (props) => {
   const editor = useSlateStatic();
 
@@ -683,96 +707,6 @@ export const ToolBar: React.FC<{}> = (props) => {
       ],
     });
     Transforms.move(editor);
-  };
-
-  const insertTable = () => {
-    if (editor.selection && Range.isCollapsed(editor.selection)) {
-      const textWrapper = Editor.above(editor, {
-        match(n) {
-          return utils.isTextWrapper(n);
-        },
-      });
-      if (textWrapper) {
-        Transforms.insertNodes(
-          editor,
-          {
-            type: CET.TABLE,
-            children: [
-              {
-                type: CET.TBODY,
-                children: [
-                  {
-                    type: CET.TR,
-                    children: [
-                      {
-                        type: CET.TD,
-                        children: [
-                          {
-                            type: CET.DIV,
-                            children: [
-                              {
-                                text: "",
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                      {
-                        type: CET.TD,
-                        children: [
-                          {
-                            type: CET.DIV,
-                            children: [
-                              {
-                                text: "",
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                  {
-                    type: CET.TR,
-                    children: [
-                      {
-                        type: CET.TD,
-                        children: [
-                          {
-                            type: CET.DIV,
-                            children: [
-                              {
-                                text: "",
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                      {
-                        type: CET.TD,
-                        children: [
-                          {
-                            type: CET.DIV,
-                            children: [
-                              {
-                                text: "",
-                              },
-                            ],
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            at: utils.getPath(textWrapper[1], "next"),
-          }
-        );
-      }
-    }
   };
 
   const insertDivAfterTable = () => {
@@ -1254,6 +1188,10 @@ export const ToolBar: React.FC<{}> = (props) => {
             title="输出内容"
             mousedownFunc={() => {
               console.log(JSON.stringify(editor.children));
+              window.localStorage.setItem(
+                "savedContent",
+                JSON.stringify(editor.children)
+              );
             }}
           >
             <SaveOutlined />
@@ -1273,6 +1211,9 @@ export const ToolBar: React.FC<{}> = (props) => {
             <SaveOutlined />
             (HTML)
           </StaticButton>
+        </Col>
+        <Col>
+          <ReadOnlyButton></ReadOnlyButton>
         </Col>
       </Row>
     </div>

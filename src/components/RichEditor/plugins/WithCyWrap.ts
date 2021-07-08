@@ -49,28 +49,6 @@ export const withCyWrap = (editor: EditorType) => {
     try {
       apply(e);
       // window.localStorage.setItem("history", JSON.stringify(array));
-      // 判断是不是设置td的selected属性
-      if (e.type == "set_node") {
-        const savedTds = getStrPathSetOfSelectedTds(editor);
-        const path = e.path;
-        const newProperties = e.newProperties as Partial<CustomElement>;
-        if (newProperties.selected === true) {
-          savedTds.add(path.join(","));
-        } else if (
-          newProperties.selected === null ||
-          // 如果带有toBeDeleted属性，那么肯定是已经选中的td
-          newProperties.toBeDeleted === true
-        ) {
-          savedTds.delete(path.join(","));
-        }
-
-        const savedEditingTds = getEditingTdsPath(editor);
-        if (newProperties.canTdEdit === true) {
-          savedEditingTds.add(path.join(","));
-        } else if (newProperties.canTdEdit === null) {
-          savedEditingTds.delete(path.join(","));
-        }
-      }
     } catch (error) {
       console.warn(error);
     }

@@ -34,3 +34,18 @@
   width: 15px;
   height: 15px;
 }
+
+.cyEditor ul,
+.cyEditor ol,
+.cyEditor h1,
+.cyEditor h2,
+.cyEditor h3,
+.cyEditor h4 {
+  margin-bottom: 0;
+}
+
+.cyEditor td {
+  overflow: hidden;
+  padding: 4px;
+  position: relative;
+}

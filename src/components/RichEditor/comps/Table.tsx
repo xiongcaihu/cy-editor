@@ -12,11 +12,16 @@ import {
   Path,
   Point,
 } from "slate";
-import { ReactEditor, RenderElementProps, useSlateStatic } from "slate-react";
-import { CET, EditorType, Marks } from "../common/Defines";
+import {
+  ReactEditor,
+  RenderElementProps,
+  useReadOnly,
+  useSlateStatic,
+} from "slate-react";
+import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
 import { utils } from "../common/utils";
 import { EditorContext } from "../RichEditor";
-import { customTdShape, TdLogic, tdMinWidth } from "./Td";
+import { customTdShape, TdLogic, tdMinHeight, tdMinWidth } from "./Td";
 import {
   getStrPathSetOfSelectedTds,
   getEditingTdsPath,
@@ -47,6 +52,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     lastSelectedPaths: Path[];
     initX: number;
     initY: number;
+    prePath: Path | null;
   }>({
     isBeginSelectTd: false,
     mouseDownStartPoint: null,
@@ -54,48 +60,63 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     initY: 0,
     lastSelectedPaths: [],
     preMouseOnTdPath: null,
+    prePath: null,
   });
 
   const { savedMarks, setSavedMarks } = useContext(EditorContext);
 
   const editor = useSlateStatic();
+  const readOnly = useReadOnly();
+
+  const reCalcTdWidth = () => {
+    const selfDom = attributes.ref.current;
+    if (!selfDom) return;
+    const nowWrapperWidth = selfDom?.offsetWidth - 2;
+    const preWrapperWidth = element.wrapperWidthWhenCreated;
+    const tableDom = selfDom.querySelector(":scope>table");
+    if (!tableDom || nowWrapperWidth == null || preWrapperWidth == null) return;
+    if (preWrapperWidth != nowWrapperWidth) {
+      const tableNode = ReactEditor.toSlateNode(editor, selfDom);
+      if (!tableNode) return;
+      const tablePath = ReactEditor.findPath(editor, tableNode);
+      if (!tablePath) return;
+      const trs = Array.from(tableDom.querySelectorAll(":scope>tbody>tr"));
+      trs.forEach((tr: any, rowIndex) => {
+        const tds = Array.from(tr.querySelectorAll(":scope>td"));
+        tds.forEach((td: any, cellIndex) => {
+          const tdNode = ReactEditor.toSlateNode(editor, td);
+          if (!Element.isElement(tdNode)) return;
+          const width =
+            ((tdNode.width || tdMinWidth) / preWrapperWidth) * nowWrapperWidth;
+          Transforms.setNodes(
+            editor,
+            { width },
+            { at: [...tablePath, 0, rowIndex, cellIndex] }
+          );
+        });
+      });
+      Transforms.setNodes(
+        editor,
+        { wrapperWidthWhenCreated: nowWrapperWidth },
+        { at: tablePath }
+      );
+    }
+  };
 
   useEffect(() => {
-    // 初次渲染时，判断自己当前的容器宽度是否和之前保存的宽度一致，如果不一致，则计算内部所有td的新的宽度
-    const reCalcTdWidth = () => {
-      const selfDom = attributes.ref.current;
-      const nowWrapperWidth = selfDom?.offsetParent?.offsetWidth - 2;
-      const preWrapperWidth = element.wrapperWidthWhenCreated;
-      const tableDom = selfDom.querySelector(":scope>table");
-      if (!tableDom || nowWrapperWidth == null || preWrapperWidth == null)
-        return;
-      if (preWrapperWidth != nowWrapperWidth) {
-        const tableNode = ReactEditor.toSlateNode(editor, selfDom);
-        if (!tableNode) return;
-        const tablePath = ReactEditor.findPath(editor, tableNode);
-        if (!tablePath) return;
-        const trs = Array.from(tableDom.querySelectorAll(":scope>tbody>tr"));
-        trs.forEach((tr: any, rowIndex) => {
-          const tds = Array.from(tr.querySelectorAll(":scope>td"));
-          tds.forEach((td: any, cellIndex) => {
-            const tdNode = ReactEditor.toSlateNode(editor, td);
-            if (!Element.isElement(tdNode)) return;
-            const width =
-              ((tdNode.width || tdMinWidth) / preWrapperWidth) *
-              nowWrapperWidth;
-            Transforms.setNodes(
-              editor,
-              { width },
-              { at: [...tablePath, 0, rowIndex, cellIndex] }
-            );
-          });
-        });
-      }
-    };
-
+    // 每次渲染时，判断自己当前的容器宽度是否和之前保存的宽度一致，如果不一致，则计算内部所有td的新的宽度
     reCalcTdWidth();
+    // 每次渲染时，判断自己的位置和之前的位置相比是否变化，如果变化，需要重新计算自己内部td的状态
+    const path = ReactEditor.findPath(editor, element);
+    if (
+      ref.current.prePath != null &&
+      !Path.equals(path, ref.current.prePath)
+    ) {
+      TableLogic.resetSelectedTds(editor);
+    }
+    ref.current.prePath = path;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
   // 找到需要取消选择和新选择的td的完整的path
   const findPath = (nowSelectedTds: Path[], preSelectedTds: Path[]) => {
@@ -259,6 +280,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
       if (!tdDom) return;
 
       if (
+        !readOnly &&
         !["resizer", "columnSelector"].includes(e.target.className) &&
         tdDom.contentEditable === "false"
       ) {
@@ -325,6 +347,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
           wordBreak: "break-all",
           overflowX: "auto",
           overflowY: "hidden",
+          borderCollapse: "collapse",
         }}
         onMouseDown={mousedownFunc}
         onMouseUp={() => {
@@ -376,27 +399,20 @@ const getEditingOrSelectedTdBelongTable = (editor: Editor) => {
 };
 
 export const TableLogic = {
-  testModel: JSON.parse(
-    `[{"type":"div","children":[{"text":""},{"type":"link","url":"http://www.baidu.com","children":[{"text":"12131232"}]},{"text":""}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}],"textAlign":"left"},{"type":"td","children":[{"type":"div","children":[{"text":"string0"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string2"}]},{"type":"div","children":[{"text":"string1"}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]},{"type":"div","children":[{"text":""}]}],"colSpan":2,"rowSpan":2,"canTdEdit":true,"start":true}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string2"}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"string3d"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fsd"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsad"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"sadas"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"asd"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]}]}]}]}]}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"string3"}]},{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"dsa"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"sad"}]}]},{"type":"td","children":[{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"dsadsa"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"dsad"}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"sd"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"das"}]}]},{"type":"li","children":[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"ds"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"d"}]}]}]},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"adsa"}]}]},{"type":"td","children":[{"type":"div","children":[{"text":"das"}]}]}]}]}]}]}]}]}]}]}]}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]},{"type":"div","children":[{"text":"string4"}]}],"colSpan":2,"rowSpan":1},{"type":"td","children":[{"type":"div","children":[{"text":"string4"}]}]}],"shouldEmpty":false}],"preSelectedTdPos":{"row":1,"col":1}}]},{"type":"div","children":[{"text":"1dffsfdsaffdsfsd"}]},{"type":"div","children":[{"text":"fsdfsdfsdfsdfsdfsd"}]}]`
-  ),
-  tm2: JSON.parse(
-    `[{"type":"table","children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]},{"type":"td","width":141.2,"children":[{"type":"div","children":[{"text":""}]}]}],"shouldEmpty":false}]}]},{"type":"ol","children":[{"type":"li","children":[{"type":"div","children":[{"text":"write something..."}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"dsadsa"}]}]},{"type":"ul","children":[{"type":"li","children":[{"type":"div","children":[{"text":"fsdfsdf"}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"sdfsdfds"}]}]}]},{"type":"li","children":[{"type":"div","children":[{"text":"fdsfsdfsd"}]}]}]},{"type":"h1","children":[{"text":"12312"}]},{"type":"h2","children":[{"text":"3213"}]}]`
-  ),
-  tm3: JSON.parse(
-    `[{"type":"div","children":[{"text":"1"}]},{"type":"table","wrapperWidthWhenCreated":1572,"children":[{"type":"tbody","children":[{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"1312"}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"3123"}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"231"}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"3123"}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":"13"}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"12312"}]}],"height":30},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"1231"}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"312"}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"13123"}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":"123123"}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"32"}]}],"height":30},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":"1312312312"}]}],"height":30,"canTdEdit":true,"start":true},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false},{"type":"tr","children":[{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":100,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","width":262,"children":[{"type":"div","children":[{"text":""}]}],"height":30},{"type":"td","children":[{"type":"div","children":[{"text":""}]}],"width":163,"height":30}],"shouldEmpty":false}]}]}]`
-  ),
   model: [
     {
       type: CET.TABLE,
       children: [
         {
           type: CET.TBODY,
-          children: new Array(10).fill(0).map((item, fatherIndex) => {
+          children: new Array(100).fill(0).map((item, fatherIndex) => {
             return {
               type: CET.TR,
-              children: new Array(20).fill(0).map((item, index) => {
+              children: new Array(10).fill(0).map((item, index) => {
                 return {
                   type: CET.TD,
+                  width: 100,
+                  height: 50,
                   children: [
                     {
                       type: CET.DIV,
@@ -704,18 +720,22 @@ export const TableLogic = {
     )
       return;
 
-    const getInsertCells = () => {
+    const editorDom = ReactEditor.toDOMNode(editor, editor);
+
+    const getInsertCells = (): CustomElement[] => {
       return _.cloneDeep(
         new Array(count).fill(0).map(() => {
           return _.cloneDeep({
             type: CET.TD,
+            width: editorDom.offsetWidth / 10,
+            height: tdMinHeight,
             children: [
               {
                 type: CET.DIV,
                 children: [{ text: "" }],
               },
             ],
-          });
+          } as CustomElement);
         })
       );
     };
@@ -802,8 +822,12 @@ export const TableLogic = {
     )
       return;
 
+    const editorDom = ReactEditor.toDOMNode(editor, editor);
+
     const insertNode = {
       type: CET.TD,
+      width: editorDom.offsetWidth / 10,
+      height: tdMinHeight,
       children: [
         {
           type: CET.DIV,

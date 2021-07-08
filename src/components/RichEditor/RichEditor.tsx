@@ -14,6 +14,7 @@ import { createEditor, Transforms, Editor, Operation, Selection } from "slate";
 import { Slate, Editable, withReact } from "slate-react";
 import { withHistory } from "slate-history";
 import {
+  CET,
   CustomElement,
   EditableProps,
   EditorCompShape,
@@ -51,9 +52,13 @@ type savedMarksShape =
 export const EditorContext = createContext<{
   savedMarks: savedMarksShape;
   setSavedMarks: (marks: savedMarksShape) => void;
+  readOnly: boolean;
+  setReadOnly: (value: boolean) => void;
 }>({
   savedMarks: null,
   setSavedMarks: () => {},
+  readOnly: false,
+  setReadOnly: () => {},
 });
 
 const EditorComp: EditorCompShape = () => {
@@ -63,7 +68,13 @@ const EditorComp: EditorCompShape = () => {
    */
   const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
   // const [editor] = useState(withCyWrap(withReact(createEditor())));
-  const [value, setValue] = useState<StateShape>(TableLogic.tm3);
+  const [value, setValue] = useState<StateShape>(() => {
+    const content =
+      window.localStorage.getItem("savedContent") ||
+      JSON.stringify([{ type: CET.DIV, children: [{ text: "" }] }]);
+    // return TableLogic.model || JSON.parse(content);
+    return JSON.parse(content);
+  });
   const ref = useRef<{
     preUndos: Operation[][];
     preSelection: Selection | null;
@@ -79,13 +90,14 @@ const EditorComp: EditorCompShape = () => {
       document.body.style.cursor = "auto";
     }
   }, [savedMarks]);
+  const [readOnly, setReadOnly] = useState(false);
 
   useEffect(() => {
     // window.localStorage.removeItem("history");
     // setTimeout(() => {
     //   unitTest(editor);
     // }, 100);
-    TableLogic.resetSelectedTds(editor);
+    // TableLogic.resetSelectedTds(editor);
   }, []);
 
   // useEffect(() => {
@@ -151,7 +163,6 @@ const EditorComp: EditorCompShape = () => {
     ref.current.preSelection = editor.selection;
   };
   const handleMouseDown = (e: any) => {
-    console.log('editor mousedown')
     // 取消所有表格的选中状态，因为表格部分已经阻止了自己的mousedown事件传递到父组件，所以只要能在这里触发的，都肯定不是在表格里
     TdLogic.deselectAllTd(editor);
   };
@@ -170,6 +181,8 @@ const EditorComp: EditorCompShape = () => {
           value={{
             savedMarks: savedMarks,
             setSavedMarks: setSavedMarks,
+            readOnly,
+            setReadOnly,
           }}
         >
           {MyToolBar}
@@ -186,9 +199,11 @@ const EditorComp: EditorCompShape = () => {
               renderElement={renderElement}
               renderLeaf={renderLeaf}
               autoFocus
+              readOnly={readOnly}
               onCompositionStart={() => {
                 utils.removeRangeElement(editor);
               }}
+              placeholder="welcome to cyEditor!"
               onKeyDown={handleKeyDown}
               onMouseDown={handleMouseDown}
               onDragStart={(e) => {
