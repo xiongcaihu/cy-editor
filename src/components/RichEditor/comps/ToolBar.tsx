@@ -57,6 +57,11 @@ import { htmlToSlate } from "../common/htmlToSlate";
 
 const calcStatusDelay = 50;
 
+const isSelectTd = (editor: EditorType) => {
+  const hasSelectedTd = TableLogic.getFirstSelectedTd(editor);
+  return hasSelectedTd == null;
+};
+
 export const cleanFormat = (editor: EditorType) => {
   const tds = TableLogic.getSelectedTds(editor);
   if (tds.length > 0) {
@@ -400,6 +405,39 @@ const StaticButton: React.FC<{
   );
 };
 
+const ReactButton: React.FC<{
+  title: string;
+  mousedownFunc: (e: any) => void;
+  disabledCondition?: (editor: EditorType) => boolean;
+}> = (props) => {
+  const editor = useSlate();
+  const { mousedownFunc, title, disabledCondition = () => false } = props;
+  const [disabled, setDisabled] = useState(false);
+  const ref = useRef({
+    _isDisabled: _.debounce(() => {
+      setDisabled(disabledCondition(editor));
+    }, calcStatusDelay),
+  });
+  useEffect(() => {
+    ref.current._isDisabled();
+  });
+  return (
+    <Tooltip title={title} mouseEnterDelay={0} mouseLeaveDelay={0}>
+      <AntButton
+        className="cyEditor__toolbar__button"
+        type={"text"}
+        disabled={disabled}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          mousedownFunc(e);
+        }}
+      >
+        {props.children}
+      </AntButton>
+    </Tooltip>
+  );
+};
+
 const CopyFormat: React.FC<{}> = (props) => {
   const editor = useSlate();
   const { setSavedMarks } = useContext(EditorContext);
@@ -458,10 +496,19 @@ const InsertTableButton: React.FC<{
   onChange?: (color?: string) => void;
   icon?: any;
 }> = (props) => {
-  const editor = useSlateStatic();
+  const editor = useSlate();
   const [visible, setVisible] = useState(false);
   const [counts, setCounts] = useState<string>("");
   const tableDom = useRef<any>();
+  const [disabled, setDisabled] = useState(false);
+  const ref = useRef({
+    _isDisabled: _.debounce(() => {
+      setDisabled(editor.selection == null);
+    }, calcStatusDelay),
+  });
+  useEffect(() => {
+    ref.current._isDisabled();
+  });
 
   const rowCount = 10,
     cellCount = 10;
@@ -542,78 +589,81 @@ const InsertTableButton: React.FC<{
     setVisible(false);
   };
 
-  return (
-    <div
-      onMouseLeave={() => {
-        setVisible(false);
-      }}
-    >
-      <Dropdown
-        placement="bottomCenter"
-        overlayStyle={{ zIndex: 999 }}
-        visible={visible}
-        overlay={() => {
-          return (
-            <div
-              className="cyEditor__toolbar__talePanelWrapper"
-              style={{
-                width: 200,
-                padding: 8,
-                display: "flex",
-                justifyContent: "flex-start",
-                backgroundColor: "white",
-                flexDirection: "column",
-              }}
-            >
-              {visible ? (
-                <table border="1" ref={tableDom}>
-                  <tbody>
-                    {new Array(rowCount).fill(0).map((item, index) => {
-                      return (
-                        <tr key={index}>
-                          {new Array(cellCount).fill(0).map((item, index) => {
-                            return (
-                              <td
-                                key={index}
-                                onMouseEnter={tdMouseEnter}
-                                onClick={addTable}
-                              ></td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              ) : null}
-              <div style={{ textAlign: "right" }}>{counts}</div>
-            </div>
-          );
+  return useMemo(() => {
+    return (
+      <div
+        onMouseLeave={() => {
+          setVisible(false);
         }}
-        trigger={["click"]}
-        getPopupContainer={(triggerNode) =>
-          triggerNode.parentElement || document.body
-        }
       >
-        <Tooltip
-          title={props.title}
-          zIndex={99}
-          mouseLeaveDelay={0}
-          mouseEnterDelay={0}
+        <Dropdown
+          placement="bottomCenter"
+          overlayStyle={{ zIndex: 999 }}
+          visible={visible}
+          overlay={() => {
+            return (
+              <div
+                className="cyEditor__toolbar__tablePanelWrapper"
+                style={{
+                  width: 200,
+                  padding: 8,
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  backgroundColor: "white",
+                  flexDirection: "column",
+                }}
+              >
+                {visible ? (
+                  <table border="1" ref={tableDom}>
+                    <tbody>
+                      {new Array(rowCount).fill(0).map((item, index) => {
+                        return (
+                          <tr key={index}>
+                            {new Array(cellCount).fill(0).map((item, index) => {
+                              return (
+                                <td
+                                  key={index}
+                                  onMouseEnter={tdMouseEnter}
+                                  onClick={addTable}
+                                ></td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : null}
+                <div style={{ textAlign: "right" }}>{counts}</div>
+              </div>
+            );
+          }}
+          trigger={["click"]}
+          getPopupContainer={(triggerNode) =>
+            triggerNode.parentElement || document.body
+          }
         >
-          <AntButton
-            type="text"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setVisible(true);
-            }}
+          <Tooltip
+            title={props.title}
+            zIndex={99}
+            mouseLeaveDelay={0}
+            mouseEnterDelay={0}
           >
-            {props.icon}
-          </AntButton>
-        </Tooltip>
-      </Dropdown>
-    </div>
-  );
+            <AntButton
+              type="text"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setVisible(true);
+              }}
+              disabled={disabled}
+            >
+              {props.icon}
+            </AntButton>
+          </Tooltip>
+        </Dropdown>
+      </div>
+    );
+  }, [visible, disabled, counts]);
 };
 
 const ReadOnlyButton: React.FC<{}> = (props) => {
@@ -1002,49 +1052,67 @@ export const ToolBar: React.FC<{}> = (props) => {
           />
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="有序列表"
             mousedownFunc={() => {
               setNumberList();
             }}
+            disabledCondition={(editor) => {
+              return editor.selection == null;
+            }}
           >
             <OrderedListOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="无序列表"
             mousedownFunc={() => {
               setNormalList();
             }}
+            disabledCondition={(editor) => {
+              return editor.selection == null;
+            }}
           >
             <UnorderedListOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="设置链接"
             mousedownFunc={() => {
               setLink();
             }}
+            disabledCondition={(editor) => {
+              return editor.selection == null;
+            }}
           >
             <LinkOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="插入图片"
             mousedownFunc={() => {
               insertImg();
             }}
+            disabledCondition={(editor) => {
+              return editor.selection == null;
+            }}
           >
             <PictureOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton title="插入资源文件" mousedownFunc={() => {}}>
+          <ReactButton
+            title="插入资源文件"
+            mousedownFunc={() => {}}
+            disabledCondition={(editor) => {
+              return editor.selection == null;
+            }}
+          >
             <FolderOpenOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
           <Divider
@@ -1059,124 +1127,136 @@ export const ToolBar: React.FC<{}> = (props) => {
           ></InsertTableButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="删除表格"
             mousedownFunc={() => {
               deleteTable();
             }}
+            disabledCondition={isSelectTd}
           >
             <DeleteOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="删除列"
             mousedownFunc={() => {
               deleteColumn();
             }}
+            disabledCondition={isSelectTd}
           >
             <DeleteColumnOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="删除行"
             mousedownFunc={() => {
               deleteRow();
             }}
+            disabledCondition={isSelectTd}
           >
             <DeleteRowOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="表格后插入文本"
             mousedownFunc={() => {
               insertDivAfterTable();
             }}
+            disabledCondition={isSelectTd}
           >
             <VerticalAlignBottomOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="表格前插入文本"
             mousedownFunc={() => {
               insertDivBeforeTable();
             }}
+            disabledCondition={isSelectTd}
           >
             <VerticalAlignTopOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="左插入列"
             mousedownFunc={() => {
               insertColumnBefore();
             }}
+            disabledCondition={isSelectTd}
           >
             <InsertRowLeftOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="右插入列"
             mousedownFunc={() => {
               insertColumnAfter();
             }}
+            disabledCondition={isSelectTd}
           >
             <InsertRowRightOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="上插入行"
             mousedownFunc={() => {
               insertRowBefore();
             }}
+            disabledCondition={isSelectTd}
           >
             <InsertRowAboveOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="下插入行"
             mousedownFunc={() => {
               insertRowAfter();
             }}
+            disabledCondition={isSelectTd}
           >
             <InsertRowBelowOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="合并单元格"
             mousedownFunc={() => {
               mergeTd();
             }}
+            disabledCondition={isSelectTd}
           >
             <MergeCellsOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="拆分单元格"
             mousedownFunc={() => {
               splitTd();
             }}
+            disabledCondition={isSelectTd}
           >
             <SplitCellsOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
-          <StaticButton
+          <ReactButton
             title="清空单元格"
             mousedownFunc={() => {
               clearTd();
             }}
+            disabledCondition={isSelectTd}
           >
             <ClearOutlined />
-          </StaticButton>
+          </ReactButton>
         </Col>
         <Col>
           <Divider
@@ -1220,7 +1300,9 @@ export const ToolBar: React.FC<{}> = (props) => {
               // if(!editorDom) return;
               // const content = editorDom.querySelector(':scope>.cyEditor__content');
               // console.log(content.innerHTML);
-              const content = htmlToSlate(`<table><tbody><tr><td>123</td></tr></tbody></table>`);
+              const content = htmlToSlate(
+                `<table><tbody><tr><td>123</td></tr></tbody></table>`
+              );
               Transforms.insertNodes(editor, content);
             }}
           >
