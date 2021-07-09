@@ -4,7 +4,12 @@ import { DisconnectOutlined, SelectOutlined } from "@ant-design/icons";
 import { Button, Col, Form, Input, Popover, Row } from "antd";
 import { useState } from "react";
 import { Editor, Element, Transforms } from "slate";
-import { RenderElementProps, ReactEditor, useSlateStatic } from "slate-react";
+import {
+  RenderElementProps,
+  ReactEditor,
+  useSlateStatic,
+  useReadOnly,
+} from "slate-react";
 import { CET } from "../common/Defines";
 
 export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
@@ -13,6 +18,7 @@ export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
   element,
 }) => {
   const editor = useSlateStatic();
+  const readOnly = useReadOnly();
   const [content, setContent] = useState<string>();
   const [url, setUrl] = useState<string>();
 
@@ -107,7 +113,11 @@ export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
 
   return (
     <div {...attributes} style={{ display: "inline", position: "relative" }}>
-      <Popover placement="right" content={editPanel} trigger="hover">
+      <Popover
+        placement="right"
+        content={editPanel}
+        trigger={readOnly ? [] : ["hover"]}
+      >
         <a
           href={element.url}
           target="__blank"

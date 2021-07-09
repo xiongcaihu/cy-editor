@@ -351,11 +351,10 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         height: element.height || tdMinHeight,
         cursor: element.canTdEdit || readOnly ? "inherit" : "cell",
         color: element[Marks.Color] || "unset",
-        backgroundColor: readOnly
-          ? "unset"
-          : element.selected
-          ? "rgba(180,215,255,.7)"
-          : element[Marks.BGColor] || "unset",
+        backgroundColor:
+          element.selected && !readOnly
+            ? "rgba(180,215,255,.7)"
+            : element[Marks.BGColor] || "unset",
         userSelect: element.canTdEdit || readOnly ? "unset" : "none",
         textAlign: element[Marks.TextAlign] || "unset",
         fontSize: element[Marks.FontSize] || "unset",
