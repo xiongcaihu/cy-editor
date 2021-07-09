@@ -32,6 +32,7 @@ import { MyLeaf } from "./RenderElements/RenderLeaf";
 import _ from "lodash";
 import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
 import "./RichEditor.css";
+import { htmlToSlate } from "./common/htmlToSlate";
 
 type savedMarksShape =
   | (Partial<

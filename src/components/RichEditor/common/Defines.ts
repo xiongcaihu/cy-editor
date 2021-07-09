@@ -8,6 +8,7 @@ export enum CET {
   NORMAL_LIST = "ul",
   LIST_ITEM = "li",
   DIV = "div",
+  Block = "block",
   P = "p",
   H1 = "h1",
   H2 = "h2",

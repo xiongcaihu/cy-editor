@@ -9,17 +9,22 @@ import {
   Transforms,
   NodeEntry,
   Path,
+  Descendant,
 } from "slate";
 import { CET, CustomElement, EditorType, InLineTypes } from "../common/Defines";
 import { utils } from "../common/utils";
 import { ListLogic } from "../comps/ListComp";
 import { TableLogic } from "../comps/Table";
 import {
+  getCopyedCells,
   getEditingTdsPath,
   getStrPathSetOfSelectedTds,
   setCopyedCells,
+  setCopyedContent,
   setCopyedMaxRowAndCol,
 } from "../common/globalStore";
+import { htmlToSlate } from "../common/htmlToSlate";
+import { jsx } from "slate-hyperscript";
 
 export const withCyWrap = (editor: EditorType) => {
   const {
@@ -52,21 +57,6 @@ export const withCyWrap = (editor: EditorType) => {
     } catch (error) {
       console.warn(error);
     }
-  };
-
-  // 在本编辑器复制的时候触发
-  // dataTransfer 说明：https://developer.mozilla.org/zh-CN/docs/Web/API/DataTransfer
-  editor.getFragment = () => {
-    setCopyedCells(null);
-    setCopyedMaxRowAndCol({ copyedAreaHeight: 0, copyedAreaWidth: 0 });
-    // console.log("getFragment", getFragment());
-    // return [
-    //   {
-    //     type: CET.DIV,
-    //     children: [{ text: "chenyu paste text" }],
-    //   },
-    // ];
-    return getFragment();
   };
 
   editor.insertBreak = () => {
@@ -189,11 +179,26 @@ export const withCyWrap = (editor: EditorType) => {
     insertText(e);
   };
 
+  // 在本编辑器复制的时候触发
+  // dataTransfer 说明：https://developer.mozilla.org/zh-CN/docs/Web/API/DataTransfer
+  editor.getFragment = () => {
+    setCopyedCells(null);
+    setCopyedMaxRowAndCol({ copyedAreaHeight: 0, copyedAreaWidth: 0 });
+    setCopyedContent(getFragment());
+    // console.log("getFragment", getFragment());
+    // return [
+    //   {
+    //     type: CET.DIV,
+    //     children: [{ text: "chenyu paste text" }],
+    //   },
+    // ];
+    return getFragment();
+  };
+
   // 在粘贴的时候触发
   editor.insertFragment = (fragment) => {
-    // console.log("insertFragment", fragment);
     utils.removeRangeElement(editor);
-    insertFragment(fragment);
+    Transforms.insertNodes(editor, fragment);
   };
 
   // 粘贴的时候首先触发的方法，在这里可以将传入的内容进行个性化处理，然后生成新的dataTransfer传递给slate
@@ -203,20 +208,39 @@ export const withCyWrap = (editor: EditorType) => {
     // console.log(
     //   utils.decodeContentToSlateData(e.getData("application/x-slate-fragment"))
     // );
-    const newTransfer = new DataTransfer();
-    newTransfer.setData(
-      "application/x-slate-fragment",
-      // 编码内容
-      utils.encodeSlateContent([
-        {
-          type: CET.DIV,
-          children: [{ text: "chenyu paste text123" }],
-        },
-      ])
-    );
     // newTransfer.setData("text/plain", "plan text");
-    return insertData(e);
-    // return insertData(newTransfer);
+    const tds = getCopyedCells();
+    if (tds) {
+      const [table] = Editor.nodes(editor, {
+        at: tds[0][1],
+        mode: "lowest",
+        match(n) {
+          return TableLogic.isTable(n);
+        },
+      });
+      if (table) {
+        const newTransfer = new DataTransfer();
+        newTransfer.setData(
+          "application/x-slate-fragment",
+          // 编码内容
+          utils.encodeSlateContent([table[0] as Descendant])
+        );
+        insertData(newTransfer);
+        return;
+      }
+    } else if (e.types.includes("application/x-slate-fragment")) {
+      insertData(e);
+    } else if (e.types.includes("text/plain")) {
+      const newTransfer = new DataTransfer();
+      const content = htmlToSlate(e.getData("text/plain"));
+      console.log(content);
+      newTransfer.setData(
+        "application/x-slate-fragment",
+        // 编码内容
+        utils.encodeSlateContent(content)
+      );
+      insertData(newTransfer);
+    }
   };
 
   const normalizeList = _.debounce(() => {

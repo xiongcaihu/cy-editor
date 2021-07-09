@@ -1,6 +1,7 @@
 import { EditorType } from "../../common/Defines";
 import { TdLogic } from "../../comps/Td";
 import { TableLogic } from "../../comps/Table";
+import { setCopyedContent } from "../../common/globalStore";
 
 export const handleSelectedTd = (e: any, editor: EditorType) => {
   // 当没有选区的时候，查看是否已经选中表格
@@ -76,6 +77,7 @@ export const handleSelectedTd = (e: any, editor: EditorType) => {
 
   // 选中单元格进行复制
   if (e.ctrlKey && e.key === "c") {
+    setCopyedContent(null);
     TableLogic.copyCells(editor);
     return;
   }
@@ -85,6 +87,6 @@ export const handleSelectedTd = (e: any, editor: EditorType) => {
     TableLogic.pasteCells(editor);
     return;
   }
-  
+
   return;
 };

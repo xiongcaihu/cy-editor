@@ -31,6 +31,7 @@ import {
   setCopyedMaxRowAndCol,
   getCopyedCells,
   getCopyedMaxRowAndCol,
+  getCopyedContent,
 } from "../common/globalStore";
 import { message } from "antd";
 import { useEffect } from "react";
@@ -449,6 +450,18 @@ export const TableLogic = {
   normalizeTable(editor: EditorType, nodeEntry: NodeEntry) {
     const [node, path] = nodeEntry;
 
+    if (Element.isElement(node) && [CET.TABLE].includes(node.type)) {
+      // 如果table的子元素里含有其他非tbody的标签，删除
+      for (const [child, childP] of Node.children(editor, path, {
+        reverse: true,
+      })) {
+        if (child.type != CET.TBODY) {
+          Transforms.removeNodes(editor, { at: childP });
+          return;
+        }
+      }
+    }
+
     // tbody校验规则
     if (Element.isElement(node) && [CET.TBODY].includes(node.type)) {
       // 如果tbody的父元素不是table，则删除
@@ -456,6 +469,14 @@ export const TableLogic = {
       if (!(Element.isElement(parent) && parent.type == CET.TABLE)) {
         Transforms.removeNodes(editor, { at: path });
         return true;
+      }
+      for (const [child, childP] of Node.children(editor, path, {
+        reverse: true,
+      })) {
+        if (child.type != CET.TR) {
+          Transforms.removeNodes(editor, { at: childP });
+          return;
+        }
       }
     }
 
@@ -466,6 +487,14 @@ export const TableLogic = {
       if (!(Element.isElement(parent) && [CET.TBODY].includes(parent.type))) {
         Transforms.removeNodes(editor, { at: path });
         return true;
+      }
+      for (const [child, childP] of Node.children(editor, path, {
+        reverse: true,
+      })) {
+        if (child.type != CET.TD) {
+          Transforms.removeNodes(editor, { at: childP });
+          return;
+        }
       }
       if (node.children.length == 1 && Node.child(node, 0).type != CET.TD) {
         Transforms.setNodes(editor, { shouldEmpty: true }, { at: path });
@@ -1201,6 +1230,21 @@ export const TableLogic = {
     });
   },
   pasteCells(editor: EditorType) {
+    const copyedContent = getCopyedContent();
+    if (copyedContent) {
+      // 将复制的内容全部加入到选择的td中
+      const selectedTdsPath = Array.from(TableLogic.getSelectedTdsPath(editor));
+      TdLogic.clearTd(editor);
+      for (const path of selectedTdsPath) {
+        Transforms.insertNodes(editor, _.cloneDeep(copyedContent), {
+          at: [...path, 0],
+        });
+        Transforms.removeNodes(editor, {
+          at: [...path, Array.from(Node.children(editor, path)).length - 1],
+        });
+      }
+      return;
+    }
     // 检查复制的单元格区域能否完全覆盖目标区域
     const copyedCells = getCopyedCells();
     if (!copyedCells) return;

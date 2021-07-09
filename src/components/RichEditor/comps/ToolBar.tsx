@@ -53,6 +53,7 @@ import { CompactPicker } from "react-color";
 import { EditorContext } from "../RichEditor";
 import { useEffect } from "react";
 import { slateToHtml } from "../common/slateToHtml";
+import { htmlToSlate } from "../common/htmlToSlate";
 
 const calcStatusDelay = 50;
 
@@ -1208,8 +1209,22 @@ export const ToolBar: React.FC<{}> = (props) => {
               console.log(slateToHtml(editor));
             }}
           >
-            <SaveOutlined />
-            (HTML)
+            slateToHtml
+          </StaticButton>
+        </Col>
+        <Col>
+          <StaticButton
+            title="输入内容"
+            mousedownFunc={(e) => {
+              // const editorDom = e.nativeEvent.path.find((o: any) => o.className == "cyEditor");
+              // if(!editorDom) return;
+              // const content = editorDom.querySelector(':scope>.cyEditor__content');
+              // console.log(content.innerHTML);
+              const content = htmlToSlate(`<table><tbody><tr><td>123</td></tr></tbody></table>`);
+              Transforms.insertNodes(editor, content);
+            }}
+          >
+            htmlToSlate
           </StaticButton>
         </Col>
         <Col>

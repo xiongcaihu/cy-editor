@@ -165,7 +165,7 @@ export const slateToHtml = (node: Node): string => {
     case CET.LINK:
       return `<a ${attrs} href="${node.url}">${children}</a>`;
     case CET.TABLE:
-      return `<div style="display:inline-block;width:100%;overflow:auto;"><table border="1" ${attrs} ${style}>${children}</table></div>`;
+      return `<table border="1" ${attrs} ${style}>${children}</table>`;
     case CET.TBODY:
       return `<tbody ${attrs} ${style}>${children}</tbody>`;
     case CET.TR:
