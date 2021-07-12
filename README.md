@@ -2,6 +2,7 @@
 > 看了一些网上开源的编辑器，都不符合自己的操作习惯，于是就想重新实现一个。
 
 ### demo
+https://xiongcaihu.github.io/cyEditorDeploy/
 
 ### slatejs介绍
 https://docs.slatejs.org/
