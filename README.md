@@ -1,46 +1,56 @@
-# Getting Started with Create React App
+# Slatejs富文本框架学习
+> 看了一些网上开源的编辑器，都不符合自己的操作习惯，于是就想重新实现一个。
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+### demo
 
-## Available Scripts
+### slatejs介绍
+https://docs.slatejs.org/
 
-In the project directory, you can run:
+### 核心概念
+#### editor.children
+slatejs展示的内容结构，是一棵树，根节点就是editor.children对象（editor是编辑器的一个实例），它由众多Element和Text节点构成，其中Text是叶子节点。结构如下：
+``` typescript
+type YourElement = {
+  [key:string]:any; // 自定义属性，每个属性怎么渲染到内容里，需要自己制定规则
+  children:YourElement[]; // 子节点
+}
+type YourTextNode = {
+  text:string;
+  [key:string]:any; // Text节点也可以扩展属性
+}
+```
+参考：https://docs.slatejs.org/concepts/01-interfaces
+<br/>
+> 你可以通过各种API来操作editor.children对象，slate负责根据这棵树来渲染内容。
 
-### `yarn start`
+#### Path
+Path就是树里各个节点的路径，它的结构：
+``` typescript
+type Path = number[];
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+#### Point
+Point比Path更深入，可以理解成光标的位置，它的结构：
+``` typescript
+interface Point {
+    path: Path; // 定位到节点的路径
+    offset: number; // 文本节点的内容偏移量
+}
+```
+> 光标总是位于文本节点的某个位置，那么这个位置总是可以用Point表示
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+#### Range
+Range就是我们按住鼠标左键拖动后选中的区域对象，这个区域包含文本节点以及元素节点。
 
-### `yarn test`
+### 常用API注释
+#### Editor.nodes
+从根节点往下遍历到当前指定区域，输出匹配的所有元素，如果没有指定区域，则默认是光标或者选中区域。
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `yarn build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `yarn eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+#### Editor.node
+#### Editor.isStart
+#### Editor.isEnd
+#### Editor.above
+#### Editor.first
+#### Editor.last
+#### Editor.range
+#### Editor.parent
