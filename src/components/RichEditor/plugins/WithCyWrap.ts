@@ -1,5 +1,3 @@
-/* eslint-disable eqeqeq */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import _ from "lodash";
 import {
   Editor,
@@ -8,8 +6,8 @@ import {
   Text,
   Transforms,
   NodeEntry,
-  Path,
   Descendant,
+  Path,
 } from "slate";
 import { CET, CustomElement, EditorType, InLineTypes } from "../common/Defines";
 import { utils } from "../common/utils";
@@ -17,14 +15,12 @@ import { ListLogic } from "../comps/ListComp";
 import { TableLogic } from "../comps/Table";
 import {
   getCopyedCells,
-  getEditingTdsPath,
-  getStrPathSetOfSelectedTds,
   setCopyedCells,
   setCopyedContent,
   setCopyedMaxRowAndCol,
 } from "../common/globalStore";
 import { htmlToSlate } from "../common/htmlToSlate";
-import { jsx } from "slate-hyperscript";
+import { HistoryEditor } from "slate-history";
 
 export const withCyWrap = (editor: EditorType) => {
   const {
@@ -32,28 +28,51 @@ export const withCyWrap = (editor: EditorType) => {
     deleteBackward,
     deleteFragment,
     getFragment,
-    insertFragment,
     insertText,
     insertData,
     insertBreak,
     isInline,
     isVoid,
     normalizeNode,
-    setFragmentData,
     apply,
-    redo,
-    undo,
   } = editor;
 
-  // editor.undo = () => {
-  //   undo();
-  // };
+  const getTodoList = () => {
+    const [todo] = Editor.nodes(editor, {
+      match(n) {
+        return Element.isElement(n) && n.type === CET.TODOLIST;
+      },
+    });
+    return todo;
+  };
 
   editor.apply = (e) => {
-    // const array = JSON.parse(window.localStorage.getItem("history") || "[]");
     try {
-      apply(e);
-      // window.localStorage.setItem("history", JSON.stringify(array));
+      if (e.type === "set_node") {
+        const node = Editor.node(editor, e.path);
+        const isTd = node && TableLogic.isTd(node[0]);
+        const isTable = node && TableLogic.isTable(node[0]);
+        const properties = e.newProperties as Partial<CustomElement>;
+        const oldProperties = e.properties as Partial<CustomElement>;
+        if (
+          (isTd &&
+            (properties.selected ||
+              properties.width ||
+              properties.start ||
+              properties.canTdEdit ||
+              oldProperties.start ||
+              oldProperties.selected ||
+              oldProperties.width ||
+              oldProperties.canTdEdit)) ||
+          (isTable &&
+            (properties.wrapperWidthWhenCreated ||
+              oldProperties.wrapperWidthWhenCreated))
+        ) {
+          HistoryEditor.withoutSaving(editor, () => {
+            apply(e);
+          });
+        } else apply(e);
+      } else apply(e);
     } catch (error) {
       console.warn(error);
     }
@@ -61,6 +80,18 @@ export const withCyWrap = (editor: EditorType) => {
 
   editor.insertBreak = () => {
     if (!editor.selection) return;
+    const todoList = getTodoList();
+    if (todoList) {
+      if (
+        todoList &&
+        Editor.string(editor, todoList[1], { voids: true }) === ""
+      ) {
+        Transforms.setNodes(editor, { type: CET.DIV }, { at: todoList[1] });
+        return;
+      }
+      insertBreak();
+      return;
+    }
     if (Range.isExpanded(editor.selection)) {
       utils.removeRangeElement(editor);
     } else {
@@ -83,96 +114,131 @@ export const withCyWrap = (editor: EditorType) => {
   };
 
   editor.deleteForward = (unit) => {
-    if (editor.selection && Range.isCollapsed(editor.selection)) {
-      normalizeList();
+    if (!editor.selection) return;
 
-      const textWrapper = Editor.above(editor, {
+    normalizeList();
+
+    const li = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return ListLogic.isListItem(n);
+      },
+    });
+    const td = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+    const twWrapper = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return utils.isTextWrapper(n);
+      },
+    });
+
+    const isInLi = li && (!td || li[1].length > td[1].length);
+
+    if (
+      twWrapper &&
+      Editor.string(editor, twWrapper[1], { voids: true }) === ""
+    ) {
+      Transforms.removeNodes(editor, { at: twWrapper[1] });
+      return;
+    }
+
+    // 如果光标处于列表里
+    if (isInLi && li && Editor.string(editor, li[1], { voids: true }) === "") {
+      Transforms.removeNodes(editor, { at: li[1] });
+      return;
+    }
+
+    const afterPos = Editor.after(editor, editor.selection.anchor);
+    const afterTd =
+      afterPos &&
+      Editor.above(editor, {
+        at: afterPos,
         mode: "lowest",
         match(n) {
-          return utils.isTextWrapper(n);
+          return TableLogic.isTd(n);
         },
       });
-      if (!textWrapper) return;
-      const twParent = Editor.parent(editor, textWrapper[1]);
+    if (td && afterTd && !Path.equals(td[1], afterTd[1])) return;
 
-      const td = TableLogic.isTd(twParent[0]) && twParent;
-
-      // 如果在td的最后一个文本域的最后一个位置，那么阻止默认行为
-      if (td && Editor.isEnd(editor, editor.selection.anchor, td[1])) return;
-
-      // 如果光标的下一个位置是表格的第一个位置
-      const after = Editor.after(editor, editor.selection.anchor);
-      const nextTable = Editor.above(editor, {
-        at: after,
-        match(n) {
-          return TableLogic.isTable(n);
-        },
-      });
-      if (nextTable && after && Editor.isStart(editor, after, nextTable[1])) {
-        return;
-      }
-
-      if (Editor.string(editor, textWrapper[1], { voids: true }) === "") {
-        Transforms.removeNodes(editor, {
-          at: textWrapper[1],
-        });
-        return;
-      }
-
-      deleteForward(unit);
-    }
+    deleteForward(unit);
   };
 
   editor.deleteBackward = (unit) => {
-    if (editor.selection && Range.isCollapsed(editor.selection)) {
-      normalizeList();
+    if (!editor.selection) return;
 
-      const textWrapper = Editor.above(editor, {
-        mode: "lowest",
-        match(n) {
-          return utils.isTextWrapper(n);
-        },
-      });
-      if (!textWrapper) return;
+    normalizeList();
 
-      const twParent = Editor.parent(editor, textWrapper[1]);
-
-      const td = TableLogic.isTd(twParent[0]) && twParent;
-      const li = ListLogic.isListItem(twParent[0]) && twParent;
-
-      // 如果在td的第一个文本域的第一个位置，那么阻止默认行为
-      if (td && Editor.isStart(editor, editor.selection.anchor, td[1])) return;
-
-      // 如果光标处于列表里
-      if (li && Editor.isStart(editor, editor.selection.anchor, li[1])) {
-        Transforms.liftNodes(editor, { at: li[1] });
+    const todoList = getTodoList();
+    if (todoList) {
+      if (Editor.isStart(editor, editor.selection.anchor, todoList[1])) {
+        Transforms.removeNodes(editor, { at: todoList[1] });
         return;
       }
-
-      // 如果光标的前一个位置刚好进入表格，那么阻止执行
-      const before = Editor.before(editor, editor.selection.anchor);
-      const preTable = Editor.above(editor, {
-        at: before,
-        match(n) {
-          return TableLogic.isTable(n);
-        },
-      });
-      if (preTable && before && Editor.isEnd(editor, before, preTable[1])) {
-        return;
-      }
-
-      if (Editor.string(editor, textWrapper[1], { voids: true }) === "") {
-        Transforms.removeNodes(editor, {
-          at: textWrapper[1],
-        });
-        return;
-      }
-
       deleteBackward(unit);
+      return;
     }
+
+    const li = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return ListLogic.isListItem(n);
+      },
+    });
+    const td = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+
+    const twWrapper = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return utils.isTextWrapper(n);
+      },
+    });
+
+    const isInLi = li && (!td || li[1].length > td[1].length);
+
+    if (
+      twWrapper &&
+      Editor.string(editor, twWrapper[1], { voids: true }) === ""
+    ) {
+      Transforms.removeNodes(editor, { at: twWrapper[1] });
+      return;
+    }
+
+    const beforePos = Editor.before(editor, editor.selection.anchor);
+
+    // 如果光标处于列表里
+    if (isInLi && li && Editor.string(editor, li[1], { voids: true }) === "") {
+      Transforms.removeNodes(editor, { at: li[1] });
+      return;
+    }
+
+    // 如果执行动作时所处的td和即将触及到的td不是同一个td，那么阻止
+    const preTd = Editor.above(editor, {
+      at: beforePos,
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+    if (preTd && td && !Path.equals(preTd[1], td[1])) return;
+
+    deleteBackward(unit);
   };
 
   editor.insertText = (e) => {
+    if (getTodoList()) {
+      insertText(e);
+      return;
+    }
     if (editor.selection && Range.isExpanded(editor.selection)) {
       utils.removeRangeElement(editor);
     }
@@ -233,7 +299,6 @@ export const withCyWrap = (editor: EditorType) => {
     } else if (e.types.includes("text/plain")) {
       const newTransfer = new DataTransfer();
       const content = htmlToSlate(e.getData("text/plain"));
-      console.log(content);
       newTransfer.setData(
         "application/x-slate-fragment",
         // 编码内容

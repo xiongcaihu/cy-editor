@@ -20,6 +20,7 @@ export enum CET {
   TBODY = "tbody",
   TR = "tr",
   TD = "td",
+  TODOLIST = "todo",
 }
 
 export const TextWrappers = [CET.DIV, CET.H1, CET.H2, CET.H3, CET.H4, CET.P];
@@ -47,6 +48,7 @@ export type CustomElement = {
   selected?: boolean; // td是否被选中
   canTdEdit?: boolean; // td是否可以编辑
   liColor?: string; // li color
+  checked?: boolean; // todoList属性
   wrapperWidthWhenCreated?: number; // table创建时所在的容器宽度，用于动态计算td的宽度
   textAlign?: "left" | "right" | "center"; // textWrapper的属性
   tdMap?: any; // 用于计算tdMap

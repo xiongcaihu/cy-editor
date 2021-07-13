@@ -86,10 +86,10 @@ const getAttributes = (node: Node) => {
     if (node.url) {
       attrs = attrs + `${node.type === CET.LINK ? "href" : "src"}=${node.url} `;
     }
-    if(node.width){
+    if (node.width) {
       attrs = attrs + `width="${node.width}px" `;
     }
-    if(node.height){
+    if (node.height) {
       attrs = attrs + `height="${node.height}px" `;
     }
   }

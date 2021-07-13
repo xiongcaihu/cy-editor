@@ -9,6 +9,7 @@ import { TD } from "../comps/Td";
 import { Table } from "../comps/Table";
 import { ImgComp } from "../comps/ImgComp";
 import { LinkComp } from "../comps/LinkComp";
+import { TodoListComp as TODO } from "../comps/TodoListComp";
 import { RenderElementProps } from "slate-react";
 
 declare module "slate" {
@@ -27,6 +28,8 @@ export const MyElements: (props: RenderElementProps) => JSX.Element = (
     style.textAlign = element.textAlign;
 
   switch (element.type) {
+    case CET.TODOLIST:
+      return <TODO {...props}></TODO>;
     case CET.NUMBER_LIST:
       return <ol {...attributes}>{children}</ol>;
     case CET.NORMAL_LIST:

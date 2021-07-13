@@ -1261,17 +1261,17 @@ export const TableLogic = {
     if (!tbody) return;
     // 如果复制的单元格只有一个，那么将选中的单元格的内容全部替换成复制的单元格内容
     if (copyedCells.length == 1) {
-      const copyedTd = copyedCells.pop();
+      const copyedTd = copyedCells[copyedCells.length - 1];
       if (!copyedTd) return;
       selectedTds.forEach((td) => {
-        const childLength = td[0].children.length;
+        let childLength = td[0].children.length;
         Transforms.insertNodes(editor, _.cloneDeep(copyedTd[0].children), {
           at: [...td[1], 0],
         });
         for (const [, childP] of Node.children(editor, td[1], {
           reverse: true,
         })) {
-          if (childP[childP.length - 1] == childLength - 1) break;
+          if (childLength-- == 0) break;
           Transforms.removeNodes(editor, {
             at: childP,
           });

@@ -46,6 +46,7 @@ import Icon, {
   VerticalAlignTopOutlined,
   FolderOpenOutlined,
   FormatPainterOutlined,
+  CheckSquareOutlined,
 } from "@ant-design/icons";
 import "./ToolBar.css";
 import React, { useContext, useMemo, useRef, useState } from "react";
@@ -688,6 +689,13 @@ export const ToolBar: React.FC<{}> = (props) => {
     ListLogic.toggleList(editor, CET.NUMBER_LIST);
   };
 
+  const insertToDoList = () => {
+    Transforms.insertNodes(editor, {
+      type: CET.TODOLIST,
+      children: [{ text: "" }],
+    });
+  };
+
   const setNormalList = () => {
     ListLogic.toggleList(editor, CET.NORMAL_LIST);
   };
@@ -1052,6 +1060,17 @@ export const ToolBar: React.FC<{}> = (props) => {
           />
         </Col>
         <Col>
+          <ReactButton
+            title="待办列表"
+            mousedownFunc={() => {
+              insertToDoList();
+            }}
+            disabledCondition={(editor) => {
+              return editor.selection == null;
+            }}
+          >
+            <CheckSquareOutlined />
+          </ReactButton>
           <ReactButton
             title="有序列表"
             mousedownFunc={() => {

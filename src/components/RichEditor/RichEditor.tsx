@@ -1,7 +1,3 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable eqeqeq */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/ban-types */
 import {
   useCallback,
   useEffect,
@@ -29,10 +25,8 @@ import { withCyWrap } from "./plugins/WithCyWrap";
 import { HandleKeyDownEvent } from "./EventHandler/HandleKeyDownEvent/HandleKeyDownEvent";
 import { MyElements } from "./RenderElements/MyElements";
 import { MyLeaf } from "./RenderElements/RenderLeaf";
-import _ from "lodash";
 import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
 import "./RichEditor.css";
-import { htmlToSlate } from "./common/htmlToSlate";
 
 type savedMarksShape =
   | (Partial<
@@ -94,18 +88,11 @@ const EditorComp: EditorCompShape = () => {
   const [readOnly, setReadOnly] = useState(false);
 
   useEffect(() => {
-    // window.localStorage.removeItem("history");
     // setTimeout(() => {
     //   unitTest(editor);
     // }, 100);
     // TableLogic.resetSelectedTds(editor);
   }, []);
-
-  // useEffect(() => {
-  //   // console.log(ref.current.preUndos);
-  //   // console.log(editor.history.undos);
-  //   ref.current.preUndos = _.clone(editor.history.undos);
-  // }, [editor.history.undos.length]);
 
   const renderElement: EditableProps["renderElement"] = useCallback(
     (props) => <MyElements {...props} editorRef={ref}></MyElements>,

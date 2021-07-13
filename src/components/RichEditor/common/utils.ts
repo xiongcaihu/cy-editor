@@ -164,6 +164,29 @@ export const utils = {
     );
     for (const [, p] of texts) {
       const textWrapper = utils.getParent(editor, p);
+      if (
+        Element.isElement(textWrapper[0]) &&
+        textWrapper[0].type === CET.TODOLIST
+      ) {
+        const todoList = textWrapper;
+        const tRange = Editor.range(editor, todoList[1]);
+        const inte =
+          editor.selection && Range.intersection(editor.selection, tRange);
+        if (!inte) continue;
+        if (Range.equals(inte, tRange)) {
+          Transforms.removeNodes(editor, {
+            at: todoList[1],
+          });
+        } else {
+          Transforms.delete(editor, {
+            at: inte,
+            reverse: true,
+            unit: "character",
+            hanging: true,
+          });
+        }
+        continue;
+      }
       if (textWrapper.length > 0 && utils.isTextWrapper(textWrapper[0])) {
         const tRange = Editor.range(editor, textWrapper[1]);
         const inte =
