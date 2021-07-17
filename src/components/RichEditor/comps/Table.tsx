@@ -41,20 +41,22 @@ declare module "react" {
   }
 }
 
+type refShape = {
+  isBeginSelectTd: boolean;
+  mouseDownStartPoint: any;
+  preMouseOnTdPath: Path | null; //  鼠标移动时，记录上一次所处的td
+  lastSelectedPaths: Path[];
+  initX: number;
+  initY: number;
+  prePath: Path | null;
+};
+
 export const Table: (props: RenderElementProps) => JSX.Element = ({
   attributes,
   children,
   element,
 }) => {
-  const ref = useRef<{
-    isBeginSelectTd: boolean;
-    mouseDownStartPoint: any;
-    preMouseOnTdPath: Path | null; //  鼠标移动时，记录上一次所处的td
-    lastSelectedPaths: Path[];
-    initX: number;
-    initY: number;
-    prePath: Path | null;
-  }>({
+  const ref = useRef<refShape>({
     isBeginSelectTd: false,
     mouseDownStartPoint: null,
     initX: 0,
@@ -63,7 +65,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     preMouseOnTdPath: null,
     prePath: null,
   });
-
+  
   const { savedMarks, setSavedMarks } = useContext(EditorContext);
 
   const editor = useSlateStatic();
@@ -116,7 +118,6 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
       TableLogic.resetSelectedTds(editor);
     }
     ref.current.prePath = path;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
   // 找到需要取消选择和新选择的td的完整的path
@@ -263,7 +264,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     ref.current.lastSelectedPaths = nowTdsPath;
   }, 5);
 
-  const mousedownFunc = (e: any) => {
+  const handleTableMouseDown = (e: any) => {
     // 防止事件冒泡到父元素的td
     e.stopPropagation();
     try {
@@ -300,36 +301,57 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         }
         ref.current.preMouseOnTdPath = path;
 
+        const mousemoveFunc = (e: any) => {
+          try {
+            // 如果移动距离不超过1，那么不进入逻辑
+            if (
+              ref.current.isBeginSelectTd &&
+              (Math.abs(e.clientX - ref.current.initX) > 1 ||
+                Math.abs(e.clientY - ref.current.initY) > 1)
+            ) {
+              const slateNode = ReactEditor.toSlateNode(editor, e.target);
+              const path = ReactEditor.findPath(editor, slateNode);
+              selectTd(
+                Editor.point(editor, ref.current.mouseDownStartPoint),
+                Editor.point(editor, path)
+              );
+            }
+          } catch (error) {}
+        };
+        const mouseupFunc = (e: any) => {
+          ref.current.isBeginSelectTd = false;
+          window.onmousemove = () => {};
+          window.onmousedown = () => {};
+          window.onmouseup = () => {};
+        };
+
         window.onmousemove = mousemoveFunc;
         window.onmouseup = mouseupFunc;
       }
     } catch (error) {}
   };
-  const mousemoveFunc = (e: any) => {
-    try {
-      // 如果移动距离不超过1，那么不进入逻辑
-      if (
-        ref.current.isBeginSelectTd &&
-        (Math.abs(e.clientX - ref.current.initX) > 1 ||
-          Math.abs(e.clientY - ref.current.initY) > 1)
-      ) {
-        const slateNode = ReactEditor.toSlateNode(editor, e.target);
-        const path = ReactEditor.findPath(editor, slateNode);
-        selectTd(
-          Editor.point(editor, ref.current.mouseDownStartPoint),
-          Editor.point(editor, path)
-        );
+
+  const handleTableMouseUp = () => {
+    if (savedMarks) {
+      const copyMarks: any = {};
+      const hasSelectTd = TableLogic.getSelectedTdsSize(editor);
+      for (const key of Object.values(Marks)) {
+        copyMarks[key] = savedMarks[key];
       }
-    } catch (error) {}
-  };
-  const mouseupFunc = (e: any) => {
-    ref.current.isBeginSelectTd = false;
-    window.onmousemove = () => {};
-    window.onmousedown = () => {};
-    window.onmouseup = () => {};
+      if (hasSelectTd > 0) {
+        const selectedTdsPath = TableLogic.getSelectedTdsPath(editor);
+        for (const path of selectedTdsPath) {
+          Transforms.setNodes(editor, copyMarks, {
+            at: path,
+          });
+        }
+        setSavedMarks(null);
+        return;
+      }
+    }
   };
 
-  return (
+  const ui = (
     <div
       {...attributes}
       style={{
@@ -350,31 +372,14 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
           overflowY: "hidden",
           borderCollapse: "collapse",
         }}
-        onMouseDown={mousedownFunc}
-        onMouseUp={() => {
-          if (savedMarks) {
-            const copyMarks: any = {};
-            const hasSelectTd = TableLogic.getSelectedTdsSize(editor);
-            for (const key of Object.values(Marks)) {
-              copyMarks[key] = savedMarks[key];
-            }
-            if (hasSelectTd > 0) {
-              const selectedTdsPath = TableLogic.getSelectedTdsPath(editor);
-              for (const path of selectedTdsPath) {
-                Transforms.setNodes(editor, copyMarks, {
-                  at: path,
-                });
-              }
-              setSavedMarks(null);
-              return;
-            }
-          }
-        }}
+        onMouseDown={handleTableMouseDown}
+        onMouseUp={handleTableMouseUp}
       >
         {children}
       </table>
     </div>
   );
+  return ui;
 };
 
 const getEditingOrSelectedTdBelongTable = (editor: Editor) => {

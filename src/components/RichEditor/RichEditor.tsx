@@ -19,7 +19,7 @@ import {
 } from "./common/Defines";
 import { TableLogic } from "./comps/Table";
 import { utils } from "./common/utils";
-import { ToolBar } from "./comps/ToolBar";
+import { ToolBar } from "./comps/TooBar/ToolBar";
 import { TdLogic } from "./comps/Td";
 import { withCyWrap } from "./plugins/WithCyWrap";
 import { HandleKeyDownEvent } from "./EventHandler/HandleKeyDownEvent/HandleKeyDownEvent";
@@ -78,6 +78,7 @@ const EditorComp: EditorCompShape = () => {
     preSelection: null,
   });
   const [savedMarks, setSavedMarks] = useState<savedMarksShape>();
+
   useEffect(() => {
     if (savedMarks != null) {
       document.body.style.cursor = "copy";
@@ -166,12 +167,14 @@ const EditorComp: EditorCompShape = () => {
         }}
       >
         <EditorContext.Provider
-          value={{
-            savedMarks: savedMarks,
-            setSavedMarks: setSavedMarks,
-            readOnly,
-            setReadOnly,
-          }}
+          value={useMemo(() => {
+            return {
+              savedMarks: savedMarks,
+              setSavedMarks: setSavedMarks,
+              readOnly,
+              setReadOnly,
+            };
+          }, [readOnly, savedMarks])}
         >
           {MyToolBar}
           <div

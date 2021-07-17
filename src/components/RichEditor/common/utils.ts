@@ -251,4 +251,8 @@ export const utils = {
   getParent(editor: EditorType, path: Path) {
     return this.getNodeByPath(editor, this.getPath(path, "parent"));
   },
+  isSelectTd(editor: EditorType) {
+    const hasSelectedTd = TableLogic.getFirstSelectedTd(editor);
+    return hasSelectedTd == null;
+  },
 };
