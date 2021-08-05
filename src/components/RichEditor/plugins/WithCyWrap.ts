@@ -171,6 +171,19 @@ export const withCyWrap = (editor: EditorType) => {
   editor.deleteBackward = (unit) => {
     if (!editor.selection) return;
 
+    const isCode = Editor.above(editor, {
+      at: Editor.before(editor, editor.selection),
+      match(n) {
+        return Element.isElement(n) && n.type === CET.CODE;
+      },
+    });
+    if (isCode) {
+      Transforms.removeNodes(editor, {
+        at: isCode[1],
+      });
+      return;
+    }
+
     normalizeList();
 
     const todoList = getTodoList();
@@ -330,7 +343,7 @@ export const withCyWrap = (editor: EditorType) => {
     return isInline(node);
   };
   editor.isVoid = (node) => {
-    if ([CET.IMG].includes(node.type)) {
+    if ([CET.IMG, CET.CODE].includes(node.type)) {
       return true;
     }
     return isVoid(node);
@@ -338,6 +351,22 @@ export const withCyWrap = (editor: EditorType) => {
 
   const normalizeEditor = (nodeEntry: NodeEntry) => {
     const [node, path] = nodeEntry;
+
+    if (Element.isElement(node) && node.type === CET.CODE) {
+      if (Editor.next(editor, { at: path }) == null) {
+        Transforms.insertNodes(
+          editor,
+          {
+            type: CET.DIV,
+            children: [{ text: "" }],
+          },
+          {
+            at: Path.next(path),
+          }
+        );
+        return;
+      }
+    }
 
     // 如果没有子元素，那么强行添加一个
     if (editor.children.length === 0) {

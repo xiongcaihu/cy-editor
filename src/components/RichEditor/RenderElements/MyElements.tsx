@@ -9,6 +9,7 @@ import { TD } from "../comps/Td";
 import { Table } from "../comps/Table";
 import { ImgComp } from "../comps/ImgComp";
 import { LinkComp } from "../comps/LinkComp";
+import { CodeComp as CODE } from "../comps/Code";
 import { TodoListComp as TODO } from "../comps/TodoListComp";
 import { RenderElementProps } from "slate-react";
 
@@ -90,6 +91,8 @@ export const MyElements: (props: RenderElementProps) => JSX.Element = (
       );
     case CET.TD:
       return <TD {...props}></TD>;
+    case CET.CODE:
+      return <CODE {...props}></CODE>;
     default:
       return <div {...attributes}>{children}</div>;
   }

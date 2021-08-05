@@ -115,6 +115,25 @@ export const utils = {
     if (!selection) return;
     if (Range.isCollapsed(selection)) return;
 
+    // 如果全选了代码块，那么删除
+    const codes = Editor.nodes(editor, {
+      at: selection,
+      match(n) {
+        return Element.isElement(n) && n.type === CET.CODE;
+      },
+    });
+    for (const code of codes) {
+      if (code) {
+        const codeRange = Editor.range(editor, code[1]);
+        const inte = Range.intersection(selection, codeRange);
+        if (inte && Range.equals(codeRange, inte)) {
+          Transforms.removeNodes(editor, { at: code[1] });
+          utils.removeRangeElement(editor);
+          return;
+        }
+      }
+    }
+
     // 如果全选了表格，那么直接删除表格
     const tables = Editor.nodes(editor, {
       at: selection,

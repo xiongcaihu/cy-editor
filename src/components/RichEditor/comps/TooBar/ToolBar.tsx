@@ -42,6 +42,8 @@ import { InsertRowAfterButton } from "./funcButtons/InsertRowAfterButton";
 import { MergeCellButton } from "./funcButtons/MergeCellButton";
 import { SplitCellButton } from "./funcButtons/SplitCellButton";
 import { ClearCellButton } from "./funcButtons/ClearCellButton";
+import { CET } from "../../common/Defines";
+import { AddCodeBoxButton } from "./funcButtons/AddCodeBoxButton";
 
 const ReadOnlyButton: React.FC<{}> = (props) => {
   const { readOnly, setReadOnly } = useContext(EditorContext);
@@ -112,6 +114,9 @@ export const ToolBar: React.FC<{}> = (props) => {
           <LineThroughButton></LineThroughButton>
         </Col>
         <Col>{diverComp}</Col>
+        <Col>
+          <AddCodeBoxButton></AddCodeBoxButton>
+        </Col>
         <Col>
           <ToDoListButton></ToDoListButton>
         </Col>
