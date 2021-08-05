@@ -1,3 +1,5 @@
+// https://github.com/scniro/react-codemirror2
+// https://codemirror.net/doc/manual.html#config
 import { Select } from "antd";
 import _ from "lodash";
 import { Resizable } from "re-resizable";
