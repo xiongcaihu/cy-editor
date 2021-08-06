@@ -21,6 +21,7 @@ import {
 } from "../common/globalStore";
 import { htmlToSlate } from "../common/htmlToSlate";
 import { HistoryEditor } from "slate-history";
+import { insertImg } from "../comps/TooBar/funcButtons/SetImgButton";
 
 export const withCyWrap = (editor: EditorType) => {
   const {
@@ -50,7 +51,8 @@ export const withCyWrap = (editor: EditorType) => {
     try {
       if (e.type === "set_node") {
         const node = Editor.node(editor, e.path);
-        const isImg = node && Element.isElement(node[0]) && node[0].type === CET.IMG;
+        const isImg =
+          node && Element.isElement(node[0]) && node[0].type === CET.IMG;
         const isTd = node && TableLogic.isTd(node[0]);
         const isTable = node && TableLogic.isTable(node[0]);
         const properties = e.newProperties as Partial<CustomElement>;
@@ -323,6 +325,12 @@ export const withCyWrap = (editor: EditorType) => {
         utils.encodeSlateContent(content)
       );
       insertData(newTransfer);
+    } else if (e.types.includes("Files")) {
+      const files = e.files;
+      insertImg(
+        editor,
+        Array.from(files).filter((file) => /^image\//.test(file.type))
+      );
     }
   };
 

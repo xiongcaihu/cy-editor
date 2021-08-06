@@ -146,6 +146,8 @@ const EditorComp: EditorCompShape = () => {
   };
   const handleFocus = () => {
     ref.current.preSelection &&
+      Editor.hasPath(editor, ref.current.preSelection.anchor.path) &&
+      Editor.hasPath(editor, ref.current.preSelection.focus.path) &&
       Transforms.select(editor, ref.current.preSelection);
   };
   const handleBlur = () => {

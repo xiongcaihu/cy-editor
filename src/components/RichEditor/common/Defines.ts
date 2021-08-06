@@ -43,6 +43,7 @@ export type CustomElement = {
   [key: string]: any;
   url?: string; // 图片，Link组件的参数
   id?:number; // 唯一标识，表示图片正在上传中
+  border?:boolean; // img边框
   colSpan?: number; // td属性
   rowSpan?: number; // td 属性
   width?: number; // td样式属性

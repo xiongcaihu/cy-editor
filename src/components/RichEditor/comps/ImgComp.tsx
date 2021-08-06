@@ -1,4 +1,11 @@
 /* eslint-disable eqeqeq */
+import {
+  BorderlessTableOutlined,
+  BorderOuterOutlined,
+  DeleteOutlined,
+  FullscreenOutlined,
+} from "@ant-design/icons";
+import { Button, Col, Popover, Row, Tooltip } from "antd";
 import { Resizable } from "re-resizable";
 import { useState, useEffect } from "react";
 import { Transforms } from "slate";
@@ -7,6 +14,7 @@ import {
   ReactEditor,
   RenderElementProps,
   useSlateStatic,
+  useReadOnly,
 } from "slate-react";
 import testImg from "../c.jpg";
 
@@ -15,6 +23,7 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
   children,
   element,
 }) => {
+  const readOnly = useReadOnly();
   const selected = useSelected();
   const editor = useSlateStatic();
   const [state, setState] = useState({
@@ -121,6 +130,44 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
     </div>
   );
 
+  const addBorder = () => {
+    const path = ReactEditor.findPath(editor, element);
+    Transforms.setNodes(editor, { border: true }, { at: path });
+  };
+
+  const removeBorder = () => {
+    const path = ReactEditor.findPath(editor, element);
+    Transforms.unsetNodes(editor, "border", { at: path });
+  };
+
+  const deleteImg = () => {
+    const path = ReactEditor.findPath(editor, element);
+    Transforms.delete(editor, { at: path, voids: true, reverse: true });
+    ReactEditor.focus(editor);
+  };
+  const imgFuncs = [
+    {
+      title: "边框",
+      icon: <BorderOuterOutlined />,
+      method: addBorder,
+    },
+    {
+      title: "取消边框",
+      icon: <BorderlessTableOutlined />,
+      method: removeBorder,
+    },
+    {
+      title: "查看大图",
+      icon: <FullscreenOutlined />,
+      method: showBigImg,
+    },
+    {
+      title: "删除",
+      icon: <DeleteOutlined />,
+      method: deleteImg,
+    },
+  ];
+
   return (
     <div
       {...attributes}
@@ -128,13 +175,13 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
       style={{
         position: "relative",
         display: "inline-block",
-        marginRight: 5,
-        marginLeft: 5,
+        margin: 5,
         verticalAlign: "bottom",
         boxShadow:
           state.showTool || selected
             ? "0 0 0 3px rgba(180,215,255,.7)"
             : "none",
+        border: element.border ? "1px solid #e5e5e5" : "none",
       }}
       onClick={toggleShowTool}
       onDoubleClick={showBigImg}
@@ -146,7 +193,29 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         onResizeStop={onResizeStop}
       >
         {element.id ? mask : null}
-        <img width="100%" height="100%" alt="" src={element.url}></img>
+        <Popover
+          content={
+            <Row gutter={8}>
+              {imgFuncs.map((func) => {
+                return (
+                  <Col key={func.title}>
+                    <Tooltip title={func.title}>
+                      <Button
+                        onClick={func.method}
+                        type="text"
+                        icon={func.icon}
+                      ></Button>
+                    </Tooltip>
+                  </Col>
+                );
+              })}
+            </Row>
+          }
+          trigger={readOnly ? [] : "click"}
+          placement="bottomLeft"
+        >
+          <img width="100%" height="100%" alt="" src={element.url}></img>
+        </Popover>
         {children}
       </Resizable>
     </div>
