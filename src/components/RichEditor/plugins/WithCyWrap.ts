@@ -50,6 +50,7 @@ export const withCyWrap = (editor: EditorType) => {
     try {
       if (e.type === "set_node") {
         const node = Editor.node(editor, e.path);
+        const isImg = node && Element.isElement(node[0]) && node[0].type === CET.IMG;
         const isTd = node && TableLogic.isTd(node[0]);
         const isTable = node && TableLogic.isTable(node[0]);
         const properties = e.newProperties as Partial<CustomElement>;
@@ -66,13 +67,17 @@ export const withCyWrap = (editor: EditorType) => {
               oldProperties.canTdEdit)) ||
           (isTable &&
             (properties.wrapperWidthWhenCreated ||
-              oldProperties.wrapperWidthWhenCreated))
+              oldProperties.wrapperWidthWhenCreated)) ||
+          isImg
         ) {
           HistoryEditor.withoutSaving(editor, () => {
             apply(e);
           });
-        } else apply(e);
-      } else apply(e);
+          return;
+        }
+      }
+
+      apply(e);
     } catch (error) {
       console.warn(error);
     }

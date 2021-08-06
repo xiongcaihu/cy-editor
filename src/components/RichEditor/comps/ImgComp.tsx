@@ -99,6 +99,28 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
     window.open(element.url || testImg);
   };
 
+  const mask = (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        opacity: 0.8,
+        color: "white",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        fontWeight: "bold",
+        backgroundColor: "black",
+        zIndex: 9,
+      }}
+    >
+      uploading...
+    </div>
+  );
+
   return (
     <div
       {...attributes}
@@ -109,7 +131,10 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         marginRight: 5,
         marginLeft: 5,
         verticalAlign: "bottom",
-        boxShadow: state.showTool || selected ? "0 0 0 3px rgba(180,215,255,.7)" : "none",
+        boxShadow:
+          state.showTool || selected
+            ? "0 0 0 3px rgba(180,215,255,.7)"
+            : "none",
       }}
       onClick={toggleShowTool}
       onDoubleClick={showBigImg}
@@ -120,12 +145,8 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         size={state.size}
         onResizeStop={onResizeStop}
       >
-        <img
-          width="100%"
-          height="100%"
-          alt=""
-          src={element.url || testImg}
-        ></img>
+        {element.id ? mask : null}
+        <img width="100%" height="100%" alt="" src={element.url}></img>
         {children}
       </Resizable>
     </div>

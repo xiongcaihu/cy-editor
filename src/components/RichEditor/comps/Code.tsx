@@ -9,7 +9,12 @@ import { useMemo } from "react";
 import { useState } from "react";
 import { ICodeMirror, Controlled as CodeMirror } from "react-codemirror2";
 import { Transforms } from "slate";
-import { useSlateStatic, ReactEditor, useReadOnly } from "slate-react";
+import {
+  useSlateStatic,
+  ReactEditor,
+  useReadOnly,
+  useSelected,
+} from "slate-react";
 import { RenderElementProps } from "slate-react/dist/components/editable";
 require("codemirror/lib/codemirror.css");
 require("codemirror/theme/material.css");

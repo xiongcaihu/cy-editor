@@ -12,6 +12,7 @@ export const AddCodeBoxButton = () => {
       mousedownFunc={() => {
         Transforms.insertNodes(editor, {
           type: CET.CODE,
+          defaultMode: "javascript",
           children: [{ text: "" }],
         });
       }}
