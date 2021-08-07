@@ -22,6 +22,7 @@ import {
 import { htmlToSlate } from "../common/htmlToSlate";
 import { HistoryEditor } from "slate-history";
 import { insertImg } from "../comps/TooBar/funcButtons/SetImgButton";
+import { insertFile } from "../comps/TooBar/funcButtons/InsertFileButton";
 
 export const withCyWrap = (editor: EditorType) => {
   const {
@@ -53,6 +54,8 @@ export const withCyWrap = (editor: EditorType) => {
         const node = Editor.node(editor, e.path);
         const isImg =
           node && Element.isElement(node[0]) && node[0].type === CET.IMG;
+        const isFile =
+          node && Element.isElement(node[0]) && node[0].type === CET.FILE;
         const isTd = node && TableLogic.isTd(node[0]);
         const isTable = node && TableLogic.isTable(node[0]);
         const properties = e.newProperties as Partial<CustomElement>;
@@ -70,7 +73,8 @@ export const withCyWrap = (editor: EditorType) => {
           (isTable &&
             (properties.wrapperWidthWhenCreated ||
               oldProperties.wrapperWidthWhenCreated)) ||
-          isImg
+          isImg ||
+          isFile
         ) {
           HistoryEditor.withoutSaving(editor, () => {
             apply(e);
@@ -327,10 +331,8 @@ export const withCyWrap = (editor: EditorType) => {
       insertData(newTransfer);
     } else if (e.types.includes("Files")) {
       const files = e.files;
-      insertImg(
-        editor,
-        Array.from(files).filter((file) => /^image\//.test(file.type))
-      );
+      insertImg(editor, files);
+      insertFile(editor, files);
     }
   };
 
@@ -350,13 +352,13 @@ export const withCyWrap = (editor: EditorType) => {
   }, 0);
 
   editor.isInline = (node) => {
-    if ([CET.IMG, CET.LINK].includes(node.type)) {
+    if ([CET.IMG, CET.FILE, CET.LINK].includes(node.type)) {
       return true;
     }
     return isInline(node);
   };
   editor.isVoid = (node) => {
-    if ([CET.IMG, CET.CODE].includes(node.type)) {
+    if ([CET.IMG, CET.FILE, CET.CODE].includes(node.type)) {
       return true;
     }
     return isVoid(node);

@@ -22,6 +22,7 @@ export enum CET {
   TD = "td",
   TODOLIST = "todo",
   CODE = "code",
+  FILE = "file",
 }
 
 export const TextWrappers = [CET.DIV, CET.H1, CET.H2, CET.H3, CET.H4, CET.P];
@@ -41,9 +42,10 @@ export enum Marks {
 export type CustomElement = {
   type: CET;
   [key: string]: any;
-  url?: string; // 图片，Link组件的参数
-  id?:number; // 唯一标识，表示图片正在上传中
-  border?:boolean; // img边框
+  url?: string; // 图片，文件，Link组件的参数
+  fileName?: string; // 文件名
+  id?: number; // 唯一标识，表示图片或者文件正在上传中
+  border?: boolean; // img边框
   colSpan?: number; // td属性
   rowSpan?: number; // td 属性
   width?: number; // td样式属性

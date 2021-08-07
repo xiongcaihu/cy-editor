@@ -7,7 +7,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Col, Popover, Row, Tooltip } from "antd";
 import { Resizable } from "re-resizable";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Transforms } from "slate";
 import {
   useSelected,
@@ -58,12 +58,6 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         };
   };
 
-  useEffect(() => {
-    return () => {
-      window.onclick = () => {};
-    };
-  }, []);
-
   const onResizeStop: ConstructorParameters<
     typeof Resizable
   >[0]["onResizeStop"] = (e, direction, ref, d) => {
@@ -88,22 +82,6 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
     );
   };
 
-  const toggleShowTool = () => {
-    if (state.showTool) return;
-    setState((t) => ({ ...t, showTool: true }));
-
-    setTimeout(() => {
-      window.onclick = (e: any) => {
-        if (e.path.findIndex((o: any) => o?.dataset?.cyimgcomptool == 1) != -1)
-          return;
-        else {
-          window.onclick = () => {};
-          setState((t) => ({ ...t, showTool: false }));
-        }
-      };
-    }, 0);
-  };
-
   const showBigImg = () => {
     window.open(element.url || testImg);
   };
@@ -121,7 +99,7 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        fontWeight: "bold",
+        fontSize: 12,
         backgroundColor: "black",
         zIndex: 9,
       }}
@@ -177,13 +155,9 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         display: "inline-block",
         margin: 5,
         verticalAlign: "bottom",
-        boxShadow:
-          state.showTool || selected
-            ? "0 0 0 3px rgba(180,215,255,.7)"
-            : "none",
+        boxShadow: selected ? "0 0 0 3px rgba(180,215,255,.7)" : "none",
         border: element.border ? "1px solid #e5e5e5" : "none",
       }}
-      onClick={toggleShowTool}
       onDoubleClick={showBigImg}
     >
       <Resizable

@@ -27,12 +27,25 @@ function delay(url: string): Promise<string> {
   });
 }
 
-const valideImg: (param: FileList | File[] | null) => File[] = (files) => {
-  if (!files) return [];
+const valideImg: (param: FileList | File[] | null) => {
+  legalFiles: File[];
+  illegalFiles: File[];
+} = (files) => {
+  const legalFiles: File[] = [];
+  const illegalFiles: File[] = [];
   // all img types https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
-  return Array.from(files).filter((file) => {
-    return !acceptImgTypes.includes(file.type) || file.size > maxSize;
-  });
+  Array.isArray(files) &&
+    Array.from(files).forEach((file) => {
+      if (!acceptImgTypes.includes(file.type) || file.size > maxSize) {
+        illegalFiles.push(file);
+      } else {
+        legalFiles.push(file);
+      }
+    });
+  return {
+    legalFiles,
+    illegalFiles,
+  };
 };
 
 const uploadImg = async (file: File): Promise<string> => {
@@ -63,16 +76,16 @@ const insertImgToEditor = (
 };
 
 export const insertImg = (editor: EditorType, files: FileList | File[]) => {
-  const illegalFiles = valideImg(files);
+  files = Array.from(files);
+  const { illegalFiles, legalFiles } = valideImg(files);
   if (illegalFiles.length > 0) {
     message.error(
       illegalFiles.map((file) => file.name).join("，") +
         `，文件格式非法（或超过最大限制${maxSize / 1024 / 1024}M）`
     );
-    return;
   }
 
-  for (const file of files) {
+  for (const file of legalFiles) {
     insertImgToEditor(
       editor,
       URL.createObjectURL(file),
