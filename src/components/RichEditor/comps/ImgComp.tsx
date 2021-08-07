@@ -7,7 +7,7 @@ import {
 } from "@ant-design/icons";
 import { Button, Col, Popover, Row, Tooltip } from "antd";
 import { Resizable } from "re-resizable";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Transforms } from "slate";
 import {
   useSelected,
@@ -16,7 +16,9 @@ import {
   useSlateStatic,
   useReadOnly,
 } from "slate-react";
-import testImg from "../c.jpg";
+import "viewerjs/dist/viewer.css";
+import Viewer from "viewerjs";
+import { useCallback } from "react";
 
 export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
   attributes,
@@ -33,6 +35,7 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
     },
     showTool: false,
   });
+  const viewerIns = useRef<InstanceType<typeof Viewer>>();
 
   const enableResize = () => {
     return ReactEditor.isReadOnly(editor)
@@ -82,8 +85,26 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
     );
   };
 
+  const registeImgViewer = useCallback(
+    (el) => {
+      if (el && !viewerIns.current && readOnly) {
+        viewerIns.current = new Viewer(el, {});
+      }
+    },
+    [readOnly]
+  );
+
   const showBigImg = () => {
-    window.open(element.url || testImg);
+    const domNode = ReactEditor.toDOMNode(editor, element);
+    const imgNode = domNode.querySelector("img");
+    if (imgNode) {
+      const v = new Viewer(imgNode, {
+        hidden() {
+          v.destroy();
+        },
+      });
+      v.show();
+    }
   };
 
   const mask = (
@@ -158,7 +179,6 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         boxShadow: selected ? "0 0 0 3px rgba(180,215,255,.7)" : "none",
         border: element.border ? "1px solid #e5e5e5" : "none",
       }}
-      onDoubleClick={showBigImg}
     >
       <Resizable
         enable={enableResize()}
@@ -188,7 +208,13 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
           trigger={readOnly ? [] : "click"}
           placement="bottomLeft"
         >
-          <img width="100%" height="100%" alt="" src={element.url}></img>
+          <img
+            ref={registeImgViewer}
+            width="100%"
+            height="100%"
+            alt=""
+            src={element.url}
+          ></img>
         </Popover>
         {children}
       </Resizable>

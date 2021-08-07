@@ -27,7 +27,7 @@ import { ToDoListButton } from "./funcButtons/ToDoListButton";
 import { OrderListButton } from "./funcButtons/OrderListButton";
 import { NormalListButton } from "./funcButtons/NormalListButton";
 import { SetLinkButton } from "./funcButtons/SetLinkButton";
-import { SetImgButton } from "./funcButtons/SetImgButton";
+import { InsertImgButton } from "./funcButtons/InsertImgButton";
 import { InsertFileButton } from "./funcButtons/InsertFileButton";
 import { InsertTableButton } from "./funcButtons/InsertTableButton";
 import { DeleteTableButton } from "./funcButtons/DeleteTableButton";
@@ -130,7 +130,7 @@ export const ToolBar: React.FC<{}> = (props) => {
           <SetLinkButton></SetLinkButton>
         </Col>
         <Col>
-          <SetImgButton></SetImgButton>
+          <InsertImgButton></InsertImgButton>
         </Col>
         <Col>
           <InsertFileButton></InsertFileButton>

@@ -21,7 +21,7 @@ import {
 } from "../common/globalStore";
 import { htmlToSlate } from "../common/htmlToSlate";
 import { HistoryEditor } from "slate-history";
-import { insertImg } from "../comps/TooBar/funcButtons/SetImgButton";
+import { insertImg } from "../comps/TooBar/funcButtons/InsertImgButton";
 import { insertFile } from "../comps/TooBar/funcButtons/InsertFileButton";
 
 export const withCyWrap = (editor: EditorType) => {

@@ -1,5 +1,9 @@
 /* eslint-disable eqeqeq */
-import { DeleteOutlined } from "@ant-design/icons";
+import {
+  DeleteOutlined,
+  DownloadOutlined,
+  PaperClipOutlined,
+} from "@ant-design/icons";
 import { Button, Col, Popover, Row, Tooltip } from "antd";
 import { Transforms } from "slate";
 import {
@@ -45,7 +49,16 @@ export const FileComp: (props: RenderElementProps) => JSX.Element = ({
     ReactEditor.focus(editor);
   };
 
+  const downloadFile = () => {
+    window.open(element.url);
+  };
+
   const imgFuncs = [
+    {
+      title: "下载",
+      icon: <DownloadOutlined />,
+      method: downloadFile,
+    },
     {
       title: "删除",
       icon: <DeleteOutlined />,
@@ -92,6 +105,7 @@ export const FileComp: (props: RenderElementProps) => JSX.Element = ({
           rel="noopener noreferrer"
           target="_blank"
         >
+          <PaperClipOutlined style={{ marginRight: 2 }} />
           {element.fileName}
         </a>
       </Popover>

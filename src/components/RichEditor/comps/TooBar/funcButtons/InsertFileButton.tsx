@@ -1,4 +1,4 @@
-import { FolderOpenOutlined } from "@ant-design/icons";
+import { PaperClipOutlined } from "@ant-design/icons";
 import { message } from "antd";
 import { InputHTMLAttributes } from "react";
 import { useRef } from "react";
@@ -6,11 +6,13 @@ import { Element, Range, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import { CET, EditorType } from "../../../common/Defines";
 import { ReactButton } from "../common/ReactButton";
+import axios from "axios";
 
 const acceptFileTypes = [
   ".doc",
   ".docx",
   ".xlsx",
+  ".xls",
   ".csv",
   ".pdf",
   ".txt",
@@ -21,14 +23,6 @@ const acceptFileTypes = [
 ];
 
 const maxSize = 1024 * 1024 * 10; // 10M
-
-function delay(url: string): Promise<string> {
-  return new Promise((rel) => {
-    setTimeout(() => {
-      rel(url);
-    }, 2000);
-  });
-}
 
 const valideFile: (param: FileList | File[] | null) => {
   legalFiles: File[];
@@ -54,7 +48,17 @@ const valideFile: (param: FileList | File[] | null) => {
 };
 
 const uploadFile = async (file: File): Promise<string> => {
-  return await delay(URL.createObjectURL(file));
+  let formData = new FormData();
+  formData.append("file", file);
+  const res = await axios({
+    method: "post",
+    url: "http://localhost:3001/uploadFile",
+    data: formData,
+    headers: {
+      "Content-Type": "multipart/form-data;charset=UTF-8",
+    },
+  });
+  return `http://localhost:3001/${res?.data?.[0]?.filename}`;
 };
 
 const insertFileToEditor = (
@@ -140,7 +144,7 @@ export const InsertFileButton = () => {
 
   return (
     <ReactButton
-      title={`插入文件（支持格式：${acceptFileTypes.join("，")}）`}
+      title={`插入附件（支持格式：${acceptFileTypes.join("，")}）`}
       mousedownFunc={() => {
         chooseFile();
       }}
@@ -155,7 +159,7 @@ export const InsertFileButton = () => {
         hidden
         onChange={afterChooseFile}
       ></input>
-      <FolderOpenOutlined />
+      <PaperClipOutlined />
     </ReactButton>
   );
 };

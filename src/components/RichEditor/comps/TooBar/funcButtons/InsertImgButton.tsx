@@ -6,6 +6,7 @@ import { Element, Range, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import { CET, EditorType } from "../../../common/Defines";
 import { ReactButton } from "../common/ReactButton";
+import axios from "axios";
 
 const acceptImgTypes = [
   "image/apng",
@@ -18,14 +19,6 @@ const acceptImgTypes = [
 ];
 
 const maxSize = 1024 * 1024 * 5; // 5M
-
-function delay(url: string): Promise<string> {
-  return new Promise((rel) => {
-    setTimeout(() => {
-      rel(url);
-    }, 2000);
-  });
-}
 
 const valideImg: (param: FileList | File[] | null) => {
   legalFiles: File[];
@@ -49,7 +42,17 @@ const valideImg: (param: FileList | File[] | null) => {
 };
 
 const uploadImg = async (file: File): Promise<string> => {
-  return await delay(URL.createObjectURL(file));
+  let formData = new FormData();
+  formData.append("file", file);
+  const res = await axios({
+    method: "post",
+    url: "http://localhost:3001/uploadFile",
+    data: formData,
+    headers: {
+      "Content-Type": "multipart/form-data;charset=UTF-8",
+    },
+  });
+  return `http://localhost:3001/${res?.data?.[0]?.filename}`;
 };
 
 const insertImgToEditor = (
@@ -110,7 +113,7 @@ export const insertImg = (editor: EditorType, files: FileList | File[]) => {
   }
 };
 
-export const SetImgButton = () => {
+export const InsertImgButton = () => {
   const editor = useSlateStatic();
   const fileRef = useRef<any>();
 
@@ -154,3 +157,4 @@ export const SetImgButton = () => {
     </ReactButton>
   );
 };
+
