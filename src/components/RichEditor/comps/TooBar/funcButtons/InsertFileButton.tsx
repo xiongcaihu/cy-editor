@@ -47,18 +47,31 @@ const valideFile: (param: FileList | File[] | null) => {
   };
 };
 
-const uploadFile = async (file: File): Promise<string> => {
-  let formData = new FormData();
-  formData.append("file", file);
-  const res = await axios({
-    method: "post",
-    url: "http://localhost:3001/uploadFile",
-    data: formData,
-    headers: {
-      "Content-Type": "multipart/form-data;charset=UTF-8",
-    },
+function sleep() {
+  return new Promise<void>((rel) => {
+    setTimeout(() => {
+      rel();
+    }, 2000);
   });
-  return `http://localhost:3001/${res?.data?.[0]?.filename}`;
+}
+
+const uploadFile = async (file: File): Promise<string> => {
+  try {
+    let formData = new FormData();
+    formData.append("file", file);
+    const res = await axios({
+      method: "post",
+      url: "http://localhost:3001/uploadFile",
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data;charset=UTF-8",
+      },
+    });
+    return `http://localhost:3001/${res?.data?.[0]?.filename}`;
+  } catch (error) {
+    await sleep();
+    return URL.createObjectURL(file);
+  }
 };
 
 const insertFileToEditor = (

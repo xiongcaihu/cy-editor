@@ -190,7 +190,7 @@ export const ToolBar: React.FC<{}> = (props) => {
             <SaveOutlined />
           </StaticButton>
         </Col>
-        <Col>
+        {/* <Col>
           <StaticButton
             title="输出内容HTML"
             mousedownFunc={(e) => {
@@ -220,7 +220,7 @@ export const ToolBar: React.FC<{}> = (props) => {
           >
             htmlToSlate
           </StaticButton>
-        </Col>
+        </Col> */}
         <Col>
           <ReadOnlyButton></ReadOnlyButton>
         </Col>

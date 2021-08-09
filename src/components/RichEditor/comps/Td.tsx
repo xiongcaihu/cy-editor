@@ -339,6 +339,26 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     delete otherAttr.contentEditable;
   }
 
+  const mask = (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        opacity: 0.6,
+        color: "white",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        fontSize: 12,
+        backgroundColor: "rgba(180,215,255,.7)",
+        zIndex: 9,
+      }}
+    ></div>
+  );
+
   return (
     <td
       {...attributes}
@@ -351,10 +371,11 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         height: element.height || tdMinHeight,
         cursor: element.canTdEdit || readOnly ? "inherit" : "cell",
         color: element[Marks.Color] || "unset",
-        backgroundColor:
-          element.selected && !readOnly
-            ? "rgba(180,215,255,.7)"
-            : element[Marks.BGColor] || "unset",
+        // backgroundColor:
+        //   element.selected && !readOnly
+        //     ? "rgba(180,215,255,.7)"
+        //     : element[Marks.BGColor] || "unset",
+        backgroundColor: element[Marks.BGColor] || "unset",
         userSelect: element.canTdEdit || readOnly ? "unset" : "none",
         textAlign: element[Marks.TextAlign] || "unset",
         fontSize: element[Marks.FontSize] || "unset",
@@ -369,6 +390,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       onMouseDown={tdMouseDown}
     >
       {children}
+      {element.selected && !readOnly ? mask : null}
       {!readOnly ? (
         <>
           <span
