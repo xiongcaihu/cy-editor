@@ -397,6 +397,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
             className="resizer"
             style={{
               position: "absolute",
+              zIndex: 10,
               width: 5,
               right: 0,
               top: 0,
@@ -411,6 +412,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
             className="resizer"
             style={{
               position: "absolute",
+              zIndex: 10,
               width: "100%",
               height: 5,
               left: 0,
