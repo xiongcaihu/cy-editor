@@ -114,6 +114,7 @@ const EditorComp: EditorCompShape = () => {
 
       const hasTextAlign = savedMarks[Marks.TextAlign];
       const textWrapper = Editor.above(editor, {
+        at: editor.selection?.anchor,
         mode: "lowest",
         match(n) {
           return utils.isTextWrapper(n);
@@ -127,6 +128,7 @@ const EditorComp: EditorCompShape = () => {
         Transforms.unsetNodes(editor, Marks.TextAlign, { at: textWrapper[1] });
       }
       for (const key in savedMarks) {
+        if (key === "children") continue;
         Editor.addMark(editor, key, savedMarks[key]);
       }
       if (hasTextAlign) {

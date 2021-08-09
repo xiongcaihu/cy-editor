@@ -1,5 +1,5 @@
 import Icon from "@ant-design/icons";
-import { Transforms, Editor, Text } from "slate";
+import { Transforms, Editor } from "slate";
 import { useSlateStatic } from "slate-react";
 import { EditorType, Marks } from "../../../common/Defines";
 import { utils } from "../../../common/utils";
@@ -18,11 +18,15 @@ export const cleanFormat = (editor: EditorType) => {
   const all = Editor.nodes(editor, {
     mode: "lowest",
     match(n) {
-      return utils.isTextWrapper(n) || Text.isText(n);
+      return utils.isTextWrapper(n);
     },
   });
   for (const el of all) {
     Transforms.unsetNodes(editor, Object.values(Marks), { at: el[1] });
+  }
+
+  for (const mark of Object.values(Marks)) {
+    Editor.removeMark(editor, mark);
   }
 };
 
