@@ -40,6 +40,29 @@ interface Point {
 #### Range
 Range就是我们按住鼠标左键拖动后选中的区域对象，这个区域包含文本节点以及元素节点。
 
+### normalizing（元素结构校验规则）
+这块儿的功能可以理解为：要如何制定一套规则来保证自定义的元素内部结构是符合自己的规定的。举个例子，如果我定义一个元素叫MyBook，我希望它的结构是
+``` html
+<p>
+  <a href="xxx">book link</a>
+</p>
+```
+那么这个normalizing就是用来保证每次操作涉及到这个MyBook元素后都会得到正确的结构。
+比如我操作这个MyBook元素，插入一个div
+``` html
+<p>
+   <a href="xxx">book link</a>
+   <div>heihei</div>
+</p>
+```
+那此时结构是不正确的，但是当运行完操作指令后，这个normalizing就会触发，然后根据自己写的规则去修正它的结构（也就是删除掉div元素）。<br/>
+除了自己定义修正规则外，slatejs也带了一些基本的修正规则，比如：void元素不能出现在块元素的第一个位置；块元素如果为空，会自动加入一个text子元素在里面，详情见：
+https://docs.slatejs.org/concepts/11-normalizing
+
+### slatejs如何得出每次操作后的dirtyPath来进行normalizing
+### slatejs的withoutNormalizing执行机制
+### slatejs API中的mode的各个值代表的意思
+
 ### 常用API注释
 #### Editor.nodes
 从根节点往下遍历到当前指定区域，输出途径所匹配的元素，如果没有指定区域，则默认是光标或者选中区域。
