@@ -60,6 +60,8 @@ Range就是我们按住鼠标左键拖动后选中的区域对象，这个区域
 https://docs.slatejs.org/concepts/11-normalizing
 
 ### slatejs如何得出每次操作后的dirtyPath来进行normalizing
+1. 如果是插入text，删除text，或者设置node属性的操作，那么dirtyPath为从当前节点往上找，直到根元素的所经过的所有路径，也就是父节点的集合。
+2. 如果是插入元素，
 ### slatejs的withoutNormalizing执行机制
 ### slatejs API中的mode的各个值代表的意思
 
