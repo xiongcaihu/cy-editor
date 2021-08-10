@@ -65,7 +65,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     preMouseOnTdPath: null,
     prePath: null,
   });
-  
+
   const { savedMarks, setSavedMarks } = useContext(EditorContext);
 
   const editor = useSlateStatic();
@@ -496,10 +496,16 @@ export const TableLogic = {
       for (const [child, childP] of Node.children(editor, path, {
         reverse: true,
       })) {
+        if (node.shouldEmpty) continue;
         if (child.type != CET.TD) {
           Transforms.removeNodes(editor, { at: childP });
           return;
         }
+      }
+      if (node.children.length === 0) {
+        Transforms.insertNodes(editor, { text: "" }, { at: [...path, 0] });
+        Transforms.setNodes(editor, { shouldEmpty: true }, { at: path });
+        return true;
       }
       if (node.children.length == 1 && Node.child(node, 0).type != CET.TD) {
         Transforms.setNodes(editor, { shouldEmpty: true }, { at: path });
