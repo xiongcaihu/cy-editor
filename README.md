@@ -70,7 +70,7 @@ https://docs.slatejs.org/concepts/11-normalizing
 ### withoutNormalizing
 在函数执行完后进行normalizing
 ### slatejs API中的mode的各个值代表的意思
-1. highest：取匹配路径中的最高点，比如
+举例：匹配此结构里的div，设置mode值
 ``` html
 <p>
   <div id="1">
@@ -80,9 +80,9 @@ https://docs.slatejs.org/concepts/11-normalizing
   </div>
 </p>
 ```
-如果要匹配这个结构里的div，那么得到的是id="1"的div
-2. lowest：匹配最低点，也就是上面这个例子的id="2"的div
-3. all：匹配所有符合条件的，也就是得到id="1'和id="2"
+1. mode=highest：取匹配路径中的最高点，那么得到的是id="1"的div
+2. mode=lowest：匹配最低点，也就是上面这个例子的id="2"的div
+3. mode=all：匹配所有符合条件的，也就是得到id="1'和id="2"
 
 ### 常用API注释
 #### Editor.nodes
