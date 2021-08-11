@@ -60,8 +60,8 @@ Range就是我们按住鼠标左键拖动后选中的区域对象，这个区域
 https://docs.slatejs.org/concepts/11-normalizing
 
 ### slatejs如何得出每次操作后的dirtyPath来进行normalizing
-1. 如果是插入text，删除text，或者设置node属性的操作，那么dirtyPath = 父节点到根节点的路径集合+自身
-2. 如果是插入元素，那么dirtyPath = 祖先结点集合（从第一个父节点开始往上一直到根节点所经过的路径点的集合）+自身+自己下面的所有元素
+1. 如果是插入text，删除text，或者设置node属性的操作，那么dirtyPath = 祖先结点集合（从第一个父节点开始往上一直到根节点所经过的路径点的集合）+自身
+2. 如果是插入元素，那么dirtyPath = 祖先结点集合+自身+自己下面的所有元素
 3. 如果是删除元素，那么dirtyPath = 祖先结点集合
 4. 如果是分离元素，那么dirtyPath = 祖先结点集合+自身+自己的后一个元素
 5. 如果是合并元素，那么dirtyPath = 祖先结点集合+自己的前一个元素
