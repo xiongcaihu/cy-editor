@@ -67,8 +67,22 @@ https://docs.slatejs.org/concepts/11-normalizing
 5. 如果是合并元素，那么dirtyPath = 祖先结点集合+自己的前一个元素
 6. 如果是移动元素，那么dirtyPath = 原来的祖先结点集合+新的祖先结点集合+目标位置
 
-### slatejs的withoutNormalizing执行机制
+### withoutNormalizing
+在函数执行完后进行normalizing
 ### slatejs API中的mode的各个值代表的意思
+1. highest：取匹配路径中的最高点，比如
+``` html
+<p>
+  <div id="1">
+    <div id="2">
+      <span>text</span>
+    </div>
+  </div>
+</p>
+```
+如果要匹配这个结构里的div，那么得到的是id="1"的div
+2. lowest：匹配最低点，也就是上面这个例子的id="2"的div
+3. all：匹配所有符合条件的，也就是得到id="1'和id="2"
 
 ### 常用API注释
 #### Editor.nodes
