@@ -104,6 +104,9 @@ deserialize(document.body)
  */
 
 export const utils = {
+  removeAllRange() {
+    window.getSelection()?.removeAllRanges();
+  },
   encodeSlateContent(data: Descendant[]) {
     return window?.btoa(encodeURIComponent(JSON.stringify(data)));
   },
@@ -270,8 +273,8 @@ export const utils = {
   getParent(editor: EditorType, path: Path) {
     return this.getNodeByPath(editor, this.getPath(path, "parent"));
   },
-  isSelectTd(editor: EditorType) {
+  hasNotSelectedAnyTd(editor: EditorType) {
     const hasSelectedTd = TableLogic.getFirstSelectedTd(editor);
-    return hasSelectedTd == null;
+    return hasSelectedTd == null && !TableLogic.isInTable(editor);
   },
 };

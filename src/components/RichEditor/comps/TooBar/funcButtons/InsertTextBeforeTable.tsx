@@ -17,7 +17,7 @@ export const InsertTextBeforeTable = () => {
       mousedownFunc={() => {
         insertDivBeforeTable();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <VerticalAlignTopOutlined />
     </ReactButton>

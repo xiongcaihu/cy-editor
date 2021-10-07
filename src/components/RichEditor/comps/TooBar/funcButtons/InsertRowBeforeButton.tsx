@@ -17,7 +17,7 @@ export const InsertRowBeforeButton = () => {
       mousedownFunc={() => {
         insertRowBefore();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <InsertRowAboveOutlined />
     </ReactButton>

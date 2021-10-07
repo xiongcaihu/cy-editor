@@ -17,7 +17,7 @@ export const MergeCellButton = () => {
       mousedownFunc={() => {
         mergeTd();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <MergeCellsOutlined />
     </ReactButton>

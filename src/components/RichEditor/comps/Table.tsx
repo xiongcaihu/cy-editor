@@ -185,16 +185,19 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
       }
     });
 
-    if (Path.equals(paTd[1], pbTd[1])) {
-      deselectTds();
-      // 说明选区在一个td里
-      Transforms.setNodes(
-        editor,
-        { selected: true, start: true },
-        { at: paTd[1] }
-      );
-      return;
-    }
+    // 取消单个单元格选中 2021-10-05
+    // if (Path.equals(paTd[1], pbTd[1])) {
+    //   deselectTds();
+    //   // 说明选区在一个td里
+    //   Transforms.setNodes(
+    //     editor,
+    //     { selected: true, start: true },
+    //     { at: paTd[1] }
+    //   );
+    //   ref.current.lastSelectedPaths = [paTd[1]];
+    //   return;
+    // }
+
     if (
       !Element.isElement(commonNode[0]) ||
       (commonNode[0].type != CET.TBODY && commonNode[0].type != CET.TR)
@@ -262,14 +265,18 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     }
 
     ref.current.lastSelectedPaths = nowTdsPath;
-  }, 5);
+
+    Transforms.deselect(editor);
+  }, 3);
 
   const handleTableMouseDown = (e: any) => {
     // 防止事件冒泡到父元素的td
     e.stopPropagation();
     try {
+      TdLogic.deselectAllTd(editor);
+
       const slateNode = ReactEditor.toSlateNode(editor, e.target);
-      const path = ReactEditor.findPath(editor, slateNode);
+      const slateNodePath = ReactEditor.findPath(editor, slateNode);
       ref.current.initX = e.clientX;
       ref.current.initY = e.clientY;
 
@@ -283,11 +290,10 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
 
       if (
         !readOnly &&
-        !["resizer", "columnSelector"].includes(e.target.className) &&
-        tdDom.contentEditable === "false"
+        !["resizer", "columnSelector"].includes(e.target.className)
       ) {
         ref.current.isBeginSelectTd = true;
-        ref.current.mouseDownStartPoint = path;
+        ref.current.mouseDownStartPoint = slateNodePath;
 
         for (const [, p] of Editor.nodes(editor, {
           at: [],
@@ -299,10 +305,23 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         })) {
           ref.current.lastSelectedPaths.push(p);
         }
-        ref.current.preMouseOnTdPath = path;
+        ref.current.preMouseOnTdPath = slateNodePath;
 
         const mousemoveFunc = (e: any) => {
           try {
+            // 如果只是在同一个单元格内移动，那么不取消默认行为（也就是允许有选区）
+            if (["resizer", "columnSelector"].includes(e.target.className)) {
+              e.preventDefault();
+            } else {
+              let parent = e.target.offsetParent;
+              while (parent != null && parent.nodeName != "TD") {
+                parent = parent.offsetParent;
+              }
+              if (parent != tdDom) {
+                e.preventDefault();
+              }
+            }
+
             // 如果移动距离不超过1，那么不进入逻辑
             if (
               ref.current.isBeginSelectTd &&
@@ -320,13 +339,12 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         };
         const mouseupFunc = (e: any) => {
           ref.current.isBeginSelectTd = false;
-          window.onmousemove = () => {};
-          window.onmousedown = () => {};
-          window.onmouseup = () => {};
+          window.removeEventListener("mousemove", mousemoveFunc);
+          window.removeEventListener("mouseup", mouseupFunc);
         };
 
-        window.onmousemove = mousemoveFunc;
-        window.onmouseup = mouseupFunc;
+        window.addEventListener("mousemove", mousemoveFunc);
+        window.addEventListener("mouseup", mouseupFunc);
       }
     } catch (error) {}
   };
@@ -445,6 +463,35 @@ export const TableLogic = {
   },
   isTd(node: Node): node is Element {
     return Element.isElement(node) && [CET.TD].includes(node.type);
+  },
+  // 判断当前selection是否在表格内
+  isInTable(editor: EditorType) {
+    if (!editor.selection) return false;
+
+    const {
+      focus: { path: fPath },
+      anchor: { path: aPath },
+    } = editor.selection;
+
+    let rel = Editor.above(editor, {
+      at: fPath,
+      match(n) {
+        return TableLogic.isTable(n);
+      },
+    });
+
+    if (rel) return true;
+
+    rel = Editor.above(editor, {
+      at: aPath,
+      match(n) {
+        return TableLogic.isTable(n);
+      },
+    });
+
+    if (rel) return true;
+
+    return false;
   },
   isInTd(editor: EditorType) {
     if (editor.selection && Range.isCollapsed(editor.selection)) {
@@ -571,7 +618,8 @@ export const TableLogic = {
   deleteRow(editor: EditorType) {
     // 删除选区对应的列
     let deleteVArea: number[] = [Infinity, -Infinity];
-    const selectedTd = TableLogic.getFirstSelectedTd(editor);
+    const selectedTd =
+      TableLogic.getFirstSelectedTd(editor) || TableLogic.getEditingTd(editor);
     if (!selectedTd) return;
 
     const tbody = Editor.above(editor, {
@@ -663,7 +711,8 @@ export const TableLogic = {
   deleteColumn(editor: EditorType) {
     // 删除选区对应的列
     let deleteHArea: number[] = [Infinity, -Infinity];
-    const selectedTd = TableLogic.getFirstSelectedTd(editor);
+    const selectedTd =
+      TableLogic.getFirstSelectedTd(editor) || TableLogic.getEditingTd(editor);
     if (!selectedTd) return;
 
     const tbody = Editor.above(editor, {
@@ -1162,6 +1211,10 @@ export const TableLogic = {
     const path: Path = arr[0].split(",").map((o) => +o);
     const td = Editor.node(editor, path);
     return td;
+  },
+  // 获取当前光标所处的td
+  getEditingTd(editor: EditorType) {
+    return TableLogic.getEditingTds(editor)[0];
   },
   getEditingTds(editor: EditorType) {
     const editingTdsPath = getEditingTdsPath(editor);

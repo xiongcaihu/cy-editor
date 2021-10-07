@@ -64,9 +64,9 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       const path = ReactEditor.findPath(editor, element);
       const pathStr = path.join(",");
       const selectedTds = getStrPathSetOfSelectedTds(editor);
-      const editingTds = getEditingTdsPath(editor);
+      // const editingTds = getEditingTdsPath(editor);
       selectedTds.delete(pathStr);
-      editingTds.delete(pathStr);
+      // editingTds.delete(pathStr);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -75,14 +75,14 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     const path = ReactEditor.findPath(editor, element);
     const pathStr = path.join(",");
     const selectedTds = getStrPathSetOfSelectedTds(editor);
-    const editingTds = getEditingTdsPath(editor);
-    const { canTdEdit: nowEdit, selected: nowSelected } = element;
+    // const editingTds = getEditingTdsPath(editor);
+    const { selected: nowSelected } = element;
 
-    if (nowEdit === true) {
-      editingTds.add(pathStr);
-    } else {
-      editingTds.delete(pathStr);
-    }
+    // if (nowEdit === true) {
+    //   editingTds.add(pathStr);
+    // } else {
+    //   editingTds.delete(pathStr);
+    // }
 
     if (nowSelected === true) {
       selectedTds.add(pathStr);
@@ -91,51 +91,71 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     }
   });
 
-  const tdMouseDown = (e: any) => {
-    if (["resizer", "columnSelector"].includes(e.target.className) || readOnly)
-      return;
-    const selfDom = attributes.ref.current;
-    if (!selfDom) return;
-
-    const td = ReactEditor.toSlateNode(editor, selfDom);
-    const tdPath = ReactEditor.findPath(editor, td);
-
-    // 如果点击自己的时候，自己还是处于编辑状态，那么退出
-    if (Element.isElement(td) && td.canTdEdit) return;
-
-    const clickDom = e.target;
-    const clickNode = ReactEditor.toSlateNode(editor, clickDom);
-    const clickNodePath = ReactEditor.findPath(editor, clickNode);
-    const isClickSelf = Path.equals(clickNodePath, tdPath);
-
-    let finallyTd: NodeEntry;
-    if (isClickSelf) {
-      finallyTd = [clickNode, clickNodePath];
-    } else {
-      const tdWrapper = Editor.above(editor, {
-        at: clickNodePath,
+  const tdClick = () => {
+    const path = ReactEditor.findPath(editor, element);
+    const pathStr = path.join(",");
+    const editingTds = getEditingTdsPath(editor);
+    Transforms.setNodes(
+      editor,
+      {
+        start: true,
+      },
+      {
+        at: path,
         mode: "lowest",
         match(n) {
           return TableLogic.isTd(n);
         },
-      });
-      if (!tdWrapper) return;
-      finallyTd = tdWrapper;
-    }
-    if (!finallyTd) return;
-    TdLogic.chooseTd(editor, finallyTd);
+      }
+    );
+    editingTds.add(pathStr);
   };
-  const tdDBClick = (e: any) => {
-    // 防止事件冒泡到父元素的td
-    e.stopPropagation();
-    const selfDom = attributes.ref.current;
-    if (!selfDom) return;
 
-    const td = ReactEditor.toSlateNode(editor, selfDom);
-    const tdPath = ReactEditor.findPath(editor, td);
+  // const tdMouseDown = (e: any) => {
+  //   if (["resizer", "columnSelector"].includes(e.target.className) || readOnly)
+  //     return;
+  //   const selfDom = attributes.ref.current;
+  //   if (!selfDom) return;
 
-    TdLogic.editTd(editor, [td, tdPath]);
-  };
+  //   const td = ReactEditor.toSlateNode(editor, selfDom);
+  //   const tdPath = ReactEditor.findPath(editor, td);
+
+  //   // 如果点击自己的时候，自己还是处于编辑状态，那么退出
+  //   if (Element.isElement(td) && td.canTdEdit) return;
+
+  //   const clickDom = e.target;
+  //   const clickNode = ReactEditor.toSlateNode(editor, clickDom);
+  //   const clickNodePath = ReactEditor.findPath(editor, clickNode);
+  //   const isClickSelf = Path.equals(clickNodePath, tdPath);
+
+  //   let finallyTd: NodeEntry;
+  //   if (isClickSelf) {
+  //     finallyTd = [clickNode, clickNodePath];
+  //   } else {
+  //     const tdWrapper = Editor.above(editor, {
+  //       at: clickNodePath,
+  //       mode: "lowest",
+  //       match(n) {
+  //         return TableLogic.isTd(n);
+  //       },
+  //     });
+  //     if (!tdWrapper) return;
+  //     finallyTd = tdWrapper;
+  //   }
+  //   if (!finallyTd) return;
+  //   TdLogic.chooseTd(editor, finallyTd);
+  // };
+  // const tdDBClick = (e: any) => {
+  //   // 防止事件冒泡到父元素的td
+  //   e.stopPropagation();
+  //   const selfDom = attributes.ref.current;
+  //   if (!selfDom) return;
+
+  //   const td = ReactEditor.toSlateNode(editor, selfDom);
+  //   const tdPath = ReactEditor.findPath(editor, td);
+
+  //   TdLogic.editTd(editor, [td, tdPath]);
+  // };
   const resizeTdX = (e: any) => {
     let x = e.clientX;
     let cell: any = null,
@@ -339,25 +359,25 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     delete otherAttr.contentEditable;
   }
 
-  const mask = (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        position: "absolute",
-        top: 0,
-        left: 0,
-        opacity: 0.6,
-        color: "white",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        fontSize: 12,
-        backgroundColor: "rgba(180,215,255,.7)",
-        zIndex: 9,
-      }}
-    ></div>
-  );
+  // const mask = (
+  //   <div
+  //     style={{
+  //       width: "100%",
+  //       height: "100%",
+  //       position: "absolute",
+  //       top: 0,
+  //       left: 0,
+  //       opacity: 0.6,
+  //       color: "white",
+  //       display: "flex",
+  //       justifyContent: "center",
+  //       alignItems: "center",
+  //       fontSize: 12,
+  //       backgroundColor: "rgba(180,215,255,.7)",
+  //       zIndex: 9,
+  //     }}
+  //   ></div>
+  // );
 
   return (
     <td
@@ -369,14 +389,14 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         maxWidth: element.width || tdMinWidth,
         width: element.width || tdMinWidth,
         height: element.height || tdMinHeight,
-        cursor: element.canTdEdit || readOnly ? "inherit" : "cell",
+        // cursor: element.canTdEdit || readOnly ? "inherit" : "cell",
         color: element[Marks.Color] || "unset",
-        // backgroundColor:
-        //   element.selected && !readOnly
-        //     ? "rgba(180,215,255,.7)"
-        //     : element[Marks.BGColor] || "unset",
-        backgroundColor: element[Marks.BGColor] || "unset",
-        userSelect: element.canTdEdit || readOnly ? "unset" : "none",
+        backgroundColor:
+          element.selected && !readOnly
+            ? "rgba(180,215,255,.7)"
+            : element[Marks.BGColor] || "unset",
+        // backgroundColor: element[Marks.BGColor] || "unset",
+        // userSelect: element.canTdEdit || readOnly ? "unset" : "none",
         textAlign: element[Marks.TextAlign] || "unset",
         fontSize: element[Marks.FontSize] || "unset",
         fontWeight: element[Marks.BOLD] ? "bold" : "unset",
@@ -385,12 +405,12 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
           element[Marks.LineThrough] ? "line-through" : ""
         }`,
       }}
-      {...otherAttr}
-      onDoubleClick={tdDBClick}
-      onMouseDown={tdMouseDown}
+      // {...otherAttr}
+      // onDoubleClick={tdDBClick}
+      onClick={tdClick}
     >
       {children}
-      {element.selected && !readOnly ? mask : null}
+      {/* {element.selected && !readOnly ? mask : null} */}
       {!readOnly ? (
         <>
           <span

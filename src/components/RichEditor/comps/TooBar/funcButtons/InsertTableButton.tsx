@@ -16,10 +16,16 @@ export const InsertTableButton: React.FC<{
   const [visible, setVisible] = useState(false);
   const [counts, setCounts] = useState<string>("");
   const tableDom = useRef<any>();
-  const [disabled, setDisabled] = useState(false);
+  const [disabled] = useState(false);
   const ref = useRef({
     _isDisabled: _.debounce(() => {
-      setDisabled(editor.selection == null);
+      // 应该是任何时候都能添加表格，只是最终行为可能不同。
+      // 当前行为：表格只能添加到路径为[]的后面，也就是处于整个文档的第一层，在作为根节点的一个直接子元素。
+      // setDisabled(
+      //   editor.selection == null ||
+      //     TableLogic.isInTable(editor) ||
+      //     ListLogic.isInList(editor)
+      // );
     }, ToolBarConfig.calcStatusDelay),
   });
   useEffect(() => {
@@ -73,33 +79,43 @@ export const InsertTableButton: React.FC<{
     if (!parent) return;
     const tableWrapperWidth = twDom.offsetWidth - 2;
 
-    Transforms.insertNodes(editor, {
-      type: CET.TABLE,
-      wrapperWidthWhenCreated: tableWrapperWidth,
-      children: [
-        {
-          type: CET.TBODY,
-          children: new Array(rowCount).fill("0").map(() => {
-            return {
-              type: CET.TR,
-              children: new Array(cellCount).fill("0").map(() => {
-                return {
-                  type: CET.TD,
-                  width: tableWrapperWidth / cellCount,
-                  height: tdMinHeight,
-                  children: [
-                    {
-                      type: CET.DIV,
-                      children: [{ text: "" }],
-                    },
-                  ],
-                };
-              }),
-            };
-          }),
-        },
-      ],
-    });
+    Transforms.collapse(editor);
+
+    const tPath = editor.selection.anchor.path;
+
+    Transforms.insertNodes(
+      editor,
+      {
+        type: CET.TABLE,
+        wrapperWidthWhenCreated: tableWrapperWidth,
+        children: [
+          {
+            type: CET.TBODY,
+            children: new Array(rowCount).fill("0").map(() => {
+              return {
+                type: CET.TR,
+                children: new Array(cellCount).fill("0").map(() => {
+                  return {
+                    type: CET.TD,
+                    width: tableWrapperWidth / cellCount,
+                    height: tdMinHeight,
+                    children: [
+                      {
+                        type: CET.DIV,
+                        children: [{ text: "" }],
+                      },
+                    ],
+                  };
+                }),
+              };
+            }),
+          },
+        ],
+      },
+      {
+        at: [tPath[0] + 1],
+      }
+    );
 
     Transforms.deselect(editor);
     setVisible(false);

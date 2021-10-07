@@ -129,6 +129,34 @@ export const ListLogic = {
     }
     return false;
   },
+  isInList(editor: EditorType) {
+    if (!editor.selection) return false;
+
+    const {
+      focus: { path: fPath },
+      anchor: { path: aPath },
+    } = editor.selection;
+
+    let rel = Editor.above(editor, {
+      at: fPath,
+      match(n) {
+        return ListLogic.isListItem(n);
+      },
+    });
+
+    if (rel) return true;
+
+    rel = Editor.above(editor, {
+      at: aPath,
+      match(n) {
+        return ListLogic.isListItem(n);
+      },
+    });
+
+    if (rel) return true;
+
+    return false;
+  },
   isListItem(node: Node): node is Element {
     return Element.isElement(node) && [CET.LIST_ITEM].includes(node.type);
   },

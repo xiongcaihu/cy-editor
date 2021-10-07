@@ -17,7 +17,7 @@ export const InsertColumnAfterCell = () => {
       mousedownFunc={() => {
         insertColumnAfter();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <InsertRowRightOutlined />
     </ReactButton>

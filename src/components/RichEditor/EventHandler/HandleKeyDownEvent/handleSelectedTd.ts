@@ -15,65 +15,65 @@ export const handleSelectedTd = (e: any, editor: EditorType) => {
       TdLogic.clearTd(editor);
       break;
     }
-    case "Tab": {
-      e.preventDefault();
-      if (isNotOnlyOneTd) break;
-      const td = getFirstTd();
-      td && TdLogic.findTargetTd(editor, td, e.shiftKey ? "left" : "right");
-      break;
-    }
+    // case "Tab": {
+    //   e.preventDefault();
+    //   if (isNotOnlyOneTd) break;
+    //   const td = getFirstTd();
+    //   td && TdLogic.findTargetTd(editor, td, e.shiftKey ? "left" : "right");
+    //   break;
+    // }
     case "Escape": {
       e.preventDefault();
       TdLogic.deselectAllTd(editor);
       break;
     }
     // 直接全选选中的td的内容，进入编辑状态
-    case " ":
-    case "Enter":
-      {
-        e.preventDefault();
-        if (isNotOnlyOneTd) break;
-        const td = getFirstTd();
-        td && TdLogic.editTd(editor, td);
-      }
-      break;
-    case "ArrowUp": {
-      e.preventDefault();
-      if (isNotOnlyOneTd) break;
-      const td = getFirstTd();
-      td && TdLogic.findTargetTd(editor, td, "up");
-      break;
-    }
-    case "ArrowDown": {
-      e.preventDefault();
-      if (isNotOnlyOneTd) break;
-      const td = getFirstTd();
-      td && TdLogic.findTargetTd(editor, td, "down");
-      break;
-    }
-    case "ArrowLeft": {
-      e.preventDefault();
-      if (isNotOnlyOneTd) break;
-      const td = getFirstTd();
-      td && TdLogic.findTargetTd(editor, td, "left");
-      break;
-    }
-    case "ArrowRight": {
-      e.preventDefault();
-      if (isNotOnlyOneTd) break;
-      const td = getFirstTd();
-      td && TdLogic.findTargetTd(editor, td, "right");
-      break;
-    }
+    // case " ":
+    // case "Enter":
+    //   {
+    //     e.preventDefault();
+    //     if (isNotOnlyOneTd) break;
+    //     const td = getFirstTd();
+    //     td && TdLogic.editTd(editor, td);
+    //   }
+    //   break;
+    // case "ArrowUp": {
+    //   e.preventDefault();
+    //   if (isNotOnlyOneTd) break;
+    //   const td = getFirstTd();
+    //   td && TdLogic.findTargetTd(editor, td, "up");
+    //   break;
+    // }
+    // case "ArrowDown": {
+    //   e.preventDefault();
+    //   if (isNotOnlyOneTd) break;
+    //   const td = getFirstTd();
+    //   td && TdLogic.findTargetTd(editor, td, "down");
+    //   break;
+    // }
+    // case "ArrowLeft": {
+    //   e.preventDefault();
+    //   if (isNotOnlyOneTd) break;
+    //   const td = getFirstTd();
+    //   td && TdLogic.findTargetTd(editor, td, "left");
+    //   break;
+    // }
+    // case "ArrowRight": {
+    //   e.preventDefault();
+    //   if (isNotOnlyOneTd) break;
+    //   const td = getFirstTd();
+    //   td && TdLogic.findTargetTd(editor, td, "right");
+    //   break;
+    // }
   }
 
-  if (!e.ctrlKey && (e.key.length === 1 || e.key === "Process")) {
-    if (isNotOnlyOneTd) return;
-    const td = getFirstTd();
-    TdLogic.clearTd(editor);
-    td && TdLogic.editTd(editor, td);
-    return;
-  }
+  // if (!e.ctrlKey && (e.key.length === 1 || e.key === "Process")) {
+  //   if (isNotOnlyOneTd) return;
+  //   const td = getFirstTd();
+  //   TdLogic.clearTd(editor);
+  //   td && TdLogic.editTd(editor, td);
+  //   return;
+  // }
 
   // 选中单元格进行复制
   if (e.ctrlKey && e.key === "c") {

@@ -17,7 +17,7 @@ export const SplitCellButton = () => {
       mousedownFunc={() => {
         splitTd();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <SplitCellsOutlined />
     </ReactButton>

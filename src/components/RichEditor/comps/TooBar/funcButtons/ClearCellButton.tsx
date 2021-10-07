@@ -17,7 +17,7 @@ export const ClearCellButton = () => {
       mousedownFunc={() => {
         clearTd();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <ClearOutlined />
     </ReactButton>

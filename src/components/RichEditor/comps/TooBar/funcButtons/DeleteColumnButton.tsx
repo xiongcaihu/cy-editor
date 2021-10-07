@@ -17,7 +17,7 @@ export const DeleteColumnButton = () => {
       mousedownFunc={() => {
         deleteColumn();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <DeleteColumnOutlined />
     </ReactButton>

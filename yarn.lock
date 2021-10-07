@@ -1790,11 +1790,6 @@
     "@types/estree" "*"
     "@types/json-schema" "*"
 
-"@types/esrever@^0.2.0":
-  version "0.2.0"
-  resolved "https://registry.nlark.com/@types/esrever/download/@types/esrever-0.2.0.tgz"
-  integrity sha1-lkBKIoSyx1J/CKHpV/ijFwX5iA8=
-
 "@types/estree@*":
   version "0.0.48"
   resolved "https://registry.nlark.com/@types/estree/download/@types/estree-0.0.48.tgz?cache=0&sync_timestamp=1622612050840&other_urls=https%3A%2F%2Fregistry.nlark.com%2F%40types%2Festree%2Fdownload%2F%40types%2Festree-0.0.48.tgz"
@@ -4855,11 +4850,6 @@ esrecurse@^4.1.0, esrecurse@^4.3.0:
   dependencies:
     estraverse "^5.2.0"
 
-esrever@^0.2.0:
-  version "0.2.0"
-  resolved "https://registry.npm.taobao.org/esrever/download/esrever-0.2.0.tgz"
-  integrity sha1-lunSj08bGnZ4TNXUkOquAQ50B7g=
-
 estraverse@^4.1.1:
   version "4.3.0"
   resolved "https://registry.npm.taobao.org/estraverse/download/estraverse-4.3.0.tgz"
@@ -5847,15 +5837,10 @@ immer@8.0.1:
   resolved "https://registry.nlark.com/immer/download/immer-8.0.1.tgz"
   integrity sha1-nHPbaD4rOXXEJPsFcq9YiYd65lY=
 
-immer@^7.0.0:
-  version "7.0.15"
-  resolved "https://registry.nlark.com/immer/download/immer-7.0.15.tgz"
-  integrity sha1-3DvG24dAFlnS5zfGeiGyJ8SEpK0=
-
-immer@^8.0.1:
-  version "8.0.4"
-  resolved "https://registry.nlark.com/immer/download/immer-8.0.4.tgz?cache=0&sync_timestamp=1623232443380&other_urls=https%3A%2F%2Fregistry.nlark.com%2Fimmer%2Fdownload%2Fimmer-8.0.4.tgz"
-  integrity sha1-OiFgWk4t3thS+yr9IIrVCWlze3o=
+immer@^9.0.6:
+  version "9.0.6"
+  resolved "https://registry.nlark.com/immer/download/immer-9.0.6.tgz#7a96bf2674d06c8143e327cbf73539388ddf1a73"
+  integrity sha1-epa/JnTQbIFD4yfL9zU5OI3fGnM=
 
 import-cwd@^2.0.0:
   version "2.1.0"
@@ -6252,10 +6237,10 @@ is-plain-object@^2.0.3, is-plain-object@^2.0.4:
   dependencies:
     isobject "^3.0.1"
 
-is-plain-object@^3.0.0:
-  version "3.0.1"
-  resolved "https://registry.npm.taobao.org/is-plain-object/download/is-plain-object-3.0.1.tgz"
-  integrity sha1-Zi2S0kwKpDAkB7DUXSHyJRyF+Fs=
+is-plain-object@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.nlark.com/is-plain-object/download/is-plain-object-5.0.0.tgz#4427f50ab3429e9025ea7d52e9043a9ef4159344"
+  integrity sha1-RCf1CrNCnpAl6n1S6QQ6nvQVk0Q=
 
 is-potential-custom-element-name@^1.0.1:
   version "1.0.1"
@@ -10405,45 +10390,41 @@ slash@^3.0.0:
   resolved "https://registry.npm.taobao.org/slash/download/slash-3.0.0.tgz"
   integrity sha1-ZTm+hwwWWtvVJAIg2+Nh8bxNRjQ=
 
-slate-history@^0.62.0:
-  version "0.62.0"
-  resolved "https://registry.nlark.com/slate-history/download/slate-history-0.62.0.tgz"
-  integrity sha1-+s0uHvJJ+XnswNCBHSgFFYd9k1I=
+slate-history@^0.66.0:
+  version "0.66.0"
+  resolved "https://registry.nlark.com/slate-history/download/slate-history-0.66.0.tgz#ac63fddb903098ceb4c944433e3f75fe63acf940"
+  integrity sha1-rGP925AwmM60yURDPj91/mOs+UA=
   dependencies:
-    immer "^7.0.0"
-    is-plain-object "^3.0.0"
+    is-plain-object "^5.0.0"
 
-slate-hyperscript@^0.62.0:
-  version "0.62.0"
-  resolved "https://registry.nlark.com/slate-hyperscript/download/slate-hyperscript-0.62.0.tgz"
-  integrity sha1-/2+G6Uk2+/kPjsB9Kuj7zX5FqSc=
+slate-hyperscript@^0.66.0:
+  version "0.66.0"
+  resolved "https://registry.nlark.com/slate-hyperscript/download/slate-hyperscript-0.66.0.tgz#87f0581de00f71ee61014e2afc825a2c11897e2f"
+  integrity sha1-h/BYHeAPce5hAU4q/IJaLBGJfi8=
   dependencies:
-    is-plain-object "^3.0.0"
+    is-plain-object "^5.0.0"
 
-slate-react@^0.65.0:
-  version "0.65.0"
-  resolved "https://registry.nlark.com/slate-react/download/slate-react-0.65.0.tgz"
-  integrity sha1-WOGfQvG9pyZibFt1pne7eD/BOFM=
+slate-react@^0.66.4:
+  version "0.66.4"
+  resolved "https://registry.npmmirror.com/slate-react/download/slate-react-0.66.4.tgz#cc412c7f256bae1f9edff85a7a25aa4f490c8de5"
+  integrity sha1-zEEsfyVrrh+e3/haeiWqT0kMjeU=
   dependencies:
     "@types/is-hotkey" "^0.1.1"
     "@types/lodash" "^4.14.149"
     direction "^1.0.3"
     is-hotkey "^0.1.6"
-    is-plain-object "^3.0.0"
+    is-plain-object "^5.0.0"
     lodash "^4.17.4"
     scroll-into-view-if-needed "^2.2.20"
     tiny-invariant "1.0.6"
 
-slate@^0.63.0:
-  version "0.63.0"
-  resolved "https://registry.nlark.com/slate/download/slate-0.63.0.tgz"
-  integrity sha1-Y6UMRaiXHTUKPr7vJeEM2fpcdyY=
+slate@^0.66.5:
+  version "0.66.5"
+  resolved "https://registry.npmmirror.com/slate/download/slate-0.66.5.tgz?cache=0&sync_timestamp=1632849148799&other_urls=https%3A%2F%2Fregistry.npmmirror.com%2Fslate%2Fdownload%2Fslate-0.66.5.tgz#bdd93a4422891341dd18a31ff7810f5cae60e40a"
+  integrity sha1-vdk6RCKJE0HdGKMf94EPXK5g5Ao=
   dependencies:
-    "@types/esrever" "^0.2.0"
-    esrever "^0.2.0"
-    fast-deep-equal "^3.1.3"
-    immer "^8.0.1"
-    is-plain-object "^3.0.0"
+    immer "^9.0.6"
+    is-plain-object "^5.0.0"
     tiny-warning "^1.0.3"
 
 slice-ansi@^4.0.0:

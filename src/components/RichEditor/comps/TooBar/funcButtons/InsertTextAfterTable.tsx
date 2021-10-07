@@ -17,7 +17,7 @@ export const InsertTextAfterTable = () => {
       mousedownFunc={() => {
         insertDivAfterTable();
       }}
-      disabledCondition={utils.isSelectTd}
+      disabledCondition={utils.hasNotSelectedAnyTd}
     >
       <VerticalAlignBottomOutlined />
     </ReactButton>
