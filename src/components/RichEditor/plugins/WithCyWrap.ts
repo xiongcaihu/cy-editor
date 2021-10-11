@@ -65,11 +65,11 @@ export const withCyWrap = (editor: EditorType) => {
             (properties.selected ||
               properties.width ||
               properties.start ||
-              properties.canTdEdit ||
+              properties.tdIsEditing ||
               oldProperties.start ||
               oldProperties.selected ||
               oldProperties.width ||
-              oldProperties.canTdEdit)) ||
+              oldProperties.tdIsEditing)) ||
           (isTable &&
             (properties.wrapperWidthWhenCreated ||
               oldProperties.wrapperWidthWhenCreated)) ||
@@ -127,54 +127,96 @@ export const withCyWrap = (editor: EditorType) => {
   editor.deleteForward = (unit) => {
     if (!editor.selection) return;
 
-    normalizeList();
+    const afterPos = Editor.after(editor, editor.selection.anchor);
 
-    const li = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return ListLogic.isListItem(n);
-      },
-    });
-    const td = Editor.above(editor, {
+    const nextTd = Editor.above(editor, {
+      at: afterPos,
       mode: "lowest",
       match(n) {
         return TableLogic.isTd(n);
       },
     });
-    const twWrapper = Editor.above(editor, {
+
+    const nowTd = Editor.above(editor, {
       mode: "lowest",
       match(n) {
-        return utils.isTextWrapper(n);
+        return TableLogic.isTd(n);
       },
     });
 
-    const isInLi = li && (!td || li[1].length > td[1].length);
+    // 退格后是否即将进入其他td，包括从一个td到另一个td，以及非td元素进入td
+    const isGoingToOtherTd =
+      (nextTd != null && nowTd != null && !Path.equals(nowTd[1], nextTd[1])) ||
+      (nextTd != null && nowTd == null);
 
-    if (
-      twWrapper &&
-      Editor.string(editor, twWrapper[1], { voids: true }) === ""
-    ) {
-      Transforms.removeNodes(editor, { at: twWrapper[1] });
-      return;
-    }
+    const dealList = (editor: EditorType) => {
+      if (!editor.selection) return;
 
-    // 如果光标处于列表里
-    if (isInLi && li && Editor.string(editor, li[1], { voids: true }) === "") {
-      Transforms.removeNodes(editor, { at: li[1] });
-      return;
-    }
+      normalizeList();
 
-    const afterPos = Editor.after(editor, editor.selection.anchor);
-    const afterTd =
-      afterPos &&
-      Editor.above(editor, {
-        at: afterPos,
+      if (isGoingToOtherTd) return true;
+    };
+    const dealTextWrapper = (editor: EditorType) => {
+      if (!editor.selection) return;
+
+      const isInTextWrapper = Editor.above(editor, {
         mode: "lowest",
         match(n) {
-          return TableLogic.isTd(n);
+          return utils.isTextWrapper(n);
         },
       });
-    if (td && afterTd && !Path.equals(td[1], afterTd[1])) return;
+
+      if (isGoingToOtherTd) return true;
+
+      if (isInTextWrapper && utils.isElementEmpty(editor, isInTextWrapper)) {
+        Transforms.delete(editor, {
+          at: isInTextWrapper[1],
+          reverse: true,
+        });
+        return true;
+      }
+    };
+    const dealToDoList = (editor: EditorType) => {
+      if (!editor.selection) return;
+      const isInTodoList = getTodoList();
+      if (isInTodoList) {
+        if (isGoingToOtherTd) return true;
+        deleteForward(unit);
+        return true;
+      }
+    };
+    const dealCode = (editor: EditorType) => {
+      if (!editor.selection) return;
+      const afterPos = Editor.after(editor, editor.selection.anchor);
+      if (afterPos) {
+        const code = Editor.above(editor, {
+          at: afterPos,
+          match(n) {
+            return Element.isElement(n) && n.type === CET.CODE;
+          },
+        });
+        if (code) {
+          Transforms.removeNodes(editor, {
+            at: code[1],
+            hanging: true,
+          });
+          return true;
+        }
+      }
+    };
+
+    // 函数如果不需要默认的退格行为，则返回true
+    const rel = [
+      dealList,
+      dealCode,
+      dealToDoList,
+      // dealTable,
+      dealTextWrapper,
+    ].some((func) => {
+      return func(editor);
+    });
+
+    if (rel) return;
 
     deleteForward(unit);
   };
@@ -182,70 +224,10 @@ export const withCyWrap = (editor: EditorType) => {
   editor.deleteBackward = (unit) => {
     if (!editor.selection) return;
 
-    const isCode = Editor.above(editor, {
-      at: Editor.before(editor, editor.selection),
-      match(n) {
-        return Element.isElement(n) && n.type === CET.CODE;
-      },
-    });
-    if (isCode) {
-      Transforms.removeNodes(editor, {
-        at: isCode[1],
-      });
-      return;
-    }
-
-    normalizeList();
-
-    const todoList = getTodoList();
-    if (todoList) {
-      if (Editor.isStart(editor, editor.selection.anchor, todoList[1])) {
-        Transforms.removeNodes(editor, { at: todoList[1] });
-        return;
-      }
-      deleteBackward(unit);
-      return;
-    }
-
-    const li = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return ListLogic.isListItem(n);
-      },
-    });
-    const td = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return TableLogic.isTd(n);
-      },
-    });
-
-    const twWrapper = Editor.above(editor, {
-      mode: "lowest",
-      match(n) {
-        return utils.isTextWrapper(n);
-      },
-    });
-
-    const isInLi = li && (!td || li[1].length > td[1].length);
-
-    if (
-      twWrapper &&
-      Editor.string(editor, twWrapper[1], { voids: true }) === ""
-    ) {
-      Transforms.removeNodes(editor, { at: twWrapper[1] });
-      return;
-    }
+    const isInTable = TableLogic.isInTable(editor);
 
     const beforePos = Editor.before(editor, editor.selection.anchor);
 
-    // 如果光标处于列表里
-    if (isInLi && li && Editor.string(editor, li[1], { voids: true }) === "") {
-      Transforms.removeNodes(editor, { at: li[1] });
-      return;
-    }
-
-    // 如果执行动作时所处的td和即将触及到的td不是同一个td，那么阻止
     const preTd = Editor.above(editor, {
       at: beforePos,
       mode: "lowest",
@@ -253,7 +235,150 @@ export const withCyWrap = (editor: EditorType) => {
         return TableLogic.isTd(n);
       },
     });
-    if (preTd && td && !Path.equals(preTd[1], td[1])) return;
+
+    const nowTd = Editor.above(editor, {
+      mode: "lowest",
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+    });
+
+    // 退格后是否即将进入其他td，包括从一个td到另一个td，以及非td元素进入td
+    const isGoingToOtherTd =
+      (preTd != null && nowTd != null && !Path.equals(nowTd[1], preTd[1])) ||
+      (preTd != null && nowTd == null);
+
+    const dealList = (editor: EditorType) => {
+      if (!editor.selection) return;
+
+      normalizeList();
+
+      const li = Editor.above(editor, {
+        mode: "lowest",
+        match(n) {
+          return ListLogic.isListItem(n);
+        },
+      });
+
+      const isInList = ListLogic.isInList(editor);
+      if (!li || !isInList) return;
+
+      const isLiEmpty = utils.isElementEmpty(editor, li);
+
+      const list = Editor.parent(editor, li[1]);
+      const isOnlyChild = list[0].children.length === 1; // list是否只有一个li
+      const isInLiFirstPos = Editor.isStart(
+        editor,
+        editor.selection.anchor,
+        li[1]
+      ); // 光标是否在li的起始位置
+
+      if (isInLiFirstPos) {
+        if (isLiEmpty && isOnlyChild) {
+          Transforms.removeNodes(editor, {
+            at: li[1],
+          });
+          // 当list中只有一个空的li元素时，如果此时在表格中，那么删除li会导致光标移动到上一个pos，此时通过.move方法，将光标再移回来
+          isGoingToOtherTd && Transforms.move(editor);
+          return true;
+        }
+
+        if (isLiEmpty && !isOnlyChild) {
+          Transforms.removeNodes(editor, {
+            at: li[1],
+          });
+          return true;
+        }
+
+        if (!isLiEmpty && isOnlyChild) {
+          !isGoingToOtherTd && deleteBackward(unit);
+          return true;
+        }
+
+        if (!isLiEmpty && !isOnlyChild) {
+          !isGoingToOtherTd && deleteBackward(unit);
+          return true;
+        }
+        return true;
+      }
+    };
+    const dealCode = (editor: EditorType) => {
+      if (!editor.selection) return;
+      const prePos = Editor.before(editor, editor.selection.anchor);
+      if (prePos) {
+        const code = Editor.above(editor, {
+          at: prePos,
+          match(n) {
+            return Element.isElement(n) && n.type === CET.CODE;
+          },
+        });
+        if (code) {
+          Transforms.removeNodes(editor, {
+            at: code[1],
+            hanging: true,
+          });
+          return true;
+        }
+      }
+    };
+    const dealTable = (editor: EditorType) => {
+      if (!editor.selection) return;
+      if (isInTable && nowTd != null) {
+        return Editor.isStart(editor, editor.selection.anchor, nowTd[1]);
+      }
+    };
+    const dealTextWrapper = (editor: EditorType) => {
+      if (!editor.selection) return;
+
+      const isInTextWrapper = Editor.above(editor, {
+        mode: "lowest",
+        match(n) {
+          return utils.isTextWrapper(n);
+        },
+      });
+
+      if (isGoingToOtherTd) return true;
+
+      if (isInTextWrapper && utils.isElementEmpty(editor, isInTextWrapper)) {
+        Transforms.delete(editor, {
+          at: isInTextWrapper[1],
+        });
+        return true;
+      }
+    };
+    const dealToDoList = (editor: EditorType) => {
+      if (!editor.selection) return;
+      const isInTodoList = getTodoList();
+      if (isInTodoList) {
+        const isInFirstPos = Editor.isStart(
+          editor,
+          editor.selection.anchor,
+          isInTodoList[1]
+        );
+        if (isInFirstPos) {
+          if (isGoingToOtherTd) {
+            Transforms.removeNodes(editor, { at: isInTodoList[1] });
+            Transforms.move(editor);
+          } else {
+            deleteBackward(unit);
+          }
+          return true;
+        }
+      }
+    };
+
+    // 函数如果不需要默认的退格行为，则返回true
+    const rel = [
+      dealList,
+      dealCode,
+      dealToDoList,
+      dealTable,
+      dealTextWrapper,
+    ].some((func) => {
+      return func(editor);
+    });
+
+    if (rel) return;
 
     deleteBackward(unit);
   };
@@ -366,22 +491,6 @@ export const withCyWrap = (editor: EditorType) => {
 
   const normalizeEditor = (nodeEntry: NodeEntry) => {
     const [node, path] = nodeEntry;
-
-    if (Element.isElement(node) && node.type === CET.CODE) {
-      if (Editor.next(editor, { at: path }) == null) {
-        Transforms.insertNodes(
-          editor,
-          {
-            type: CET.DIV,
-            children: [{ text: "" }],
-          },
-          {
-            at: Path.next(path),
-          }
-        );
-        return;
-      }
-    }
 
     // 如果没有子元素，那么强行添加一个
     if (editor.children.length === 0) {

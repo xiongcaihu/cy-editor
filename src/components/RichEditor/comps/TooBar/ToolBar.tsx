@@ -33,8 +33,8 @@ import { InsertTableButton } from "./funcButtons/InsertTableButton";
 import { DeleteTableButton } from "./funcButtons/DeleteTableButton";
 import { DeleteColumnButton } from "./funcButtons/DeleteColumnButton";
 import { DeleteRowButton } from "./funcButtons/DeleteRowButton";
-import { InsertTextAfterTable } from "./funcButtons/InsertTextAfterTable";
-import { InsertTextBeforeTable } from "./funcButtons/InsertTextBeforeTable";
+import { InsertTextAfterVoid } from "./funcButtons/InsertTextAfterVoid";
+import { InsertTextBeforeVoid } from "./funcButtons/InsertTextBeforeVoid";
 import { InsertColumnBeforeCell } from "./funcButtons/InsertColumnBeforeCell";
 import { InsertColumnAfterCell } from "./funcButtons/InsertColumnAfterCell";
 import { InsertRowBeforeButton } from "./funcButtons/InsertRowBeforeButton";
@@ -44,6 +44,7 @@ import { SplitCellButton } from "./funcButtons/SplitCellButton";
 import { ClearCellButton } from "./funcButtons/ClearCellButton";
 import { CET } from "../../common/Defines";
 import { AddCodeBoxButton } from "./funcButtons/AddCodeBoxButton";
+import {SelectCellButton} from './funcButtons/SelectCellButton';
 
 const ReadOnlyButton: React.FC<{}> = (props) => {
   const { readOnly, setReadOnly } = useContext(EditorContext);
@@ -127,6 +128,12 @@ export const ToolBar: React.FC<{}> = (props) => {
           <NormalListButton></NormalListButton>
         </Col>
         <Col>
+          <InsertTextAfterVoid></InsertTextAfterVoid>
+        </Col>
+        <Col>
+          <InsertTextBeforeVoid></InsertTextBeforeVoid>
+        </Col>
+        <Col>
           <SetLinkButton></SetLinkButton>
         </Col>
         <Col>
@@ -143,16 +150,13 @@ export const ToolBar: React.FC<{}> = (props) => {
           <DeleteTableButton></DeleteTableButton>
         </Col>
         <Col>
+          <SelectCellButton></SelectCellButton>
+        </Col>
+        <Col>
           <DeleteColumnButton></DeleteColumnButton>
         </Col>
         <Col>
           <DeleteRowButton></DeleteRowButton>
-        </Col>
-        <Col>
-          <InsertTextAfterTable></InsertTextAfterTable>
-        </Col>
-        <Col>
-          <InsertTextBeforeTable></InsertTextBeforeTable>
         </Col>
         <Col>
           <InsertColumnBeforeCell></InsertColumnBeforeCell>

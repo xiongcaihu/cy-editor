@@ -1,5 +1,5 @@
 /* eslint-disable eqeqeq */
-import { Node, Transforms, Editor } from "slate";
+import { Transforms, Editor, Path, Element } from "slate";
 import { CET, EditorType } from "../../common/Defines";
 import { utils } from "../../common/utils";
 import { ListLogic } from "../../comps/ListComp";
@@ -14,7 +14,7 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
   const elementType = utils.getFirstAboveElementType(editor);
 
   const getEditingTd = () => {
-    return TableLogic.getEditingTds(editor)?.[0];
+    return TableLogic.getEditingTd(editor);
   };
 
   // 如果默认事件没有被组件拦截掉，那么在这里重新定义拦截逻辑
@@ -37,20 +37,34 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
       !e.shiftKey && Transforms.insertText(editor, "    ");
       break;
     }
-    case "Escape": {
-      const td = getEditingTd();
-      if (!td) break;
-      TdLogic.chooseTd(editor, td);
-      break;
-    }
     case "ArrowUp": {
       const td = getEditingTd();
       if (td) {
-        const first = Node.child(td[0], 0);
-        const cursor = Editor.parent(editor, selection.anchor);
-        if (first == cursor[0]) {
+        const [text] = Editor.nodes(editor, {
+          at: td[1],
+          mode: "lowest",
+          match(n) {
+            return Editor.isBlock(editor, n);
+          },
+        });
+        // 判断是否是第一行的td
+        const isInFirstRow = td[1][td[1].length - 2] === 0;
+        const isInFirstText = Path.isDescendant(selection.anchor.path, text[1]);
+        if (isInFirstText) {
+          if (isInFirstRow) {
+            const [table] = Editor.nodes(editor, {
+              at: td[1],
+              match(n) {
+                return TableLogic.isTable(n);
+              },
+            });
+            if (table) {
+              const prePos = Editor.before(editor, table[1]);
+              prePos && Transforms.select(editor, prePos);
+            }
+            return;
+          }
           TdLogic.findTargetTd(editor, td, "up");
-          Transforms.deselect(editor);
           e.preventDefault();
           return;
         }
@@ -61,11 +75,39 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
     case "ArrowDown": {
       const td = getEditingTd();
       if (td) {
-        const last = Node.child(td[0], td[0].children.length - 1);
-        const cursor = Editor.parent(editor, selection.anchor);
-        if (last == cursor[0]) {
+        const [text] = Editor.nodes(editor, {
+          at: td[1],
+          mode: "lowest",
+          reverse: true,
+          match(n) {
+            return Editor.isBlock(editor, n);
+          },
+        });
+        const [tbody] = Editor.nodes(editor, {
+          at: td[1],
+          match(n) {
+            return Element.isElement(n) && n.type === CET.TBODY;
+          },
+        });
+        if (!tbody) return;
+        const isInLastText = Path.isDescendant(selection.anchor.path, text[1]);
+        const isInLastRow =
+          td[1][td[1].length - 2] === tbody[0].children.length - 1;
+        if (isInLastText) {
+          if (isInLastRow) {
+            const [table] = Editor.nodes(editor, {
+              at: td[1],
+              match(n) {
+                return TableLogic.isTable(n);
+              },
+            });
+            if (table) {
+              const nextPos = Editor.after(editor, table[1]);
+              nextPos && Transforms.select(editor, nextPos);
+            }
+            return;
+          }
           TdLogic.findTargetTd(editor, td, "down");
-          Transforms.deselect(editor);
           e.preventDefault();
           return;
         }
@@ -77,7 +119,6 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
       const td = getEditingTd();
       if (td && Editor.isStart(editor, selection.anchor, td[1])) {
         TdLogic.findTargetTd(editor, td, "left");
-        Transforms.deselect(editor);
         e.preventDefault();
         return;
       }
@@ -87,7 +128,6 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
       const td = getEditingTd();
       if (td && Editor.isEnd(editor, selection.anchor, td[1])) {
         TdLogic.findTargetTd(editor, td, "right");
-        Transforms.deselect(editor);
         e.preventDefault();
         return;
       }

@@ -71,14 +71,6 @@ export const getCopyedCellsPath = () => {
   return globalStore.copyedCellsPath;
 };
 
-export const getPreSelectedTdPos = () => {
-  return globalStore.preSelectedTdPos;
-};
-
-export const setPreSelectedTdPos = (value: preSelectedTdPosShape) => {
-  globalStore.preSelectedTdPos = value;
-};
-
 export const getStrPathSetOfSelectedTds = (editor: EditorType) => {
   filterPath(editor, globalStore.selectedTds);
   return globalStore.selectedTds;

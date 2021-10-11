@@ -8,6 +8,7 @@ import {
   Transforms,
   Range,
   Descendant,
+  NodeEntry,
 } from "slate";
 import { TextWrappers, EditorType, CET } from "./Defines";
 import { TableLogic } from "../comps/Table";
@@ -97,13 +98,26 @@ const deserialize: any = (el: any) => {
   }
 };
 
-/**
- * const html = '...'
-const document = new DOMParser().parseFromString(html, 'text/html')
-deserialize(document.body)
- */
-
 export const utils = {
+  /**
+   * 判断包含了void,inline,text元素后，父元素是否依然为空
+   * @param editor
+   * @param el
+   * @returns
+   */
+  isElementEmpty(editor: EditorType, el: NodeEntry) {
+    const isThereHasNoEmptyChild = Array.from(Node.descendants(el[0])).some(
+      (childEntry) => {
+        const node = childEntry[0];
+        return (
+          (Text.isText(node) && node.text.length > 0) ||
+          Editor.isVoid(editor, node) ||
+          Editor.isInline(editor, node)
+        );
+      }
+    );
+    return !isThereHasNoEmptyChild;
+  },
   removeAllRange() {
     window.getSelection()?.removeAllRanges();
   },
@@ -238,6 +252,8 @@ export const utils = {
     }
 
     Transforms.collapse(editor, { edge: "start" });
+
+    // Transforms.delete(editor);
   },
   isTextWrapper(node: Node) {
     return Element.isElement(node) && TextWrappers.includes(node.type);

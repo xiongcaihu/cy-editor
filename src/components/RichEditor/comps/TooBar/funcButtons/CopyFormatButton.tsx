@@ -1,7 +1,7 @@
 import { FormatPainterOutlined } from "@ant-design/icons";
 import _ from "lodash";
 import { useContext, useState, useRef, useEffect, useMemo } from "react";
-import { Editor, Element, Path, Range, Transforms } from "slate";
+import { Editor, Element, Range } from "slate";
 import { useSlate } from "slate-react";
 import { utils } from "../../../common/utils";
 import { EditorContext } from "../../../RichEditor";
@@ -15,12 +15,11 @@ export const CopyFormatButton: React.FC<{}> = (props) => {
   const [disabled, setDisabled] = useState(false);
   const ref = useRef<any>({
     isDisabled: _.debounce(() => {
-      // const isNotOnlyOne = TableLogic.getSelectedTdsSize(editor) > 1;
-      // const hasSelectTd = TableLogic.getSelectedTdsSize(editor) === 1;
-      // setDisabled(!(editor.selection != null || (td && !isNotOnlyOne)));
+      const hasSelectSingleTd = TableLogic.getSelectedTdsSize(editor) === 1;
       const isSelectionExpanded =
         editor.selection != null && Range.isExpanded(editor.selection);
-      setDisabled(!isSelectionExpanded);
+      // 允许格式刷的条件：只选择了单个单元格或者有文字选择区域
+      setDisabled(!(hasSelectSingleTd || isSelectionExpanded));
     }, ToolBarConfig.calcStatusDelay),
   });
 

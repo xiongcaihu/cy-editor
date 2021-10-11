@@ -127,6 +127,31 @@ export const ListLogic = {
     if (editor.selection && Range.isCollapsed(editor.selection)) {
       return utils.getFirstAboveElementType(editor) == CET.LIST_ITEM;
     }
+    if (!editor.selection) return false;
+
+    const {
+      focus: { path: fPath },
+      anchor: { path: aPath },
+    } = editor.selection;
+
+    let rel = Editor.above(editor, {
+      at: fPath,
+      match(n) {
+        return ListLogic.isListItem(n);
+      },
+    });
+
+    if (rel) return true;
+
+    rel = Editor.above(editor, {
+      at: aPath,
+      match(n) {
+        return ListLogic.isListItem(n);
+      },
+    });
+
+    if (rel) return true;
+
     return false;
   },
   isInList(editor: EditorType) {

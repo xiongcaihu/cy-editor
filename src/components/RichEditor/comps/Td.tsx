@@ -5,15 +5,14 @@ import {
   ReactEditor,
   RenderElementProps,
   useReadOnly,
+  useSelected,
   useSlateStatic,
 } from "slate-react";
 import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
 import {
   getEditingTdsPath,
-  getPreSelectedTdPos,
   getStrPathSetOfSelectedTds,
   setEditingTdsPath,
-  setPreSelectedTdPos,
   setStrPathSetOfSelectedTds,
 } from "../common/globalStore";
 import { TableLogic } from "./Table";
@@ -44,6 +43,28 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 }) => {
   const editor = useSlateStatic();
   const readOnly = useReadOnly();
+  const selected = useSelected();
+
+  // 当td被选中时，添加tdIsEditing属性
+  useEffect(() => {
+    const path = ReactEditor.findPath(editor, element);
+
+    Transforms.setNodes(
+      editor,
+      {
+        tdIsEditing: selected,
+        start: selected,
+      },
+      {
+        at: path,
+        mode: "lowest",
+        match(n) {
+          return TableLogic.isTd(n);
+        },
+      }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
   useEffect(() => {
     const path = ReactEditor.findPath(editor, element);
@@ -64,9 +85,9 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       const path = ReactEditor.findPath(editor, element);
       const pathStr = path.join(",");
       const selectedTds = getStrPathSetOfSelectedTds(editor);
-      // const editingTds = getEditingTdsPath(editor);
+      const editingTds = getEditingTdsPath(editor);
       selectedTds.delete(pathStr);
-      // editingTds.delete(pathStr);
+      editingTds.delete(pathStr);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -75,14 +96,14 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     const path = ReactEditor.findPath(editor, element);
     const pathStr = path.join(",");
     const selectedTds = getStrPathSetOfSelectedTds(editor);
-    // const editingTds = getEditingTdsPath(editor);
-    const { selected: nowSelected } = element;
+    const editingTds = getEditingTdsPath(editor);
+    const { selected: nowSelected, tdIsEditing } = element;
 
-    // if (nowEdit === true) {
-    //   editingTds.add(pathStr);
-    // } else {
-    //   editingTds.delete(pathStr);
-    // }
+    if (tdIsEditing === true) {
+      editingTds.add(pathStr);
+    } else {
+      editingTds.delete(pathStr);
+    }
 
     if (nowSelected === true) {
       selectedTds.add(pathStr);
@@ -91,71 +112,6 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     }
   });
 
-  const tdClick = () => {
-    const path = ReactEditor.findPath(editor, element);
-    const pathStr = path.join(",");
-    const editingTds = getEditingTdsPath(editor);
-    Transforms.setNodes(
-      editor,
-      {
-        start: true,
-      },
-      {
-        at: path,
-        mode: "lowest",
-        match(n) {
-          return TableLogic.isTd(n);
-        },
-      }
-    );
-    editingTds.add(pathStr);
-  };
-
-  // const tdMouseDown = (e: any) => {
-  //   if (["resizer", "columnSelector"].includes(e.target.className) || readOnly)
-  //     return;
-  //   const selfDom = attributes.ref.current;
-  //   if (!selfDom) return;
-
-  //   const td = ReactEditor.toSlateNode(editor, selfDom);
-  //   const tdPath = ReactEditor.findPath(editor, td);
-
-  //   // 如果点击自己的时候，自己还是处于编辑状态，那么退出
-  //   if (Element.isElement(td) && td.canTdEdit) return;
-
-  //   const clickDom = e.target;
-  //   const clickNode = ReactEditor.toSlateNode(editor, clickDom);
-  //   const clickNodePath = ReactEditor.findPath(editor, clickNode);
-  //   const isClickSelf = Path.equals(clickNodePath, tdPath);
-
-  //   let finallyTd: NodeEntry;
-  //   if (isClickSelf) {
-  //     finallyTd = [clickNode, clickNodePath];
-  //   } else {
-  //     const tdWrapper = Editor.above(editor, {
-  //       at: clickNodePath,
-  //       mode: "lowest",
-  //       match(n) {
-  //         return TableLogic.isTd(n);
-  //       },
-  //     });
-  //     if (!tdWrapper) return;
-  //     finallyTd = tdWrapper;
-  //   }
-  //   if (!finallyTd) return;
-  //   TdLogic.chooseTd(editor, finallyTd);
-  // };
-  // const tdDBClick = (e: any) => {
-  //   // 防止事件冒泡到父元素的td
-  //   e.stopPropagation();
-  //   const selfDom = attributes.ref.current;
-  //   if (!selfDom) return;
-
-  //   const td = ReactEditor.toSlateNode(editor, selfDom);
-  //   const tdPath = ReactEditor.findPath(editor, td);
-
-  //   TdLogic.editTd(editor, [td, tdPath]);
-  // };
   const resizeTdX = (e: any) => {
     let x = e.clientX;
     let cell: any = null,
@@ -352,32 +308,26 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
     document.addEventListener("mousemove", mouseMoveHandler);
     document.addEventListener("mouseup", mouseUpHandler);
   };
-  const otherAttr: any = {
-    contentEditable: false,
-  };
-  if (element.canTdEdit === true) {
-    delete otherAttr.contentEditable;
-  }
 
-  // const mask = (
-  //   <div
-  //     style={{
-  //       width: "100%",
-  //       height: "100%",
-  //       position: "absolute",
-  //       top: 0,
-  //       left: 0,
-  //       opacity: 0.6,
-  //       color: "white",
-  //       display: "flex",
-  //       justifyContent: "center",
-  //       alignItems: "center",
-  //       fontSize: 12,
-  //       backgroundColor: "rgba(180,215,255,.7)",
-  //       zIndex: 9,
-  //     }}
-  //   ></div>
-  // );
+  const tdClick = () => {
+    TdLogic.deselectAllTd(editor);
+
+    const path = ReactEditor.findPath(editor, element);
+
+    Transforms.setNodes(
+      editor,
+      {
+        tdIsEditing: true,
+      },
+      {
+        at: path,
+        mode: "lowest",
+        match(n) {
+          return TableLogic.isTd(n);
+        },
+      }
+    );
+  };
 
   return (
     <td
@@ -389,14 +339,11 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         maxWidth: element.width || tdMinWidth,
         width: element.width || tdMinWidth,
         height: element.height || tdMinHeight,
-        // cursor: element.canTdEdit || readOnly ? "inherit" : "cell",
         color: element[Marks.Color] || "unset",
         backgroundColor:
           element.selected && !readOnly
             ? "rgba(180,215,255,.7)"
             : element[Marks.BGColor] || "unset",
-        // backgroundColor: element[Marks.BGColor] || "unset",
-        // userSelect: element.canTdEdit || readOnly ? "unset" : "none",
         textAlign: element[Marks.TextAlign] || "unset",
         fontSize: element[Marks.FontSize] || "unset",
         fontWeight: element[Marks.BOLD] ? "bold" : "unset",
@@ -405,12 +352,9 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
           element[Marks.LineThrough] ? "line-through" : ""
         }`,
       }}
-      // {...otherAttr}
-      // onDoubleClick={tdDBClick}
       onClick={tdClick}
     >
       {children}
-      {/* {element.selected && !readOnly ? mask : null} */}
       {!readOnly ? (
         <>
           <span
@@ -450,37 +394,17 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 };
 
 export const TdLogic = {
-  editTd(editor: EditorType, td: NodeEntry) {
-    TdLogic.deselectAllTd(editor);
-
-    // 获取最顶层td
-    const topTd = Editor.above(editor, {
-      at: td[1],
-      mode: "highest",
-      match(n) {
-        return TableLogic.isTd(n);
-      },
-    });
-
-    Transforms.setNodes(
-      editor,
-      { canTdEdit: true, start: true },
-      {
-        at: Editor.range(editor, topTd ? topTd[1] : td[1]),
-        mode: "all",
-        hanging: true,
-        match(n) {
-          return TableLogic.isTd(n);
-        },
-      }
-    );
-    Transforms.select(editor, td[1]);
-
-    setPreSelectedTdPos({
-      row: td[1][td[1].length - 2],
-      col: td[1][td[1].length - 1],
-    });
-  },
+  /**
+   * 获得一个以改造过后的td（fillTd）对象构成的矩阵
+   * 在这个矩阵中，如果某个fillTd占有横向两个单位，纵向两个单位，那么这四个位置都将填充此fillTd对象。
+   * 举例：td1-3,td4,td-6都是colSpan=rowSpan=1的单元格，那么他们在矩阵中只占有一个位置，而td5的colSpan=rowSpan=2，所以占四个位置
+   * 而且，这四个位置的td5都是同一个对象
+   * [
+   *  td1,td2,td3,
+   *  td4,(td5),(td5),
+   *  td6,(td5),(td5)
+   * ]
+   */
   getTdMap(tbody: NodeEntry): getTdMapReturn {
     const trs = tbody[0].children as Element[];
     const startPoins: customTdShape[] = [];
@@ -505,7 +429,9 @@ export const TdLogic = {
           originRow: i,
           originCol: j,
         };
-        if (td.start) startPoins.push(fillTd as customTdShape);
+        // 如果tdIsEditing存在，那么表示只是单一的对单元格进行点击
+        if (td.start || td.tdIsEditing)
+          startPoins.push(fillTd as customTdShape);
 
         for (let row = rowStart; row < rowEnd; row++) {
           for (let col = colStart; col < colEnd; col++) {
@@ -519,6 +445,7 @@ export const TdLogic = {
       startPoins,
     };
   },
+  // 从tdMap中获得选中的td
   getSelectedTdInTdMap(tbody: NodeEntry) {
     const { tdMap, startPoins } = TdLogic.getTdMap(tbody);
     if (startPoins.length < 1) return null;
@@ -575,19 +502,10 @@ export const TdLogic = {
     );
     return selectedTd;
   },
-  getEditingTd(editor: EditorType) {
-    const [td] = Editor.nodes(editor, {
-      at: [],
-      match(n) {
-        return TableLogic.isTd(n) && n.canTdEdit == true;
-      },
-    });
-    return td;
-  },
   deselectAllTd(editor: EditorType) {
     const selectedTdsPath = TableLogic.getSelectedTdsPath(editor);
     for (const path of selectedTdsPath) {
-      Transforms.unsetNodes(editor, ["selected", "start", "canTdEdit"], {
+      Transforms.unsetNodes(editor, ["selected", "start", "tdIsEditing"], {
         at: path,
       });
     }
@@ -596,13 +514,11 @@ export const TdLogic = {
     const editingTdsPath = TableLogic.getEditingTdsPath(editor);
     for (const tdStrPath of editingTdsPath) {
       const path: Path = tdStrPath.split(",").map((o) => +o);
-      Transforms.unsetNodes(editor, ["selected", "start", "canTdEdit"], {
+      Transforms.unsetNodes(editor, ["selected", "start", "tdIsEditing"], {
         at: path,
       });
     }
     setEditingTdsPath(new Set());
-
-    setPreSelectedTdPos(null);
   },
   /**
    * 找到下一个位置的td
@@ -610,7 +526,8 @@ export const TdLogic = {
   findTargetTd(
     editor: EditorType,
     td: NodeEntry,
-    direct: "left" | "right" | "up" | "down"
+    direct: "left" | "right" | "up" | "down",
+    selectAll: boolean = false
   ) {
     if (!td) return;
     // 首先判断当前是不是只有一个单元格被选中
@@ -623,13 +540,12 @@ export const TdLogic = {
     });
     if (!tbody || !Element.isElement(tbody[0])) return;
     const { tdMap } = TdLogic.getTdMap(tbody);
-    const preSelectedTdPos = getPreSelectedTdPos();
-    if (!preSelectedTdPos) return;
 
     let row, col;
+    // 获得当前单元格
     tdMap.some((tr, i) => {
       return tr.some((td, j) => {
-        if (td.start == true) {
+        if (td.tdIsEditing === true) {
           row = i;
           col = j;
           return true;
@@ -640,15 +556,14 @@ export const TdLogic = {
     if (row == null || col == null) return;
     const startTd = tdMap[row][col];
 
-    TdLogic.deselectAllTd(editor);
-    let targetCol: number = preSelectedTdPos.col,
-      targetRow: number = preSelectedTdPos.row;
+    let targetCol: number = col,
+      targetRow: number = row;
     if (direct == "left") {
       targetCol =
         col == 0
           ? row == 0
             ? 0
-            : ((targetRow = preSelectedTdPos.row - 1), tdMap[0].length - 1)
+            : ((targetRow = row - 1), tdMap[0].length - 1)
           : col - 1;
     } else if (direct == "right") {
       const rightX = col + startTd.colSpan;
@@ -656,7 +571,7 @@ export const TdLogic = {
         rightX >= tdMap[0].length
           ? row == tdMap.length - 1
             ? col
-            : ((targetRow = preSelectedTdPos.row + 1), 0)
+            : ((targetRow = row + 1), 0)
           : rightX;
     } else if (direct == "up") {
       targetRow = row == 0 ? 0 : row - 1;
@@ -666,37 +581,18 @@ export const TdLogic = {
     }
     const targetTd = tdMap[targetRow][targetCol];
 
-    setPreSelectedTdPos({
-      row: targetRow,
-      col: targetCol,
-    });
-    Transforms.setNodes(
-      editor,
-      {
-        selected: true,
-        start: true,
-      },
-      {
-        at: [...tbody[1], targetTd.originRow, targetTd.originCol],
-      }
-    );
-  },
-  chooseTd(editor: EditorType, td: NodeEntry) {
-    TdLogic.deselectAllTd(editor);
-    Transforms.deselect(editor);
-    Transforms.setNodes(
-      editor,
-      {
-        selected: true,
-        start: true,
-        canTdEdit: false,
-      },
-      { at: td[1] }
-    );
-    setPreSelectedTdPos({
-      row: td[1][td[1].length - 2],
-      col: td[1][td[1].length - 1],
-    });
+    const nextTdPath = [...tbody[1], targetTd.originRow, targetTd.originCol];
+    const nextTd = Editor.node(editor, nextTdPath);
+    if (nextTd) {
+      Transforms.select(
+        editor,
+        selectAll
+          ? Editor.range(editor, nextTd[1])
+          : ["down", "right"].includes(direct)
+          ? Editor.start(editor, nextTd[1])
+          : Editor.end(editor, nextTd[1])
+      );
+    }
   },
   clearTd(editor: EditorType) {
     // 清空带有selected属性的td

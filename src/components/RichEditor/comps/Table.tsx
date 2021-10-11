@@ -293,19 +293,9 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         !["resizer", "columnSelector"].includes(e.target.className)
       ) {
         ref.current.isBeginSelectTd = true;
-        ref.current.mouseDownStartPoint = slateNodePath;
-
-        for (const [, p] of Editor.nodes(editor, {
-          at: [],
-          match(n) {
-            return (
-              TableLogic.isTd(n) && (n.selected == true || n.start == true)
-            );
-          },
-        })) {
-          ref.current.lastSelectedPaths.push(p);
-        }
-        ref.current.preMouseOnTdPath = slateNodePath;
+        ref.current.preMouseOnTdPath = ref.current.mouseDownStartPoint =
+          slateNodePath;
+        ref.current.lastSelectedPaths = TableLogic.getSelectedTdsPath(editor);
 
         const mousemoveFunc = (e: any) => {
           try {
@@ -602,18 +592,17 @@ export const TableLogic = {
     }
   },
   tabEvent(editor: EditorType) {
-    const td = TdLogic.getEditingTd(editor);
+    const td = TableLogic.getEditingTd(editor);
     if (!td) return;
 
-    Transforms.deselect(editor);
-    TdLogic.findTargetTd(editor, td, "right");
+    TdLogic.findTargetTd(editor, td, "right", true);
   },
   shiftTabEvent(editor: EditorType) {
-    const td = TdLogic.getEditingTd(editor);
+    const td = TableLogic.getEditingTd(editor);
     if (!td) return;
 
     Transforms.deselect(editor);
-    TdLogic.findTargetTd(editor, td, "left");
+    TdLogic.findTargetTd(editor, td, "left", true);
   },
   deleteRow(editor: EditorType) {
     // 删除选区对应的列
@@ -785,16 +774,8 @@ export const TableLogic = {
     type: "before" | "after",
     count: number = 1
   ) {
-    let nowTd = TableLogic.getFirstSelectedTd(editor);
-    // 如果没有选中的td，那么就从光标位置找
-    if (!nowTd && editor.selection) {
-      [nowTd] = Editor.nodes(editor, {
-        mode: "lowest",
-        match(n) {
-          return TableLogic.isTd(n);
-        },
-      });
-    }
+    const nowTd =
+      TableLogic.getFirstSelectedTd(editor) || TableLogic.getEditingTd(editor);
     if (!nowTd) return;
     const nowTr = Editor.parent(editor, nowTd[1]);
     if (!nowTr) return;
@@ -887,16 +868,9 @@ export const TableLogic = {
     TableLogic.resetSelectedTds(editor);
   },
   insertRow(editor: EditorType, type: "after" | "before", count: number = 1) {
-    let nowTd = TableLogic.getFirstSelectedTd(editor);
+    const nowTd =
+      TableLogic.getFirstSelectedTd(editor) || TableLogic.getEditingTd(editor);
     // 如果没有选中的td，那么就从光标位置找
-    if (!nowTd && editor.selection) {
-      [nowTd] = Editor.nodes(editor, {
-        mode: "lowest",
-        match(n) {
-          return TableLogic.isTd(n);
-        },
-      });
-    }
     if (!nowTd) return;
     const nowTr = Editor.parent(editor, nowTd[1]);
     if (!nowTr) return;
@@ -1153,35 +1127,6 @@ export const TableLogic = {
     Transforms.removeNodes(editor, { at: table[1] });
     TableLogic.resetSelectedTds(editor);
   },
-  insertDivAfterTable(editor: EditorType) {
-    const table = getEditingOrSelectedTdBelongTable(editor);
-
-    if (!table) return;
-    const nextPath = utils.getPath(table[1], "next");
-    Transforms.insertNodes(
-      editor,
-      {
-        type: CET.DIV,
-        children: [{ text: "write something..." }],
-      },
-      { at: nextPath }
-    );
-    TableLogic.resetSelectedTds(editor);
-  },
-  insertDivBeforeTable(editor: EditorType) {
-    const table = getEditingOrSelectedTdBelongTable(editor);
-
-    if (!table) return;
-    Transforms.insertNodes(
-      editor,
-      {
-        type: CET.DIV,
-        children: [{ text: "write something..." }],
-      },
-      { at: table[1] }
-    );
-    TableLogic.resetSelectedTds(editor);
-  },
   getSelectedTdsPath(editor: EditorType) {
     const selectedTds = getStrPathSetOfSelectedTds(editor);
     const pathArr = [];
@@ -1214,16 +1159,13 @@ export const TableLogic = {
   },
   // 获取当前光标所处的td
   getEditingTd(editor: EditorType) {
-    return TableLogic.getEditingTds(editor)[0];
-  },
-  getEditingTds(editor: EditorType) {
-    const editingTdsPath = getEditingTdsPath(editor);
-    const arr = [];
-    for (const tdStrPath of editingTdsPath) {
-      const path: Path = tdStrPath.split(",").map((o) => +o);
-      arr.push(Editor.node(editor, path));
-    }
-    return arr;
+    const [match] = Editor.nodes(editor, {
+      match(n) {
+        return TableLogic.isTd(n);
+      },
+      mode: "lowest",
+    });
+    return match;
   },
   getEditingTdsPath(editor: EditorType): Set<string> {
     return getEditingTdsPath(editor);
@@ -1247,7 +1189,7 @@ export const TableLogic = {
       Editor.nodes(editor, {
         at: [],
         match(n) {
-          return TableLogic.isTd(n) && n.canTdEdit == true;
+          return TableLogic.isTd(n) && n.start == true;
         },
       })
     ).map((o) => o[1].join(","));
@@ -1403,7 +1345,6 @@ export const TableLogic = {
             ...td[0],
             selected: false,
             start: false,
-            canTdEdit: false,
           });
         }
       });

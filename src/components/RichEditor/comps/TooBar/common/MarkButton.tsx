@@ -45,9 +45,11 @@ export const MarkButton: React.FC<{
 
     if (tds.length > 0) {
       ReactEditor.focus(editor);
+      const firstTd = tds[0][0];
+      if (!Element.isElement(firstTd)) return;
       tds.forEach((td) => {
         if (!Element.isElement(td[0])) return;
-        if (td[0][mark]) {
+        if (firstTd[mark]) {
           Transforms.unsetNodes(editor, [mark], { at: td[1] });
         } else {
           Transforms.setNodes(editor, { [mark]: true }, { at: td[1] });

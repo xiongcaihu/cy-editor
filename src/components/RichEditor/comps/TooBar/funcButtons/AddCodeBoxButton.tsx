@@ -1,5 +1,5 @@
 import { CodeOutlined } from "@ant-design/icons";
-import { Transforms } from "slate";
+import { Editor, Path, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import { CET } from "../../../common/Defines";
 import { ReactButton } from "../common/ReactButton";
@@ -10,11 +10,24 @@ export const AddCodeBoxButton = () => {
     <ReactButton
       title="插入代码块"
       mousedownFunc={() => {
-        Transforms.insertNodes(editor, {
-          type: CET.CODE,
-          defaultMode: "javascript",
-          children: [{ text: "" }],
+        if (!editor.selection) return;
+        const [topBlock] = Editor.nodes(editor, {
+          mode: "highest",
+          match(n) {
+            return !Editor.isEditor(n);
+          },
         });
+        if (topBlock) {
+          Transforms.insertNodes(
+            editor,
+            {
+              type: CET.CODE,
+              defaultMode: "javascript",
+              children: [{ text: "" }],
+            },
+            { at: Path.next(topBlock[1]) }
+          );
+        }
       }}
       disabledCondition={(editor) => {
         return editor.selection == null;
