@@ -9,11 +9,15 @@ import {
   Range,
   Descendant,
   NodeEntry,
+  Operation,
+  Point,
+  BasePoint,
 } from "slate";
 import { TextWrappers, EditorType, CET } from "./Defines";
 import { TableLogic } from "../comps/Table";
 import { jsx } from "slate-hyperscript";
 import { ListLogic } from "../comps/ListComp";
+import { TdLogic } from "../comps/Td";
 
 const deserialize: any = (el: any) => {
   // text node
@@ -100,6 +104,22 @@ const deserialize: any = (el: any) => {
 
 export const utils = {
   /**
+   * 从startDom开始往上找到与targetDom相同的dom元素，如果没找到，则返回null
+   * @param startDom
+   * @param targetDom
+   * @returns
+   */
+  findParent(
+    startDom: HTMLElement,
+    targetDom: HTMLElement
+  ): HTMLElement | null {
+    let parent = startDom;
+    while (parent != null && parent != targetDom) {
+      parent = parent.offsetParent as HTMLElement;
+    }
+    return parent;
+  },
+  /**
    * 判断包含了void,inline,text元素后，父元素是否依然为空
    * @param editor
    * @param el
@@ -127,133 +147,151 @@ export const utils = {
   decodeContentToSlateData(data: string) {
     return JSON.parse(decodeURIComponent(window.atob(data)));
   },
+  pasteContent(editor: EditorType, content: Node[]) {
+    const isInTable = TableLogic.isInTable(editor);
+    if(isInTable){
+      
+    }
+  },
+  /**
+   * 思路：将选中区域按照表格来分开，非表格区域的可以直接用Transforms.delete进行删除，
+   * 而表格区域，需要分情况讨论：
+   *  如果选中区域全覆盖表格，那么直接删除表格
+   *  如果选中区域部分覆盖表格，那么需要按照单元格来删除，（因为多个单元格连在一起删会破坏表格结构）
+   * @param editor
+   * @returns
+   */
   removeRangeElement(editor: EditorType) {
-    const { selection } = editor;
-    if (!selection) return;
-    if (Range.isCollapsed(selection)) return;
+    if (!editor.selection || Range.isCollapsed(editor.selection)) return;
+    const originSelection = editor.selection;
 
-    // 如果全选了代码块，那么删除
-    const codes = Editor.nodes(editor, {
-      at: selection,
-      match(n) {
-        return Element.isElement(n) && n.type === CET.CODE;
-      },
-    });
-    for (const code of codes) {
-      if (code) {
-        const codeRange = Editor.range(editor, code[1]);
-        const inte = Range.intersection(selection, codeRange);
-        if (inte && Range.equals(codeRange, inte)) {
-          Transforms.removeNodes(editor, { at: code[1] });
-          utils.removeRangeElement(editor);
-          return;
+    // 根据table的位置来分离Range
+    const splitRange = () => {
+      if (!editor.selection) return;
+      let s1 = Range.start(editor.selection);
+      let s2 = Range.end(editor.selection);
+
+      const tables = Array.from(
+        Editor.nodes(editor, {
+          match(n) {
+            return TableLogic.isTable(n);
+          },
+        })
+      );
+
+      const isBefore = (a: Point, b: Point) => {
+        return Point.compare(a, b) == -1;
+      };
+      const isEqual = (a: Point, b: Point) => {
+        return Point.compare(a, b) == 0;
+      };
+
+      const array = [];
+      for (const table of tables) {
+        const t1 = Editor.start(editor, table[1]);
+        const t2 = Editor.end(editor, table[1]);
+        const beforeT1 = Editor.before(editor, t1) || t1;
+        const afterT2 = Editor.after(editor, t2) || t2;
+
+        if (isBefore(s1, t1)) {
+          if (isBefore(s2, t2)) {
+            array.push([s1, beforeT1], [t1, s2]);
+            s1 = null as any;
+          } else if (isEqual(s2, t2)) {
+            array.push([s1, beforeT1], [t1, t2]);
+            s1 = null as any;
+          } else {
+            // s2>t2
+            array.push([s1, beforeT1], [t1, t2]);
+            s1 = afterT2;
+          }
+        } else if (isEqual(s1, t1)) {
+          if (isBefore(s2, t2)) {
+            array.push([t1, s2]);
+            s1 = null as any;
+          } else if (isEqual(s2, t2)) {
+            array.push([t1, t2]);
+            s1 = null as any;
+          } else {
+            // s2>t2
+            array.push([t1, t2]);
+            s1 = afterT2;
+          }
+        } else {
+          // s1>t1
+          if (isBefore(s2, t2)) {
+            array.push([s1, s2]);
+            s1 = null as any;
+          } else if (isEqual(s2, t2)) {
+            array.push([s1, t2]);
+            s1 = null as any;
+          } else {
+            // s2>t2
+            array.push([s1, t2]);
+            s1 = afterT2;
+          }
         }
+        if (s1 == null) break;
       }
-    }
-
-    // 如果全选了表格，那么直接删除表格
-    const tables = Editor.nodes(editor, {
-      at: selection,
-      match(n) {
-        return TableLogic.isTable(n);
-      },
-    });
-    for (const table of tables) {
-      if (table) {
-        const tableRange = Editor.range(editor, table[1]);
-        const inte = Range.intersection(selection, tableRange);
-        if (inte && Range.equals(tableRange, inte)) {
-          Transforms.removeNodes(editor, { at: table[1] });
-          utils.removeRangeElement(editor);
-          return;
-        }
+      // 处理完表格后还剩下的区域，如果符合条件，那么直接加入range数组
+      if (s1 != null && isBefore(s1, s2)) {
+        array.push([s1, s2]);
       }
-    }
+      return array;
+    };
 
-    // 如果全选了列表，那么直接删除列表即可
-    const lists = Editor.nodes(editor, {
-      at: selection,
-      match(n) {
-        return ListLogic.isOrderList(n);
-      },
-    });
-    for (const list of lists) {
-      if (!!list) {
-        const listRange = Editor.range(editor, list[1]);
-        const inte = Range.intersection(selection, listRange);
-        if (inte && Range.equals(listRange, inte)) {
-          Transforms.removeNodes(editor, { at: list[1] });
-          utils.removeRangeElement(editor);
-          return;
-        }
-      }
-    }
-
-    // 部分删除，此部分最耗费性能，因为考虑到列表和表格可能杂糅在一起，所以需要从textWrapper一个个处理
-    const texts = Array.from(
-      Editor.nodes(editor, {
-        reverse: true,
-        match(n, p) {
-          return Text.isText(n) || Editor.isInline(editor, n);
+    const ranges = splitRange() || [];
+    for (const r of ranges.reverse()) {
+      const range = {
+        anchor: r[0],
+        focus: r[1],
+      };
+      if (Range.isCollapsed(range)) continue;
+      const isTable = Editor.above(editor, {
+        at: range,
+        match(n) {
+          return TableLogic.isTable(n);
         },
-      })
-    );
-    for (const [, p] of texts) {
-      const textWrapper = utils.getParent(editor, p);
-      if (
-        Element.isElement(textWrapper[0]) &&
-        textWrapper[0].type === CET.TODOLIST
-      ) {
-        const todoList = textWrapper;
-        const tRange = Editor.range(editor, todoList[1]);
-        const inte =
-          editor.selection && Range.intersection(editor.selection, tRange);
-        if (!inte) continue;
-        if (Range.equals(inte, tRange)) {
-          Transforms.removeNodes(editor, {
-            at: todoList[1],
-          });
-        } else {
-          Transforms.delete(editor, {
-            at: inte,
-            reverse: true,
-            unit: "character",
-            hanging: true,
-          });
+      });
+      if (isTable) {
+        // 如果表格被全选，那么直接删除
+        const tableRange = Editor.range(editor, isTable[1]);
+        const tInte = Range.intersection(range, tableRange);
+        if (tInte && Range.equals(tInte, tableRange)) {
+          Transforms.removeNodes(editor, { at: isTable[1] });
+          continue;
         }
-        continue;
-      }
-      if (textWrapper.length > 0 && utils.isTextWrapper(textWrapper[0])) {
-        const tRange = Editor.range(editor, textWrapper[1]);
-        const inte =
-          editor.selection && Range.intersection(editor.selection, tRange);
-        if (!inte) continue;
-        const [twParent] = utils.getParent(editor, textWrapper[1]);
-        const isInTd = TableLogic.isTd(twParent);
-        // 如果整个被包含，那么直接删除textWrapper
-        if (
-          Range.equals(inte, tRange) &&
-          !(isInTd && twParent.children.length == 1) &&
-          !Path.equals(texts[0][1], p)
-        ) {
-          Transforms.removeNodes(editor, {
-            at: textWrapper[1],
-          });
-        } else {
-          if (Range.isCollapsed(inte)) continue;
-          Transforms.delete(editor, {
-            at: inte,
-            reverse: true,
-            unit: "character",
-            hanging: true,
-          });
+        const tds = Array.from(
+          Editor.nodes(editor, {
+            at: range,
+            match(n) {
+              return TableLogic.isTd(n);
+            },
+          })
+        );
+        for (const td of tds) {
+          const tdRange = Editor.range(editor, td[1]);
+          const inte = Range.intersection(tdRange, range);
+          if (inte && Range.isExpanded(inte)) {
+            // 对于被全选的td，用下面的方法删除不会造成内存泄漏
+            if (Range.equals(inte, tdRange)) {
+              for (const [, childP] of Node.children(editor, td[1])) {
+                Transforms.removeNodes(editor, { at: childP });
+              }
+            } else {
+              // 对于非全选的单元格，只好用这种方式删
+              Transforms.setSelection(editor, inte);
+              Transforms.delete(editor);
+            }
+          }
         }
+      } else {
+        Transforms.setSelection(editor, range);
+        Transforms.delete(editor);
       }
     }
 
-    Transforms.collapse(editor, { edge: "start" });
-
-    // Transforms.delete(editor);
+    Transforms.select(editor, Range.start(originSelection));
   },
   isTextWrapper(node: Node) {
     return Element.isElement(node) && TextWrappers.includes(node.type);

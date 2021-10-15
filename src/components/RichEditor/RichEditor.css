@@ -5,6 +5,25 @@
   transition: 0s !important;
 }
 
+/* 当鼠标移动到td的padding上时，可以选择当前td */
+.cyEditor td {
+  cursor: cell;
+}
+.cyEditor td * {
+  cursor: initial;
+}
+
+/* 改变user selection color */
+/* .cyEditor span::selection {
+  background-color: #b2deff;
+}
+.cyEditor span::-moz-selection {
+  background-color: #b2deff;
+}
+.cyEditor span::-webkit-selection {
+  background-color: #b2deff;
+} */
+
 .cyEditor {
   font-family: "Chinese Quote", "Segoe UI", Roboto, "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial,

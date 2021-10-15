@@ -29,16 +29,12 @@ import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
 import "./RichEditor.css";
 
 type savedMarksShape =
-  | (Partial<
-      {
-        [key in Marks]: any;
-      }
-    > &
-      Partial<
-        {
-          [key in keyof CustomElement]: CustomElement[key];
-        }
-      > & {
+  | (Partial<{
+      [key in Marks]: any;
+    }> &
+      Partial<{
+        [key in keyof CustomElement]: CustomElement[key];
+      }> & {
         [key: string]: any;
       })
   | null
@@ -56,7 +52,7 @@ export const EditorContext = createContext<{
   setReadOnly: () => {},
 });
 
-const EditorComp: EditorCompShape = () => {
+const EditorComp: EditorCompShape = (props) => {
   /**
    * 解决live refresh问题的链接
    * https://github.com/ianstormtaylor/slate/issues/4081
@@ -65,6 +61,7 @@ const EditorComp: EditorCompShape = () => {
   // const [editor] = useState(withCyWrap(withReact(createEditor())));
   const [value, setValue] = useState<StateShape>(() => {
     const content =
+      props.content ||
       window.localStorage.getItem("savedContent") ||
       JSON.stringify([{ type: CET.DIV, children: [{ text: "" }] }]);
     // return TableLogic.model || JSON.parse(content);
@@ -93,7 +90,9 @@ const EditorComp: EditorCompShape = () => {
     //   unitTest(editor);
     // }, 100);
     // TableLogic.resetSelectedTds(editor);
-  }, []);
+    props.getEditor?.(editor);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   const renderElement: EditableProps["renderElement"] = useCallback(
     (props) => <MyElements {...props} editorRef={ref}></MyElements>,

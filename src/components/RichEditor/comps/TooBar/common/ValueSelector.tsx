@@ -5,6 +5,8 @@ import { useSlate, ReactEditor } from "slate-react";
 import { EditorType } from "../../../common/Defines";
 import { ToolBarConfig } from "./config";
 
+var isMounted = false;
+
 export const ValueSelector = (props: {
   options: (string | number)[];
   optionLabelRender?: (value: string | number) => any;
@@ -18,9 +20,17 @@ export const ValueSelector = (props: {
   const toolDom = useRef<any>();
   const ref = useRef<any>({
     getValue: _.debounce(() => {
-      setValue(props.getValue(editor));
+      isMounted && setValue(props.getValue(editor));
     }, ToolBarConfig.calcStatusDelay),
   });
+
+  useEffect(() => {
+    isMounted = true;
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     ref.current.getValue();
@@ -86,6 +96,6 @@ export const ValueSelector = (props: {
         </div>
       </Tooltip>
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, value]);
 };

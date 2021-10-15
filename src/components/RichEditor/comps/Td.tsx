@@ -1,11 +1,11 @@
 /* eslint-disable eqeqeq */
+import { DOMAttributes } from "react";
 import { useEffect } from "react";
 import { Editor, Node, Element, Transforms, Path, NodeEntry } from "slate";
 import {
   ReactEditor,
   RenderElementProps,
   useReadOnly,
-  useSelected,
   useSlateStatic,
 } from "slate-react";
 import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
@@ -43,28 +43,6 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
 }) => {
   const editor = useSlateStatic();
   const readOnly = useReadOnly();
-  const selected = useSelected();
-
-  // 当td被选中时，添加tdIsEditing属性
-  useEffect(() => {
-    const path = ReactEditor.findPath(editor, element);
-
-    Transforms.setNodes(
-      editor,
-      {
-        tdIsEditing: selected,
-        start: selected,
-      },
-      {
-        at: path,
-        mode: "lowest",
-        match(n) {
-          return TableLogic.isTd(n);
-        },
-      }
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
 
   useEffect(() => {
     const path = ReactEditor.findPath(editor, element);
@@ -310,23 +288,41 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
   };
 
   const tdClick = () => {
+    // TdLogic.deselectAllTd(editor);
+    // const path = ReactEditor.findPath(editor, element);
+    // Transforms.setNodes(
+    //   editor,
+    //   {
+    //     tdIsEditing: true,
+    //   },
+    //   {
+    //     at: path,
+    //     mode: "lowest",
+    //     match(n) {
+    //       return TableLogic.isTd(n);
+    //     },
+    //   }
+    // );
+  };
+
+  const tdDbClick: DOMAttributes<any>["onDoubleClick"] = (e) => {
+    if ((e.nativeEvent.target as any) != attributes.ref.current) {
+      return;
+    }
     TdLogic.deselectAllTd(editor);
 
     const path = ReactEditor.findPath(editor, element);
-
     Transforms.setNodes(
       editor,
       {
-        tdIsEditing: true,
+        start: true,
+        selected: true,
       },
       {
         at: path,
-        mode: "lowest",
-        match(n) {
-          return TableLogic.isTd(n);
-        },
       }
     );
+    Transforms.deselect(editor);
   };
 
   return (
@@ -353,6 +349,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
         }`,
       }}
       onClick={tdClick}
+      onDoubleClick={tdDbClick}
     >
       {children}
       {!readOnly ? (
@@ -592,7 +589,20 @@ export const TdLogic = {
           ? Editor.start(editor, nextTd[1])
           : Editor.end(editor, nextTd[1])
       );
+      TdLogic.setTdIsEditing(editor, nextTd[1]);
     }
+  },
+  setTdIsEditing(editor: EditorType, tdPath: Path) {
+    TdLogic.deselectAllTd(editor);
+
+    Transforms.setNodes(
+      editor,
+      {
+        tdIsEditing: true,
+        start: true,
+      },
+      { at: tdPath }
+    );
   },
   clearTd(editor: EditorType) {
     // 清空带有selected属性的td

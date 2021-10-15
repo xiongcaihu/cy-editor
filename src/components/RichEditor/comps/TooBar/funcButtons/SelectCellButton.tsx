@@ -1,5 +1,5 @@
 import { SelectOutlined } from "@ant-design/icons";
-import { Editor, Transforms } from "slate";
+import { Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import { utils } from "../../../common/utils";
 import { TableLogic } from "../../Table";
@@ -10,7 +10,7 @@ export const SelectCellButton = () => {
 
   return (
     <ReactButton
-      title="选中单元格"
+      title="选中单元格（鼠标移动到单元格的边缘出现十字标双击）"
       mousedownFunc={() => {
         const td = TableLogic.getEditingTd(editor);
         if (!td) return;

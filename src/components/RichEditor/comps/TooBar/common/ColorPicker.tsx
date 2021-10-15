@@ -8,6 +8,8 @@ import { TableLogic } from "../../Table";
 import { ColorPickerCore } from "./ColorPickerCore";
 import { ToolBarConfig } from "./config";
 
+var isMounted = false;
+
 export const ColorPicker: React.FC<{
   title: string;
   onChange?: (color?: string) => void;
@@ -19,9 +21,17 @@ export const ColorPicker: React.FC<{
   const [visible, setVisible] = useState(false);
   const ref = useRef<any>({
     _getColor: _.debounce(() => {
-      setColor(getColor());
+      isMounted && setColor(getColor());
     }, ToolBarConfig.calcStatusDelay),
   });
+
+  useEffect(() => {
+    isMounted = true;
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      isMounted = false;
+    };
+  }, []);
 
   const getColor = () => {
     const td = TableLogic.getFirstSelectedTd(editor);

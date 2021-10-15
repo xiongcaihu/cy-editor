@@ -16,6 +16,7 @@ import {
   ReactEditor,
   RenderElementProps,
   useReadOnly,
+  useSelected,
   useSlateStatic,
 } from "slate-react";
 import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
@@ -288,6 +289,12 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
       });
       if (!tdDom) return;
 
+      const tdPath = ReactEditor.findPath(
+        editor,
+        ReactEditor.toSlateNode(editor, tdDom)
+      );
+      TdLogic.setTdIsEditing(editor, tdPath);
+
       if (
         !readOnly &&
         !["resizer", "columnSelector"].includes(e.target.className)
@@ -301,13 +308,13 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
           try {
             // 如果只是在同一个单元格内移动，那么不取消默认行为（也就是允许有选区）
             if (["resizer", "columnSelector"].includes(e.target.className)) {
+              utils.removeAllRange();
               e.preventDefault();
             } else {
-              let parent = e.target.offsetParent;
-              while (parent != null && parent.nodeName != "TD") {
-                parent = parent.offsetParent;
-              }
+              // 如果移动到其他单元格，则取消
+              const parent = utils.findParent(e.target, tdDom);
               if (parent != tdDom) {
+                utils.removeAllRange();
                 e.preventDefault();
               }
             }
@@ -972,7 +979,10 @@ export const TableLogic = {
     const selectedTds = Editor.nodes(editor, {
       at: [],
       match(n) {
-        return TableLogic.isSelectedTd(n);
+        return (
+          TableLogic.isSelectedTd(n) ||
+          (Element.isElement(n) && n.tdIsEditing == true)
+        );
       },
     });
     if (!selectedTds) return;

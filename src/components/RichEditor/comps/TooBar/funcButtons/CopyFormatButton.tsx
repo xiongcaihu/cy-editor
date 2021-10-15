@@ -9,6 +9,8 @@ import { TableLogic } from "../../Table";
 import { ToolBarConfig } from "../common/config";
 import { StaticButton } from "../common/StaticButton";
 
+var isMounted = false;
+
 export const CopyFormatButton: React.FC<{}> = (props) => {
   const editor = useSlate();
   const { setSavedMarks } = useContext(EditorContext);
@@ -19,9 +21,17 @@ export const CopyFormatButton: React.FC<{}> = (props) => {
       const isSelectionExpanded =
         editor.selection != null && Range.isExpanded(editor.selection);
       // 允许格式刷的条件：只选择了单个单元格或者有文字选择区域
-      setDisabled(!(hasSelectSingleTd || isSelectionExpanded));
+      isMounted && setDisabled(!(hasSelectSingleTd || isSelectionExpanded));
     }, ToolBarConfig.calcStatusDelay),
   });
+
+  useEffect(() => {
+    isMounted = true;
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     ref.current.isDisabled();

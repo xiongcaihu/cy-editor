@@ -28,7 +28,6 @@ export const withCyWrap = (editor: EditorType) => {
   const {
     deleteForward,
     deleteBackward,
-    deleteFragment,
     getFragment,
     insertText,
     insertData,
@@ -82,7 +81,6 @@ export const withCyWrap = (editor: EditorType) => {
           return;
         }
       }
-
       apply(e);
     } catch (error) {
       console.warn(error);
@@ -121,7 +119,7 @@ export const withCyWrap = (editor: EditorType) => {
 
   editor.deleteFragment = (direction) => {
     utils.removeRangeElement(editor);
-    deleteFragment(direction);
+    // deleteFragment(direction);
   };
 
   editor.deleteForward = (unit) => {
@@ -154,7 +152,9 @@ export const withCyWrap = (editor: EditorType) => {
 
       normalizeList();
 
-      if (isGoingToOtherTd) return true;
+      const isInList = ListLogic.isInList(editor);
+
+      if (isInList && isGoingToOtherTd) return true;
     };
     const dealTextWrapper = (editor: EditorType) => {
       if (!editor.selection) return;
@@ -166,15 +166,15 @@ export const withCyWrap = (editor: EditorType) => {
         },
       });
 
-      if (isGoingToOtherTd) return true;
-
       if (isInTextWrapper && utils.isElementEmpty(editor, isInTextWrapper)) {
         Transforms.delete(editor, {
           at: isInTextWrapper[1],
-          reverse: true,
+          reverse: false,
         });
         return true;
       }
+
+      if (isGoingToOtherTd) return true;
     };
     const dealToDoList = (editor: EditorType) => {
       if (!editor.selection) return;
@@ -204,13 +204,21 @@ export const withCyWrap = (editor: EditorType) => {
         }
       }
     };
+    const dealTable = (editor: EditorType) => {
+      if (!editor.selection) return;
+      const isInTable = TableLogic.isInTable(editor);
+
+      if (isInTable && nowTd != null) {
+        return Editor.isEnd(editor, editor.selection.anchor, nowTd[1]);
+      }
+    };
 
     // 函数如果不需要默认的退格行为，则返回true
     const rel = [
       dealList,
       dealCode,
       dealToDoList,
-      // dealTable,
+      dealTable,
       dealTextWrapper,
     ].some((func) => {
       return func(editor);
@@ -337,14 +345,15 @@ export const withCyWrap = (editor: EditorType) => {
         },
       });
 
-      if (isGoingToOtherTd) return true;
-
       if (isInTextWrapper && utils.isElementEmpty(editor, isInTextWrapper)) {
         Transforms.delete(editor, {
           at: isInTextWrapper[1],
+          reverse: true,
         });
         return true;
       }
+
+      if (isGoingToOtherTd) return true;
     };
     const dealToDoList = (editor: EditorType) => {
       if (!editor.selection) return;
@@ -400,20 +409,15 @@ export const withCyWrap = (editor: EditorType) => {
     setCopyedCells(null);
     setCopyedMaxRowAndCol({ copyedAreaHeight: 0, copyedAreaWidth: 0 });
     setCopyedContent(getFragment());
-    // console.log("getFragment", getFragment());
-    // return [
-    //   {
-    //     type: CET.DIV,
-    //     children: [{ text: "chenyu paste text" }],
-    //   },
-    // ];
     return getFragment();
   };
 
   // 在粘贴的时候触发
   editor.insertFragment = (fragment) => {
     utils.removeRangeElement(editor);
-    Transforms.insertNodes(editor, fragment);
+    // Transforms.insertNodes(editor, fragment);
+    utils.pasteContent(editor, fragment);
+    // insertFragment(fragment);
   };
 
   // 粘贴的时候首先触发的方法，在这里可以将传入的内容进行个性化处理，然后生成新的dataTransfer传递给slate

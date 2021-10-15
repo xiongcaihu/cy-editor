@@ -68,7 +68,10 @@ export type CustomText = { text: string; [key: string]: any } & Partial<{
 export type EditorType = BaseEditor & ReactEditor & HistoryEditor;
 
 export type StateShape = Parameters<typeof Slate>[0]["value"];
-export type EditorCompPropShape = {};
+export type EditorCompPropShape = {
+  content?: string;
+  getEditor?: (editor: EditorType) => void;
+};
 export type EditorCompShape = (
   props: EditorCompPropShape
 ) => React.ReactElement;

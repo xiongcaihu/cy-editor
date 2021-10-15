@@ -60,6 +60,7 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
             });
             if (table) {
               const prePos = Editor.before(editor, table[1]);
+              e.preventDefault();
               prePos && Transforms.select(editor, prePos);
             }
             return;
@@ -103,6 +104,7 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
             });
             if (table) {
               const nextPos = Editor.after(editor, table[1]);
+              e.preventDefault();
               nextPos && Transforms.select(editor, nextPos);
             }
             return;

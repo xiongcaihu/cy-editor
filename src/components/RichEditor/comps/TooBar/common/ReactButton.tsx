@@ -5,6 +5,8 @@ import { useSlate } from "slate-react";
 import { EditorType } from "../../../common/Defines";
 import { ToolBarConfig } from "./config";
 
+var isMounted = false;
+
 export const ReactButton: React.FC<{
   title: string;
   mousedownFunc: (e: any) => void;
@@ -15,9 +17,16 @@ export const ReactButton: React.FC<{
   const [disabled, setDisabled] = useState(false);
   const ref = useRef({
     _isDisabled: _.debounce(() => {
-      setDisabled(disabledCondition(editor));
+      isMounted && setDisabled(disabledCondition(editor));
     }, ToolBarConfig.calcStatusDelay),
   });
+  useEffect(() => {
+    isMounted = true;
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      isMounted = false;
+    };
+  }, []);
   useEffect(() => {
     ref.current._isDisabled();
   });

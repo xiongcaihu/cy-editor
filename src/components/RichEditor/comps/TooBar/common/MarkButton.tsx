@@ -23,6 +23,8 @@ const isMarkActive = (editor: EditorType, mark: Marks) => {
   }
 };
 
+var isMounted = false;
+
 export const MarkButton: React.FC<{
   title: string;
   mark?: Marks;
@@ -31,9 +33,20 @@ export const MarkButton: React.FC<{
   const [type, setType] = useState("text");
   const ref = useRef<any>({
     getType: _.debounce(() => {
-      setType(props.mark && isMarkActive(editor, props.mark) ? "link" : "text");
+      isMounted &&
+        setType(
+          props.mark && isMarkActive(editor, props.mark) ? "link" : "text"
+        );
     }, ToolBarConfig.calcStatusDelay),
   });
+
+  useEffect(() => {
+    isMounted = true;
+    return () => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     ref.current.getType();

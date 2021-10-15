@@ -19,6 +19,7 @@ import {
 import "viewerjs/dist/viewer.css";
 import Viewer from "viewerjs";
 import { useCallback } from "react";
+import { utils } from "../common/utils";
 
 export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
   attributes,
@@ -167,6 +168,22 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
     },
   ];
 
+  /**
+   * 当点击图片的时候，显示工具条，并且如果在当前文档视口内点击任何非本图片的区域后，将会隐藏工具条
+   */
+  const handleImgClick = () => {
+    setState((t) => ({ ...t, showTool: true }));
+    const thisDom = attributes.ref.current;
+    const bindEvnet = (e: any) => {
+      const parent = utils.findParent(e.target, thisDom);
+      if (parent != thisDom) {
+        setState((t) => ({ ...t, showTool: false }));
+        window.removeEventListener("click", bindEvnet);
+      }
+    };
+    window.addEventListener("click", bindEvnet);
+  };
+
   return (
     <div
       {...attributes}
@@ -179,6 +196,7 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
         boxShadow: selected ? "0 0 0 3px rgba(180,215,255,.7)" : "none",
         border: element.border ? "1px solid #e5e5e5" : "none",
       }}
+      onClick={handleImgClick}
     >
       <Resizable
         enable={enableResize()}
@@ -205,8 +223,9 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
               })}
             </Row>
           }
-          trigger={readOnly ? [] : "click"}
+          // trigger={readOnly ? [] : "click"}
           placement="bottomLeft"
+          visible={readOnly ? false : state.showTool}
         >
           <img
             ref={registeImgViewer}
