@@ -4,11 +4,6 @@ import { TableLogic } from "../../comps/Table";
 import { setCopyedContent } from "../../common/globalStore";
 
 export const handleSelectedTd = (e: any, editor: EditorType) => {
-  // 当没有选区的时候，查看是否已经选中表格
-  const isNotOnlyOneTd = TableLogic.getSelectedTdsSize(editor) > 1;
-
-  const getFirstTd = () => TableLogic.getFirstSelectedTd(editor);
-
   switch (e.key) {
     case "Delete":
     case "Backspace": {

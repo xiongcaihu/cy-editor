@@ -52,6 +52,8 @@ export const EditorContext = createContext<{
   setReadOnly: () => {},
 });
 
+let timeid: ReturnType<typeof setTimeout>;
+
 const EditorComp: EditorCompShape = (props) => {
   /**
    * 解决live refresh问题的链接
@@ -91,7 +93,7 @@ const EditorComp: EditorCompShape = (props) => {
     // }, 100);
     // TableLogic.resetSelectedTds(editor);
     props.getEditor?.(editor);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]);
 
   const renderElement: EditableProps["renderElement"] = useCallback(

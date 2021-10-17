@@ -7,7 +7,7 @@ import { useSlateStatic } from "slate-react";
 import _ from "lodash";
 import { SaveOutlined } from "@ant-design/icons";
 import "./ToolBar.css";
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { EditorContext } from "../../RichEditor";
 import { slateToHtml } from "../../common/slateToHtml";
 import { htmlToSlate } from "../../common/htmlToSlate";

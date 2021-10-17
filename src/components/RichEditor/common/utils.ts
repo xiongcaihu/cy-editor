@@ -9,15 +9,11 @@ import {
   Range,
   Descendant,
   NodeEntry,
-  Operation,
   Point,
-  BasePoint,
 } from "slate";
-import { TextWrappers, EditorType, CET } from "./Defines";
+import { TextWrappers, EditorType, CET, CypressTestFlag } from "./Defines";
 import { TableLogic } from "../comps/Table";
 import { jsx } from "slate-hyperscript";
-import { ListLogic } from "../comps/ListComp";
-import { TdLogic } from "../comps/Td";
 
 const deserialize: any = (el: any) => {
   // text node
@@ -104,6 +100,19 @@ const deserialize: any = (el: any) => {
 
 export const utils = {
   /**
+   * 为组件注入cypress flag，用于cypress测试
+   * @param props 
+   * @param key 
+   * @returns 
+   */
+  insertCypressId<T extends object>(props: T, key: keyof T) {
+    return props[key] != null
+      ? {
+          [CypressTestFlag]: props[key],
+        }
+      : {};
+  },
+  /**
    * 从startDom开始往上找到与targetDom相同的dom元素，如果没找到，则返回null
    * @param startDom
    * @param targetDom
@@ -149,8 +158,7 @@ export const utils = {
   },
   pasteContent(editor: EditorType, content: Node[]) {
     const isInTable = TableLogic.isInTable(editor);
-    if(isInTable){
-      
+    if (isInTable) {
     }
   },
   /**

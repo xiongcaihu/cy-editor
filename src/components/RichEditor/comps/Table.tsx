@@ -16,7 +16,6 @@ import {
   ReactEditor,
   RenderElementProps,
   useReadOnly,
-  useSelected,
   useSlateStatic,
 } from "slate-react";
 import { CET, CustomElement, EditorType, Marks } from "../common/Defines";

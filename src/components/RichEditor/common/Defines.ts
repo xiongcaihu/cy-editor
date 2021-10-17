@@ -1,4 +1,4 @@
-import { BaseEditor } from "slate";
+import { BaseEditor, Descendant } from "slate";
 import { HistoryEditor } from "slate-history";
 import { Editable, ReactEditor, Slate } from "slate-react";
 
@@ -71,8 +71,15 @@ export type StateShape = Parameters<typeof Slate>[0]["value"];
 export type EditorCompPropShape = {
   content?: string;
   getEditor?: (editor: EditorType) => void;
+  onChange?: (editor: EditorType, content: Descendant[]) => void;
 };
 export type EditorCompShape = (
   props: EditorCompPropShape
 ) => React.ReactElement;
 export type EditableProps = Parameters<typeof Editable>[0];
+
+export const CypressTestFlag = "data-cypress-id";
+export enum CypressFlagValues {
+  ORDER_LIST = "order_list",
+  NORMALIZE_LIST = "unorder_list",
+}

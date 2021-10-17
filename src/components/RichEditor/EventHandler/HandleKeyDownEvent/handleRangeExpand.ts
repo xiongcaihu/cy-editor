@@ -1,9 +1,8 @@
-import { Editor, Path } from "slate";
+import { Editor } from "slate";
 import { EditorType } from "../../common/Defines";
 import { utils } from "../../common/utils";
 import { ListLogic } from "../../comps/ListComp";
 import { TableLogic } from "../../comps/Table";
-import { TdLogic } from "../../comps/Td";
 
 export const handleRangeExpand = (e: any, editor: EditorType): void => {
   const { selection } = editor;

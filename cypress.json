@@ -1,6 +1,7 @@
 {
-  "testFiles": "**/*.test.{js,ts,jsx,tsx}",
-  "componentFolder": "src",
+  "testFiles": "integration/**/*.spec.{js,ts,jsx,tsx}",
+  "componentFolder": "cypress",
   "screenshotOnRunFailure": false,
-  "video": false
+  "video": false,
+  "retries": 2
 }
