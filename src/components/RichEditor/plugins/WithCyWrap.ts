@@ -6,30 +6,31 @@ import {
   Text,
   Transforms,
   NodeEntry,
-  Descendant,
   Path,
 } from "slate";
 import { CET, CustomElement, EditorType, InLineTypes } from "../common/Defines";
 import { utils } from "../common/utils";
 import { ListLogic } from "../comps/ListComp";
 import { TableLogic } from "../comps/Table";
-import {
-  getCopyedCells,
-  setCopyedCells,
-  setCopyedContent,
-  setCopyedMaxRowAndCol,
-} from "../common/globalStore";
 import { htmlToSlate } from "../common/htmlToSlate";
 import { HistoryEditor } from "slate-history";
 import { insertImg } from "../comps/TooBar/funcButtons/InsertImgButton";
 import { insertFile } from "../comps/TooBar/funcButtons/InsertFileButton";
+import {
+  setCopyedCells,
+  setCopyedMaxRowAndCol,
+  setCopyedContent,
+  getCopyedCells,
+} from "../common/globalStore";
+import { ToDoListLogic } from "../comps/TodoListComp";
 
 export const withCyWrap = (editor: EditorType) => {
   const {
     deleteForward,
     deleteBackward,
-    getFragment,
     insertText,
+    getFragment,
+    insertFragment,
     insertData,
     insertBreak,
     isInline,
@@ -37,15 +38,6 @@ export const withCyWrap = (editor: EditorType) => {
     normalizeNode,
     apply,
   } = editor;
-
-  const getTodoList = () => {
-    const [todo] = Editor.nodes(editor, {
-      match(n) {
-        return Element.isElement(n) && n.type === CET.TODOLIST;
-      },
-    });
-    return todo;
-  };
 
   editor.apply = (e) => {
     try {
@@ -86,10 +78,9 @@ export const withCyWrap = (editor: EditorType) => {
       console.warn(error);
     }
   };
-
-  editor.insertBreak = () => {
+  const myInsertBreak = _.throttle(() => {
     if (!editor.selection) return;
-    const todoList = getTodoList();
+    const todoList = ToDoListLogic.getToDoList(editor);
     if (todoList) {
       if (
         todoList &&
@@ -115,9 +106,13 @@ export const withCyWrap = (editor: EditorType) => {
       }
     }
     insertBreak();
+  }, 50);
+
+  editor.insertBreak = () => {
+    myInsertBreak();
   };
 
-  editor.deleteFragment = (direction) => {
+  editor.deleteFragment = () => {
     utils.removeRangeElement(editor);
     // deleteFragment(direction);
   };
@@ -167,18 +162,21 @@ export const withCyWrap = (editor: EditorType) => {
       });
 
       if (isInTextWrapper && utils.isElementEmpty(editor, isInTextWrapper)) {
-        Transforms.delete(editor, {
-          at: isInTextWrapper[1],
-          reverse: false,
-        });
+        if (isGoingToOtherTd) {
+          Transforms.removeNodes(editor, {
+            hanging: true,
+          });
+          Transforms.move(editor);
+          setTimeout(() => {
+            Transforms.move(editor, { reverse: true });
+          }, 0);
+        } else deleteForward(unit);
         return true;
       }
-
-      if (isGoingToOtherTd) return true;
     };
     const dealToDoList = (editor: EditorType) => {
       if (!editor.selection) return;
-      const isInTodoList = getTodoList();
+      const isInTodoList = ToDoListLogic.getToDoList(editor);
       if (isInTodoList) {
         if (isGoingToOtherTd) return true;
         deleteForward(unit);
@@ -259,6 +257,9 @@ export const withCyWrap = (editor: EditorType) => {
     const dealList = (editor: EditorType) => {
       if (!editor.selection) return;
 
+      const isInList = ListLogic.isInList(editor);
+      if (!isInList) return;
+
       normalizeList();
 
       const li = Editor.above(editor, {
@@ -267,9 +268,7 @@ export const withCyWrap = (editor: EditorType) => {
           return ListLogic.isListItem(n);
         },
       });
-
-      const isInList = ListLogic.isInList(editor);
-      if (!li || !isInList) return;
+      if (!li) return;
 
       const isLiEmpty = utils.isElementEmpty(editor, li);
 
@@ -286,8 +285,14 @@ export const withCyWrap = (editor: EditorType) => {
           Transforms.removeNodes(editor, {
             at: li[1],
           });
-          // 当list中只有一个空的li元素时，如果此时在表格中，那么删除li会导致光标移动到上一个pos，此时通过.move方法，将光标再移回来
-          isGoingToOtherTd && Transforms.move(editor);
+          // 当list中只有一个空的li元素时，如果此时进行退格，那么就是删掉list元素，此时光标会后移
+          // 如果光标后移的位置就是表格，那么出出现bug，也就是光标位于表格的前面的hanging里，如果此时再接着输入文字，可能会出错
+          // 解决方案就是先move一下，再move回来，这里两次move必须在不同的任务队列里
+          Transforms.move(editor);
+          setTimeout(() => {
+            Transforms.move(editor, { reverse: true });
+            isGoingToOtherTd && Transforms.move(editor);
+          }, 10);
           return true;
         }
 
@@ -346,18 +351,21 @@ export const withCyWrap = (editor: EditorType) => {
       });
 
       if (isInTextWrapper && utils.isElementEmpty(editor, isInTextWrapper)) {
-        Transforms.delete(editor, {
-          at: isInTextWrapper[1],
-          reverse: true,
-        });
+        if (isGoingToOtherTd) {
+          Transforms.removeNodes(editor, {
+            hanging: true,
+          });
+          Transforms.move(editor);
+          setTimeout(() => {
+            Transforms.move(editor, { reverse: true });
+          }, 0);
+        } else deleteBackward(unit);
         return true;
       }
-
-      if (isGoingToOtherTd) return true;
     };
     const dealToDoList = (editor: EditorType) => {
       if (!editor.selection) return;
-      const isInTodoList = getTodoList();
+      const isInTodoList = ToDoListLogic.getToDoList(editor);
       if (isInTodoList) {
         const isInFirstPos = Editor.isStart(
           editor,
@@ -369,7 +377,24 @@ export const withCyWrap = (editor: EditorType) => {
             Transforms.removeNodes(editor, { at: isInTodoList[1] });
             Transforms.move(editor);
           } else {
-            deleteBackward(unit);
+            // 如果光标是文档的第一个位置，那么取消todoList组件的wrap，改为textWrapper
+            if (Editor.before(editor, editor.selection) == null) {
+              Editor.withoutNormalizing(editor, () => {
+                Transforms.wrapNodes(
+                  editor,
+                  {
+                    type: CET.DIV,
+                    children: [],
+                  },
+                  {
+                    at: isInTodoList[1],
+                  }
+                );
+                Transforms.unwrapNodes(editor, {
+                  at: [...isInTodoList[1], 0],
+                });
+              });
+            } else deleteBackward(unit);
           }
           return true;
         }
@@ -393,10 +418,6 @@ export const withCyWrap = (editor: EditorType) => {
   };
 
   editor.insertText = (e) => {
-    if (getTodoList()) {
-      insertText(e);
-      return;
-    }
     if (editor.selection && Range.isExpanded(editor.selection)) {
       utils.removeRangeElement(editor);
     }
@@ -412,12 +433,31 @@ export const withCyWrap = (editor: EditorType) => {
     return getFragment();
   };
 
-  // 在粘贴的时候触发
+  // 在粘贴的时候触发，只可能发生在editor被focus的时，也就是不可能会有单元格被选中的时候
   editor.insertFragment = (fragment) => {
     utils.removeRangeElement(editor);
-    // Transforms.insertNodes(editor, fragment);
-    utils.pasteContent(editor, fragment);
-    // insertFragment(fragment);
+
+    const copyedCells = getCopyedCells() || [];
+    const isCopyedSelectTdContent = copyedCells.length > 0;
+    const isGoingToPastInTable = TableLogic.isInTable(editor);
+    const copyedContent = fragment;
+
+    if (isGoingToPastInTable) {
+      copyedContent &&
+        insertFragment(_.cloneDeep(utils.filterCopyedContent(copyedContent)));
+    } else {
+      // 粘贴多个单元格内容到表格外
+      if (isCopyedSelectTdContent) {
+        const finalContent = utils.filterCopyedContent(
+          copyedCells.map((cell) => cell[0])
+        );
+        // 还要考虑是否全选了表格 【进行中》。。】
+        insertFragment(_.cloneDeep(finalContent));
+      } else {
+        copyedContent &&
+          insertFragment(_.cloneDeep(utils.filterCopyedContent(copyedContent)));
+      }
+    }
   };
 
   // 粘贴的时候首先触发的方法，在这里可以将传入的内容进行个性化处理，然后生成新的dataTransfer传递给slate
@@ -428,26 +468,27 @@ export const withCyWrap = (editor: EditorType) => {
     //   utils.decodeContentToSlateData(e.getData("application/x-slate-fragment"))
     // );
     // newTransfer.setData("text/plain", "plan text");
-    const tds = getCopyedCells();
-    if (tds) {
-      const [table] = Editor.nodes(editor, {
-        at: tds[0][1],
-        mode: "lowest",
-        match(n) {
-          return TableLogic.isTable(n);
-        },
-      });
-      if (table) {
-        const newTransfer = new DataTransfer();
-        newTransfer.setData(
-          "application/x-slate-fragment",
-          // 编码内容
-          utils.encodeSlateContent([table[0] as Descendant])
-        );
-        insertData(newTransfer);
-        return;
-      }
-    } else if (e.types.includes("application/x-slate-fragment")) {
+    // const tds = getCopyedCells();
+    // if (tds) {
+    //   const [table] = Editor.nodes(editor, {
+    //     at: tds[0][1],
+    //     mode: "lowest",
+    //     match(n) {
+    //       return TableLogic.isTable(n);
+    //     },
+    //   });
+    //   if (table) {
+    //     const newTransfer = new DataTransfer();
+    //     newTransfer.setData(
+    //       "application/x-slate-fragment",
+    //       // 编码内容
+    //       utils.encodeSlateContent([table[0] as Descendant])
+    //     );
+    //     insertData(newTransfer);
+    //     return;
+    //   }
+    // } else
+    if (e.types.includes("application/x-slate-fragment")) {
       insertData(e);
     } else if (e.types.includes("text/plain")) {
       const newTransfer = new DataTransfer();
@@ -481,13 +522,13 @@ export const withCyWrap = (editor: EditorType) => {
   }, 0);
 
   editor.isInline = (node) => {
-    if ([CET.IMG, CET.FILE, CET.LINK].includes(node.type)) {
+    if ([CET.IMG, CET.FILE, CET.LINK, CET.CHECKBOX].includes(node.type)) {
       return true;
     }
     return isInline(node);
   };
   editor.isVoid = (node) => {
-    if ([CET.IMG, CET.FILE, CET.CODE].includes(node.type)) {
+    if ([CET.IMG, CET.FILE, CET.CODE, CET.CHECKBOX].includes(node.type)) {
       return true;
     }
     return isVoid(node);
@@ -496,8 +537,46 @@ export const withCyWrap = (editor: EditorType) => {
   const normalizeEditor = (nodeEntry: NodeEntry) => {
     const [node, path] = nodeEntry;
 
-    // 如果没有子元素，那么强行添加一个
+    // 文档的最后一个元素总是一个空的textWrapper
+    const editorLastNode = utils.getNodeByPath(editor, [
+      editor.children.length - 1,
+    ]);
+    const preLastNode = utils.getNodeByPath(editor, [
+      editor.children.length - 2,
+    ]);
+    if (
+      !(
+        utils.isTextWrapper(editorLastNode[0]) &&
+        Editor.string(editor, editorLastNode[1], {
+          voids: true,
+        }) === ""
+      )
+    ) {
+      Transforms.insertNodes(
+        editor,
+        {
+          type: CET.DIV,
+          children: [{ text: "" }],
+        },
+        {
+          at: [editor.children.length],
+        }
+      );
+      return true;
+    }
+    // 如果文档的倒数第二个元素也是空的，那么删除
+    if (
+      utils.isTextWrapper(preLastNode[0]) &&
+      Editor.string(editor, preLastNode[1], {
+        voids: true,
+      }) === ""
+    ) {
+      Transforms.removeNodes(editor, { at: preLastNode[1] });
+      return true;
+    }
+
     if (editor.children.length === 0) {
+      // 如果没有子元素，那么强行添加一个
       Transforms.insertNodes(editor, {
         type: CET.DIV,
         children: [{ text: "" }],
@@ -518,7 +597,7 @@ export const withCyWrap = (editor: EditorType) => {
     if (Element.isElement(node) && InLineTypes.includes(node.type)) {
       const prePath = utils.getPath(path, "pre");
       const [preNode] = utils.getNodeByPath(editor, prePath);
-      if (!Text.isText(preNode)) {
+      if (preNode && !Text.isText(preNode)) {
         Transforms.insertNodes(editor, { text: "" }, { at: prePath });
         return;
       }
@@ -540,6 +619,7 @@ export const withCyWrap = (editor: EditorType) => {
 
     if (TableLogic.normalizeTable(editor, nodeEntry)) return;
     if (ListLogic.normalizeList(editor, nodeEntry)) return;
+    if (ToDoListLogic.normalizeToDoList(editor, nodeEntry)) return;
 
     normalizeNode(nodeEntry);
   };

@@ -24,7 +24,7 @@ export const InsertTextAfterVoid = () => {
           editor,
           {
             type: CET.DIV,
-            children: [{ text: "" }],
+            children: [{ text: "some text..." }],
           },
           { at: Path.next(topBlock[1]) }
         );

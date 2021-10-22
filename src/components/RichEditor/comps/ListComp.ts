@@ -7,6 +7,8 @@ import {
   Editor,
   Node,
   NodeEntry,
+  Path,
+  Descendant,
 } from "slate";
 import { ReactEditor } from "slate-react";
 import { CET, EditorType, Marks } from "../common/Defines";
@@ -195,37 +197,97 @@ export const ListLogic = {
     const [node, path] = nodeEntry;
 
     if (ListLogic.isListItem(node)) {
-      const parent = utils.getParent(editor, path);
-      /**
-       * 如果父节点为空
-       * 或者
-       * 不为列表元素或者子元素为空，
-       * 或者
-       * 子元素只有一个文本节点(且本身在本编辑器中也是不合法的，只不过slate会默认给block元素加入一个默认的空文本节点)
-       *
-       */
-      if (parent.length == 0 || !ListLogic.isOrderList(parent[0])) {
-        Transforms.unwrapNodes(editor, { at: path });
-        return true;
-      }
-
-      if (
-        node.children.length == 0 ||
-        (node.children.length == 1 && Text.isText(Node.child(node, 0)))
-      ) {
-        Transforms.removeNodes(editor, { at: path });
-        return true;
-      }
-
+      // 如果有多个textWrapper，那么从第二个开始就包裹成li
       if (node.children.length > 1) {
-        const secChildPath = path.concat([1]);
-        Transforms.wrapNodes(
-          editor,
-          { type: CET.LIST_ITEM, children: [] },
-          { at: secChildPath }
-        );
-        Transforms.liftNodes(editor, { at: secChildPath });
+        Editor.withoutNormalizing(editor, () => {
+          const nextPath = [...path, 1];
+          const texts = Array.from(
+            Editor.nodes(editor, {
+              at: nextPath,
+              match(n) {
+                return Text.isText(n) || Editor.isInline(editor, n);
+              },
+            })
+          );
+
+          Transforms.wrapNodes(
+            editor,
+            {
+              type: CET.LIST_ITEM,
+              children: [],
+            },
+            {
+              at: nextPath,
+            }
+          );
+
+          Transforms.removeNodes(editor, {
+            at: [...nextPath, 0],
+          });
+          Transforms.insertNodes(
+            editor,
+            {
+              type: CET.DIV,
+              children: texts.map((t) => t[0]) as Descendant[],
+            },
+            {
+              at: [...nextPath, 0],
+            }
+          );
+          Transforms.liftNodes(editor, { at: nextPath });
+          Transforms.select(editor, Editor.start(editor, Path.next(path)));
+        });
         return true;
+      }
+
+      // 如果父元素不是list，那么unwrap li 组件
+      if (!ListLogic.isOrderList(Editor.parent(editor, path)?.[0])) {
+        Editor.withoutNormalizing(editor, () => {
+          Transforms.unwrapNodes(editor, { at: path });
+          Transforms.select(editor, Editor.start(editor, path));
+        });
+        return true;
+      }
+
+      // li里只允许有textWrapper包裹的inline元素
+      for (const [child, childP] of Node.children(editor, nodeEntry[1], {
+        reverse: true,
+      })) {
+        if (ListLogic.isOrderList(child)) {
+          Transforms.liftNodes(editor, { at: childP });
+          return true;
+        }
+        if (!utils.isTextWrapper(child)) {
+          Editor.withoutNormalizing(editor, () => {
+            const texts = Array.from(
+              Editor.nodes(editor, {
+                at: Editor.range(editor, childP),
+                match(n) {
+                  return Text.isText(n) || Editor.isInline(editor, n);
+                },
+              })
+            );
+            Transforms.wrapNodes(
+              editor,
+              {
+                type: CET.DIV,
+                children: [],
+              },
+              {
+                at: childP,
+              }
+            );
+            Transforms.removeNodes(editor, {
+              at: [...childP, 0],
+            });
+            Transforms.insertNodes(
+              editor,
+              texts.map((t) => t[0]),
+              { at: [...childP, 0] }
+            );
+          });
+          return true;
+        }
       }
 
       // 如果所有的text都是一样的Color，那么设置li的color也为该color

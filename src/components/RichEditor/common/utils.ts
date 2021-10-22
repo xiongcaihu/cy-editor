@@ -7,13 +7,19 @@ import {
   Node,
   Transforms,
   Range,
-  Descendant,
   NodeEntry,
   Point,
 } from "slate";
 import { TextWrappers, EditorType, CET, CypressTestFlag } from "./Defines";
 import { TableLogic } from "../comps/Table";
 import { jsx } from "slate-hyperscript";
+import {
+  getCopyedCells,
+  getCopyedContent,
+  setCopyedCells,
+  setCopyedContent,
+  setCopyedMaxRowAndCol,
+} from "../common/globalStore";
 
 const deserialize: any = (el: any) => {
   // text node
@@ -101,9 +107,9 @@ const deserialize: any = (el: any) => {
 export const utils = {
   /**
    * 为组件注入cypress flag，用于cypress测试
-   * @param props 
-   * @param key 
-   * @returns 
+   * @param props
+   * @param key
+   * @returns
    */
   insertCypressId<T extends object>(props: T, key: keyof T) {
     return props[key] != null
@@ -150,16 +156,87 @@ export const utils = {
   removeAllRange() {
     window.getSelection()?.removeAllRanges();
   },
-  encodeSlateContent(data: Descendant[]) {
+  encodeSlateContent(data: Node[]) {
     return window?.btoa(encodeURIComponent(JSON.stringify(data)));
   },
   decodeContentToSlateData(data: string) {
     return JSON.parse(decodeURIComponent(window.atob(data)));
   },
-  pasteContent(editor: EditorType, content: Node[]) {
-    const isInTable = TableLogic.isInTable(editor);
-    if (isInTable) {
+  /**
+   * 对所有的复制行为统一进行处理
+   * 情况如下：
+   *  有一个单元格被选中时的复制
+   *  没有单元格被选中时的复制
+   */
+  doCopy(editor: EditorType) {
+    const selectedTds = TableLogic.getSelectedTds(editor);
+    if (selectedTds.length > 0) {
+      TableLogic.copyCells(editor);
+    } else {
+      setCopyedCells(null);
+      setCopyedMaxRowAndCol({ copyedAreaHeight: 0, copyedAreaWidth: 0 });
+      setCopyedContent(editor.getFragment());
     }
+  },
+  /**
+   * 对所有的粘贴行为进行统一处理
+   */
+  doPaste(editor: EditorType) {
+    utils.removeRangeElement(editor);
+
+    const copyedCells = getCopyedCells() || [];
+    const isGoingToPasteMultiTd = TableLogic.getSelectedTdsSize(editor) > 0;
+    const isCopyedSelectTdContent = copyedCells.length > 0;
+    const isGoingToPastInTable =
+      TableLogic.isInTable(editor) || isGoingToPasteMultiTd;
+    const copyedContent = getCopyedContent();
+
+    if (isGoingToPastInTable) {
+      // 粘贴到多个单元格
+      if (isGoingToPasteMultiTd) {
+        TableLogic.pasteCells(editor);
+      } else {
+        copyedContent &&
+          editor.insertFragment(utils.filterCopyedContent(copyedContent));
+      }
+      return;
+    } else {
+      // 粘贴多个单元格内容到表格外【有问题】
+      if (isCopyedSelectTdContent) {
+        const finalContent = utils.filterCopyedContent(
+          copyedCells.map((cell) => cell[0])
+        );
+        // 还要考虑是否全选了表格
+        editor.insertFragment(finalContent);
+      } else {
+        // 粘贴某个单元格的部分内容到表格外
+        copyedContent &&
+          editor.insertFragment(utils.filterCopyedContent(copyedContent));
+      }
+      return;
+    }
+  },
+  /**
+   * 对复制的区域进行转换，主要是防止在表格内复制了表格的内容再粘贴到表格
+   * @param content
+   * @returns
+   */
+  filterCopyedContent(content: Node[]) {
+    const array: Node[] = [];
+    content.forEach((c) => {
+      if (TableLogic.isTable(c)) {
+        Array.from(Node.descendants(c)).forEach((node) => {
+          if (TableLogic.isTd(node[0])) {
+            array.push(...node[0].children);
+          }
+        });
+      } else if (TableLogic.isTd(c)) {
+        array.push(...c.children);
+      } else {
+        array.push(c);
+      }
+    });
+    return array;
   },
   /**
    * 思路：将选中区域按照表格来分开，非表格区域的可以直接用Transforms.delete进行删除，
@@ -172,6 +249,20 @@ export const utils = {
   removeRangeElement(editor: EditorType) {
     if (!editor.selection || Range.isCollapsed(editor.selection)) return;
     const originSelection = editor.selection;
+
+    // 判断文档是否全部被选中
+    const editorRange = Editor.range(editor, []);
+    const inte = Range.intersection(editorRange, originSelection);
+    if (inte && Range.equals(inte, editorRange)) {
+      for (const [, childP] of Node.children(editor, [], {
+        reverse: true,
+      })) {
+        Transforms.removeNodes(editor, {
+          at: childP,
+        });
+      }
+      return;
+    }
 
     // 根据table的位置来分离Range
     const splitRange = () => {
@@ -283,19 +374,27 @@ export const utils = {
           if (inte && Range.isExpanded(inte)) {
             // 对于被全选的td，用下面的方法删除不会造成内存泄漏
             if (Range.equals(inte, tdRange)) {
-              for (const [, childP] of Node.children(editor, td[1])) {
+              for (const [, childP] of Node.children(editor, td[1], {
+                reverse: true,
+              })) {
                 Transforms.removeNodes(editor, { at: childP });
               }
             } else {
               // 对于非全选的单元格，只好用这种方式删
               Transforms.setSelection(editor, inte);
-              Transforms.delete(editor);
+              Transforms.delete(editor, {
+                hanging: true,
+                voids: true,
+              });
             }
           }
         }
       } else {
         Transforms.setSelection(editor, range);
-        Transforms.delete(editor);
+        Transforms.delete(editor, {
+          hanging: true,
+          voids: true,
+        });
       }
     }
 

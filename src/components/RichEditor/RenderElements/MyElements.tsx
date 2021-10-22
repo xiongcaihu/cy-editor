@@ -12,6 +12,7 @@ import { FileComp as File } from "../comps/FileComp";
 import { LinkComp } from "../comps/LinkComp";
 import { CodeComp as CODE } from "../comps/Code";
 import { TodoListComp as TODO } from "../comps/TodoListComp";
+import { CheckBoxComp } from "../comps/CheckBox";
 import { RenderElementProps } from "slate-react";
 
 declare module "slate" {
@@ -30,6 +31,8 @@ export const MyElements: (props: RenderElementProps) => JSX.Element = (
     style.textAlign = element.textAlign;
 
   switch (element.type) {
+    case CET.CHECKBOX:
+      return <CheckBoxComp {...props} />;
     case CET.TODOLIST:
       return <TODO {...props}></TODO>;
     case CET.NUMBER_LIST:

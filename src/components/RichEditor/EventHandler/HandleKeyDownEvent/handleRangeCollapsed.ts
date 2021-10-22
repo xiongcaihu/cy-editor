@@ -5,6 +5,7 @@ import { utils } from "../../common/utils";
 import { ListLogic } from "../../comps/ListComp";
 import { TableLogic } from "../../comps/Table";
 import { TdLogic } from "../../comps/Td";
+import { ToDoListLogic } from "../../comps/TodoListComp";
 
 export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
   const { selection } = editor;
@@ -133,6 +134,10 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
         e.preventDefault();
         return;
       }
+      return;
+    }
+    case "Home": {
+      ToDoListLogic.handleKeyDown(e, editor);
       return;
     }
   }

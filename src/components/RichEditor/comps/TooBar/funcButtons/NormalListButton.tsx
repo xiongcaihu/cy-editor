@@ -2,6 +2,7 @@ import { UnorderedListOutlined } from "@ant-design/icons";
 import { useSlateStatic } from "slate-react";
 import { CET, CypressFlagValues } from "../../../common/Defines";
 import { ListLogic } from "../../ListComp";
+import { ToDoListLogic } from "../../TodoListComp";
 import { ReactButton } from "../common/ReactButton";
 
 export const NormalListButton = () => {
@@ -18,7 +19,7 @@ export const NormalListButton = () => {
         setNormalList();
       }}
       disabledCondition={(editor) => {
-        return editor.selection == null;
+        return editor.selection == null || ToDoListLogic.isInToDoList(editor);
       }}
       cypressId={CypressFlagValues.NORMALIZE_LIST}
     >

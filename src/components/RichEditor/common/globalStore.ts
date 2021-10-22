@@ -1,4 +1,4 @@
-import { Descendant, Editor, NodeEntry, Path } from "slate";
+import { Editor, NodeEntry, Path, Node } from "slate";
 import { EditorType } from "./Defines";
 
 type preSelectedTdPosShape = {
@@ -14,7 +14,7 @@ type globalStoreShape = {
   copyedAreaHeight: number; // 复制的区域的高度
   copyedAreaWidth: number; // 复制的区域的宽度
   copyedCells: NodeEntry[] | null;
-  copyedContent: Descendant[] | null;
+  copyedContent: Node[] | null;
 };
 const globalStore: globalStoreShape = {
   selectedTds: new Set<string>(),

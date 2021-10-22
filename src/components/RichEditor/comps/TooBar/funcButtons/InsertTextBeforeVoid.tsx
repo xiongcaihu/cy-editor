@@ -24,7 +24,7 @@ export const InsertTextBeforeVoid = () => {
           editor,
           {
             type: CET.DIV,
-            children: [{ text: "" }],
+            children: [{ text: "some text..." }],
           },
           { at: topBlock[1] }
         );

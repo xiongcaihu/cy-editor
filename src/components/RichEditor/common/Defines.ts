@@ -21,12 +21,13 @@ export enum CET {
   TR = "tr",
   TD = "td",
   TODOLIST = "todo",
+  CHECKBOX = "checkbox",
   CODE = "code",
   FILE = "file",
 }
 
 export const TextWrappers = [CET.DIV, CET.H1, CET.H2, CET.H3, CET.H4, CET.P];
-export const InLineTypes = [CET.IMG, CET.LINK];
+export const InLineTypes = [CET.IMG, CET.LINK, CET.CHECKBOX];
 
 export enum Marks {
   BOLD = "bold",
@@ -82,4 +83,5 @@ export const CypressTestFlag = "data-cypress-id";
 export enum CypressFlagValues {
   ORDER_LIST = "order_list",
   NORMALIZE_LIST = "unorder_list",
+  TODO_LIST = "todo_list",
 }

@@ -1,3 +1,7 @@
+:root {
+  --table-border-color: #bbb;
+}
+
 .cyEditor * {
   animation-duration: 0s !important;
   -webkit-animation-duration: 0s !important;
@@ -12,6 +16,25 @@
 .cyEditor td * {
   cursor: initial;
 }
+
+.cyEditor table {
+  margin: 4px 0;
+}
+
+.cyEditor table td {
+  border: 1px solid var(--table-border-color);
+  border-left: none;
+  border-top: none;
+}
+
+.cyEditor table tr:first-child td {
+  border-top: 1px solid var(--table-border-color);
+}
+
+.cyEditor table tr td:first-child {
+  border-left: 1px solid var(--table-border-color);
+}
+
 
 /* 改变user selection color */
 /* .cyEditor span::selection {

@@ -1,6 +1,6 @@
 /* eslint-disable eqeqeq */
 import _ from "lodash";
-import { useContext, useRef } from "react";
+import { useCallback, useContext, useRef } from "react";
 import {
   Node,
   NodeEntry,
@@ -71,12 +71,13 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
   const editor = useSlateStatic();
   const readOnly = useReadOnly();
 
-  const reCalcTdWidth = () => {
+  // 每次渲染时，判断自己当前的容器宽度是否和之前保存的宽度一致，如果不一致，则计算内部所有td的新的宽度
+  const reCalcTdWidth = useCallback(() => {
     const selfDom = attributes.ref.current;
     if (!selfDom) return;
+    const tableDom = selfDom;
     const nowWrapperWidth = selfDom?.offsetWidth - 2;
     const preWrapperWidth = element.wrapperWidthWhenCreated;
-    const tableDom = selfDom.querySelector(":scope>table");
     if (!tableDom || nowWrapperWidth == null || preWrapperWidth == null) return;
     if (preWrapperWidth != nowWrapperWidth) {
       const tableNode = ReactEditor.toSlateNode(editor, selfDom);
@@ -104,11 +105,22 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         { at: tablePath }
       );
     }
-  };
+  }, [attributes.ref, editor, element.wrapperWidthWhenCreated]);
 
   useEffect(() => {
-    // 每次渲染时，判断自己当前的容器宽度是否和之前保存的宽度一致，如果不一致，则计算内部所有td的新的宽度
-    reCalcTdWidth();
+    var ro = new ResizeObserver((entries) => {
+      reCalcTdWidth();
+    });
+    const container = document.querySelector(".cyEditor__content");
+    container && ro.observe(container);
+
+    return () => {
+      container && ro.unobserve(container);
+    };
+  }, [reCalcTdWidth]);
+
+  useEffect(() => {
+    // reCalcTdWidth();
     // 每次渲染时，判断自己的位置和之前的位置相比是否变化，如果变化，需要重新计算自己内部td的状态
     const path = ReactEditor.findPath(editor, element);
     if (
@@ -244,6 +256,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     if (!tbody || !Element.isElement(tbody[0])) return;
 
     const selectedTds = TdLogic.getSelectedTdInTdMap(tbody);
+
     if (selectedTds == null) return;
     const nowTdsPath = Array.from(selectedTds.keys()).map((o) => [
       ...tbody[1],
@@ -331,7 +344,9 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
                 Editor.point(editor, path)
               );
             }
-          } catch (error) {}
+          } catch (error) {
+            console.error(error);
+          }
         };
         const mouseupFunc = (e: any) => {
           ref.current.isBeginSelectTd = false;
@@ -366,32 +381,21 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
   };
 
   const ui = (
-    <div
+    <table
       {...attributes}
       style={{
-        display: "inline-block",
-        position: "relative",
-        width: "100%",
+        display: "block",
+        tableLayout: "auto",
+        wordBreak: "break-all",
         overflowX: "auto",
         overflowY: "hidden",
+        borderCollapse: "collapse",
       }}
+      onMouseDown={handleTableMouseDown}
+      onMouseUp={handleTableMouseUp}
     >
-      <table
-        border="1"
-        {...attributes}
-        style={{
-          tableLayout: "auto",
-          wordBreak: "break-all",
-          overflowX: "auto",
-          overflowY: "hidden",
-          borderCollapse: "collapse",
-        }}
-        onMouseDown={handleTableMouseDown}
-        onMouseUp={handleTableMouseUp}
-      >
-        {children}
-      </table>
-    </div>
+      {children}
+    </table>
   );
   return ui;
 };
@@ -1243,17 +1247,48 @@ export const TableLogic = {
       copyedAreaWidth: areaWidth,
       copyedAreaHeight: areaHeight,
     });
+    const newTransfer = new DataTransfer();
+    newTransfer.setData(
+      "application/x-slate-fragment",
+      // 编码内容
+      utils.encodeSlateContent([{ text: "" }])
+    );
+    editor.setFragmentData(newTransfer);
+  },
+  isSelectTableAllTd(editor: EditorType) {
+    const tds = TableLogic.getSelectedTds(editor);
+    if (tds.length <= 0) return false;
+
+    const td = tds[0];
+    const [table] = Editor.nodes(editor, {
+      at: td[1],
+      match(n) {
+        return TableLogic.isTable(n);
+      },
+    });
+    if (!table) return false;
+
+    const tdLength = Array.from(Node.descendants(table[0])).filter((node) => {
+      return node[0].type === CET.TD;
+    }).length;
+
+    return tdLength === tds.length;
   },
   pasteCells(editor: EditorType) {
     const copyedContent = getCopyedContent();
-    if (copyedContent) {
+    const copyedCells = getCopyedCells();
+    if (copyedContent && !copyedCells) {
       // 将复制的内容全部加入到选择的td中
       const selectedTdsPath = Array.from(TableLogic.getSelectedTdsPath(editor));
       TdLogic.clearTd(editor);
       for (const path of selectedTdsPath) {
-        Transforms.insertNodes(editor, _.cloneDeep(copyedContent), {
-          at: [...path, 0],
-        });
+        Transforms.insertNodes(
+          editor,
+          _.cloneDeep(utils.filterCopyedContent(copyedContent)),
+          {
+            at: [...path, 0],
+          }
+        );
         Transforms.removeNodes(editor, {
           at: [...path, Array.from(Node.children(editor, path)).length - 1],
         });
@@ -1261,7 +1296,6 @@ export const TableLogic = {
       return;
     }
     // 检查复制的单元格区域能否完全覆盖目标区域
-    const copyedCells = getCopyedCells();
     if (!copyedCells) return;
     const { copyedAreaWidth: areaWidth, copyedAreaHeight: areaHeight } =
       getCopyedMaxRowAndCol();

@@ -112,6 +112,17 @@ https://docs.slatejs.org/concepts/11-normalizing
 #### Editor.parent
 获得元素的父节点
 
+#### Editor.pointRef
+绑定point，比如Editor.pointRef(editor,editor.selection.anchor)，此时绑定了光标，当光标移动后，ref.current的值也会跟着变动。好处：不用再每次获取editor.selection.anchor
+
 ### TODO
 1. 继续补充更多基础功能
 2. 加入cypress测试用例
+
+### 问题
+1. 复制todoList的部分文字，粘贴出来的是整个todoList
+2. 支持复制整个表格，（提供按钮，点一下，复制在下方）
+3. 完善列表的测试用例
+4. todo组件的用例
+5. 表格组件的用例
+6. 重构各个组件逻辑，将每个组件的行为控制逻辑都集中起来，最后定义一个通用的模板组件。以后新增的每个组件都需要基于这个模板组件来进行实现。
