@@ -254,13 +254,18 @@ export const utils = {
     const editorRange = Editor.range(editor, []);
     const inte = Range.intersection(editorRange, originSelection);
     if (inte && Range.equals(inte, editorRange)) {
-      for (const [, childP] of Node.children(editor, [], {
-        reverse: true,
-      })) {
-        Transforms.removeNodes(editor, {
-          at: childP,
-        });
-      }
+      Editor.withoutNormalizing(editor, () => {
+        for (const [, childP] of Node.children(editor, [], {
+          reverse: true,
+        })) {
+          Transforms.removeNodes(editor, {
+            at: childP,
+            hanging: true,
+            voids: true,
+            mode: "highest",
+          });
+        }
+      });
       return;
     }
 

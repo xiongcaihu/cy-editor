@@ -54,45 +54,6 @@ function makeList(editor: EditorType) {
   return cy.wrap(""); // 为了让此函数变成promise函数，等待cypress命令全部结束后才返回
 }
 
-before((done) => {
-  console.clear();
-  console.log("开始生成数据");
-  content = emptyContent;
-  // 第一次运行的时候，生成测试数据
-  mount(
-    <CyEditor
-      content={emptyContent}
-      getEditor={(editor) => {
-        makeList(editor).then(() => {
-          console.log("数据生成完毕");
-          setTimeout(() => {
-            content = JSON.stringify(editor.children);
-            console.log("生成的数据");
-            console.log(content);
-            unmount();
-            done();
-          }, 300);
-        });
-      }}
-    />
-  );
-});
-
-beforeEach(() => {
-  mount(
-    <CyEditor
-      content={content}
-      getEditor={(editor) => {
-        cy.wrap(editor).as("editor");
-      }}
-    />
-  );
-});
-
-afterEach(() => {
-  unmount();
-});
-
 function selectLiPos(
   editor: EditorType,
   content: string | RegExp,
@@ -138,6 +99,45 @@ function judegeChildren(type: "ul" | "ol", index: number, count: number) {
     .children()
     .should("have.length", count);
 }
+
+before((done) => {
+  console.clear();
+  console.log("开始生成数据");
+  content = emptyContent;
+  // 第一次运行的时候，生成测试数据
+  mount(
+    <CyEditor
+      content={emptyContent}
+      getEditor={(editor) => {
+        makeList(editor).then(() => {
+          console.log("数据生成完毕");
+          setTimeout(() => {
+            content = JSON.stringify(editor.children);
+            console.log("生成的数据");
+            console.log(content);
+            unmount();
+            done();
+          }, 300);
+        });
+      }}
+    />
+  );
+});
+
+beforeEach(() => {
+  mount(
+    <CyEditor
+      content={content}
+      getEditor={(editor) => {
+        cy.wrap(editor).as("editor");
+      }}
+    />
+  );
+});
+
+afterEach(() => {
+  unmount();
+});
 
 describe("测试list组件", function () {
   describe("没有选区时", function () {
