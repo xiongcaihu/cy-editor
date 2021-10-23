@@ -173,6 +173,8 @@ export const withCyWrap = (editor: EditorType) => {
         } else deleteForward(unit);
         return true;
       }
+
+      if (isGoingToOtherTd) return true;
     };
     const dealToDoList = (editor: EditorType) => {
       if (!editor.selection) return;
@@ -362,6 +364,8 @@ export const withCyWrap = (editor: EditorType) => {
         } else deleteBackward(unit);
         return true;
       }
+
+      if (isGoingToOtherTd) return true;
     };
     const dealToDoList = (editor: EditorType) => {
       if (!editor.selection) return;

@@ -136,6 +136,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cy.wait(50);
   unmount();
 });
 

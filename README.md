@@ -123,6 +123,6 @@ https://docs.slatejs.org/concepts/11-normalizing
 1. 复制todoList的部分文字，粘贴出来的是整个todoList (doing)
 2. 支持复制整个表格，（提供按钮，点一下，复制在下方） (doing)
 3. 完善列表的测试用例 （done)
-4. todo组件的用例 (doing)
+4. todo组件的用例 (done)
 5. 表格组件的用例 (doing)
 6. 重构各个组件逻辑，将每个组件的行为控制逻辑都集中起来，最后定义一个通用的模板组件。以后新增的每个组件都需要基于这个模板组件来进行实现。(doing)

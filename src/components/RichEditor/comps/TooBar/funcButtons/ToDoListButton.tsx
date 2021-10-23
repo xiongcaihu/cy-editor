@@ -11,54 +11,63 @@ export const ToDoListButton = () => {
   const editor = useSlateStatic();
 
   const insertToDoList = () => {
-    const isInToDoList = ToDoListLogic.getToDoList(editor);
-    // 取消待办列表模式
-    if (isInToDoList) {
-      Editor.withoutNormalizing(editor, () => {
-        Transforms.unwrapNodes(editor, {
-          mode: "lowest",
-          match(n) {
-            return Element.isElement(n) && n.type === CET.TODOLIST;
-          },
-        });
-        Transforms.wrapNodes(
-          editor,
-          { type: CET.DIV, children: [] },
-          {
-            mode: "lowest",
-            match(n) {
-              return Text.isText(n);
-            },
-          }
-        );
-      });
-    } else {
-      Editor.withoutNormalizing(editor, () => {
-        const [textWrapper] = Editor.nodes(editor, {
-          mode: "lowest",
-          match(n) {
-            return utils.isTextWrapper(n);
-          },
-        });
-        if (textWrapper) {
+    const todos = Array.from(
+      Editor.nodes(editor, {
+        match: (n) => ToDoListLogic.isTodoList(n),
+        reverse: true,
+      })
+    );
+    // 如果当前选取里有todo组件，那么取消所有的todo
+    if (todos.length > 0) {
+      todos.forEach((todo) => {
+        Editor.withoutNormalizing(editor, () => {
+          Transforms.unwrapNodes(editor, {
+            at: todo[1],
+          });
           Transforms.wrapNodes(
             editor,
+            { type: CET.DIV, children: [] },
             {
-              type: CET.TODOLIST,
-              children: [],
-            },
-            {
-              at: textWrapper[1],
+              at: todo[1],
+              mode: "lowest",
+              match(n) {
+                return Text.isText(n);
+              },
             }
           );
-          Transforms.unwrapNodes(editor, {
-            at: [...textWrapper[1], 0],
-          });
-          if (utils.isElementEmpty(editor, textWrapper)) {
-            Transforms.insertText(editor, "todo...", {
-              at: Editor.end(editor, [...textWrapper[1]]),
+        });
+      });
+    } else {
+      // 将所有选区的内容变成todo
+      Editor.withoutNormalizing(editor, () => {
+        const textWrappers = Array.from(
+          Editor.nodes(editor, {
+            mode: "lowest",
+            match: (n) => utils.isTextWrapper(n),
+            reverse: true,
+          })
+        );
+        if (textWrappers.length > 0) {
+          textWrappers.forEach((textWrapper) => {
+            Transforms.wrapNodes(
+              editor,
+              {
+                type: CET.TODOLIST,
+                children: [],
+              },
+              {
+                at: textWrapper[1],
+              }
+            );
+            Transforms.unwrapNodes(editor, {
+              at: [...textWrapper[1], 0],
             });
-          }
+            if (utils.isElementEmpty(editor, textWrapper)) {
+              Transforms.insertText(editor, "todo...", {
+                at: Editor.end(editor, [...textWrapper[1]]),
+              });
+            }
+          });
         }
       });
     }

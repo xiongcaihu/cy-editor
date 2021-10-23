@@ -84,4 +84,5 @@ export enum CypressFlagValues {
   ORDER_LIST = "order_list",
   NORMALIZE_LIST = "unorder_list",
   TODO_LIST = "todo_list",
+  SELECTE_TD = 'select_td'
 }

@@ -43,6 +43,9 @@ export const TodoListComp: (props: RenderElementProps) => JSX.Element = ({
 };
 
 export const ToDoListLogic = {
+  isTodoList(node: Node) {
+    return Element.isElement(node) && node.type === CET.TODOLIST;
+  },
   isInToDoList(editor: EditorType) {
     return ToDoListLogic.getToDoList(editor) != null;
   },

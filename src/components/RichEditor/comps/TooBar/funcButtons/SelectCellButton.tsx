@@ -1,6 +1,7 @@
 import { SelectOutlined } from "@ant-design/icons";
 import { Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
+import { CypressFlagValues } from "../../../common/Defines";
 import { utils } from "../../../common/utils";
 import { TableLogic } from "../../Table";
 import { ReactButton } from "../common/ReactButton";
@@ -27,6 +28,7 @@ export const SelectCellButton = () => {
         Transforms.deselect(editor);
       }}
       disabledCondition={utils.hasNotSelectedAnyTd}
+      cypressId={CypressFlagValues.SELECTE_TD}
     >
       <SelectOutlined />
     </ReactButton>
