@@ -109,7 +109,13 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
 
   useEffect(() => {
     var ro = new ResizeObserver((entries) => {
-      reCalcTdWidth();
+      window.requestAnimationFrame(() => {
+        if (!Array.isArray(entries) || !entries.length) {
+          return;
+        }
+        // your code
+        reCalcTdWidth();
+      });
     });
     const container = document.querySelector(".cyEditor__content");
     container && ro.observe(container);
@@ -390,6 +396,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         overflowX: "auto",
         overflowY: "hidden",
         borderCollapse: "collapse",
+        position: "relative",
       }}
       onMouseDown={handleTableMouseDown}
       onMouseUp={handleTableMouseUp}
