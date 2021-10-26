@@ -1,5 +1,5 @@
 import { CheckSquareOutlined } from "@ant-design/icons";
-import { Editor, Element, Text, Transforms } from "slate";
+import { Editor, Text, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import { CET, CypressFlagValues } from "../../../common/Defines";
 import { utils } from "../../../common/utils";

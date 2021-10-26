@@ -1,5 +1,5 @@
 /* eslint-disable eqeqeq */
-import { Transforms, Editor, Path, Element } from "slate";
+import { Transforms, Editor, Path, Element, NodeEntry } from "slate";
 import { CET, EditorType } from "../../common/Defines";
 import { utils } from "../../common/utils";
 import { ListLogic } from "../../comps/ListComp";
@@ -16,6 +16,12 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
 
   const getEditingTd = () => {
     return TableLogic.getEditingTd(editor);
+  };
+  const getTable = (td: NodeEntry) => {
+    return td && Editor.above(editor, {
+      at: td[1],
+      match: (n) => TableLogic.isTable(n),
+    });
   };
 
   // 如果默认事件没有被组件拦截掉，那么在这里重新定义拦截逻辑
@@ -120,6 +126,11 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
     }
     case "ArrowLeft": {
       const td = getEditingTd();
+      const table = getTable(td);
+      if (table && Editor.isStart(editor, selection.anchor, table[1])) {
+        TdLogic.deselectAllTd(editor);
+        return;
+      }
       if (td && Editor.isStart(editor, selection.anchor, td[1])) {
         TdLogic.findTargetTd(editor, td, "left");
         e.preventDefault();
@@ -129,6 +140,11 @@ export const handleRangeCollapsed = (e: any, editor: EditorType): void => {
     }
     case "ArrowRight": {
       const td = getEditingTd();
+      const table = getTable(td);
+      if (table && Editor.isEnd(editor, selection.anchor, table[1])) {
+        TdLogic.deselectAllTd(editor);
+        return;
+      }
       if (td && Editor.isEnd(editor, selection.anchor, td[1])) {
         TdLogic.findTargetTd(editor, td, "right");
         e.preventDefault();

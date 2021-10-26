@@ -1,11 +1,9 @@
 /* eslint-disable no-loop-func */
 /* eslint-disable no-throw-literal */
 /* eslint-disable no-undef */
-import * as React from "react";
 import { mount, unmount } from "@cypress/react";
 import CyEditor from "../../src/components/RichEditor/RichEditor";
-import { ReactEditor } from "slate-react";
-import { Descendant, Editor, Element, NodeEntry, Transforms } from "slate";
+import { Descendant, Editor, Element, Transforms } from "slate";
 import {
   CET,
   CypressFlagValues,
@@ -15,24 +13,10 @@ import {
 import { ToDoListLogic } from "../../src/components/RichEditor/comps/TodoListComp";
 import { TableLogic } from "../../src/components/RichEditor/comps/Table";
 import { utils } from "../../src/components/RichEditor/common/utils";
+import { doSyncFn, getSlateNodeEntry } from "../support/tool";
 
 const emptyContent = `[{"type":"div","children":[{"text":""}]}]`;
 var content = emptyContent;
-
-const getSlateNodeEntry = (
-  editor: EditorType,
-  jqEl: JQuery<HTMLElement>
-): NodeEntry => {
-  try {
-    const node = ReactEditor.toSlateNode(editor, jqEl.get(0));
-    const nodePath = ReactEditor.findPath(editor, node);
-    return [node, nodePath];
-  } catch (error) {
-    console.error("get slate node error");
-    console.error(error);
-    throw "li is null";
-  }
-};
 
 function makeList(editor: EditorType) {
   Transforms.select(editor, [0]);
@@ -54,24 +38,26 @@ function selectTodoPos(
   return cy
     .contains("div", content)
     .then((el) => {
-      const todo = getSlateNodeEntry(editor, el);
-      const selectAction = {
-        start: () => Editor.start(editor, todo[1]),
-        end: () => Editor.end(editor, todo[1]),
-        middle: () => ({
-          path: todo[1],
-          offset: parseInt(
-            String(
-              (Editor.start(editor, todo[1]).offset +
-                Editor.end(editor, todo[1]).offset) /
-                2
-            )
-          ),
-        }),
-      };
-      Transforms.select(editor, selectAction[pos]());
+      return doSyncFn(() => {
+        const todo = getSlateNodeEntry(editor, el);
+        const selectAction = {
+          start: () => Editor.start(editor, todo[1]),
+          end: () => Editor.end(editor, todo[1]),
+          middle: () => ({
+            path: todo[1],
+            offset: parseInt(
+              String(
+                (Editor.start(editor, todo[1]).offset +
+                  Editor.end(editor, todo[1]).offset) /
+                  2
+              )
+            ),
+          }),
+        };
+        Transforms.select(editor, selectAction[pos]());
+      }, 100);
     })
-    .wait(50);
+    .wait(100);
 }
 
 function getTodoListCount(editor: EditorType) {
@@ -93,21 +79,6 @@ function getTodoListCount(editor: EditorType) {
         ).length
       );
     });
-}
-
-function doSyncFn(fn: Function, timeout?: number) {
-  return cy
-    .wrap({
-      fn: () =>
-        new Promise((rel) => {
-          if (timeout) {
-            setTimeout(() => {
-              rel(fn());
-            }, timeout);
-          } else rel(fn());
-        }),
-    })
-    .invoke("fn");
 }
 
 before((done) => {
@@ -235,7 +206,7 @@ describe("测试TODO组件", function () {
           it("只按一次", function () {
             const { editor } = this;
             selectTodoPos(editor, "three", "middle");
-            cy.focused().type("{enter}");
+            cy.focused().type("{enter}").wait(50);
 
             cy.contains("div", /^th$/).should("have.length", 1);
             cy.contains("div", /^ree$/).should("have.length", 1);
@@ -245,7 +216,7 @@ describe("测试TODO组件", function () {
           it("连续按两次", function () {
             const { editor } = this;
             selectTodoPos(editor, "three", "middle");
-            cy.focused().type("{enter}{enter}", { delay: 50 });
+            cy.focused().type("{enter}{enter}", { delay: 50 }).wait(50);
 
             cy.contains("div", /^th$/).should("have.length", 1);
             cy.contains("div", /^ree$/).should("have.length", 1);
@@ -255,7 +226,7 @@ describe("测试TODO组件", function () {
           it("连续按三次", function () {
             const { editor } = this;
             selectTodoPos(editor, "three", "middle");
-            cy.focused().type("{enter}{enter}{enter}", { delay: 50 });
+            cy.focused().type("{enter}{enter}{enter}", { delay: 50 }).wait(50);
 
             cy.contains("div", /^th$/).should("have.length", 1);
             cy.contains("div", /^ree$/).should("have.length", 1);

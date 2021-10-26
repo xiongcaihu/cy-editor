@@ -27,6 +27,7 @@ import { MyElements } from "./RenderElements/MyElements";
 import { MyLeaf } from "./RenderElements/RenderLeaf";
 import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
 import "./RichEditor.css";
+import { getCopyedCells } from "./common/globalStore";
 
 type savedMarksShape =
   | (Partial<{
@@ -198,6 +199,12 @@ const EditorComp: EditorCompShape = (props) => {
               readOnly={readOnly}
               onCompositionStart={() => {
                 utils.removeRangeElement(editor);
+              }}
+              onDOMBeforeInput={(e) => {
+                const copyedCells = getCopyedCells() || [];
+                if (copyedCells.length > 0) {
+                  window?.navigator?.clipboard?.writeText("selected td paste only");
+                }
               }}
               placeholder="welcome to cyEditor!"
               onKeyDown={handleKeyDown}

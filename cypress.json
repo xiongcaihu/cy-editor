@@ -3,5 +3,5 @@
   "componentFolder": "cypress",
   "screenshotOnRunFailure": false,
   "video": false,
-  "retries": 0
+  "retries": 1
 }

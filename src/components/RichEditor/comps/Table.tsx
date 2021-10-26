@@ -1116,20 +1116,15 @@ export const TableLogic = {
       { at: newTdPath }
     );
 
-    const firstTdEntry = Editor.node(editor, newTdPath);
     tds.forEach((td) => {
       if (td.col == firstTd.col && td.row == firstTd.row) return;
       const tdPath = [...tbodyPath, td.originRow, td.originCol];
-      for (const [, childP] of Node.children(editor, tdPath, {
-        reverse: true,
-      })) {
-        if (Editor.string(editor, childP, { voids: true }) == "") continue;
-        Transforms.moveNodes(editor, {
-          at: childP,
-          to: [...firstTdEntry[1], firstTdEntry[0].children.length],
-        });
-      }
       Transforms.setNodes(editor, { toBeDeleted: true }, { at: tdPath });
+      if (Editor.string(editor, tdPath, { voids: true }) === "") return;
+      const fragment = td.children;
+      Transforms.insertNodes(editor, fragment, {
+        at: [...newTdPath, Editor.node(editor, newTdPath)?.[0].children.length],
+      });
     });
 
     Transforms.removeNodes(editor, {
@@ -1254,13 +1249,6 @@ export const TableLogic = {
       copyedAreaWidth: areaWidth,
       copyedAreaHeight: areaHeight,
     });
-    const newTransfer = new DataTransfer();
-    newTransfer.setData(
-      "application/x-slate-fragment",
-      // 编码内容
-      utils.encodeSlateContent([{ text: "" }])
-    );
-    editor.setFragmentData(newTransfer);
   },
   isSelectTableAllTd(editor: EditorType) {
     const tds = TableLogic.getSelectedTds(editor);

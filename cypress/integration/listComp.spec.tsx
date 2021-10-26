@@ -1,11 +1,9 @@
 /* eslint-disable no-loop-func */
 /* eslint-disable no-throw-literal */
 /* eslint-disable no-undef */
-import * as React from "react";
 import { mount, unmount } from "@cypress/react";
 import CyEditor from "../../src/components/RichEditor/RichEditor";
-import { ReactEditor } from "slate-react";
-import { Descendant, Editor, NodeEntry, Path, Transforms } from "slate";
+import { Descendant, Editor, Path, Transforms } from "slate";
 import {
   CET,
   CypressFlagValues,
@@ -13,24 +11,10 @@ import {
   EditorType,
 } from "../../src/components/RichEditor/common/Defines";
 import { ListLogic } from "../../src/components/RichEditor/comps/ListComp";
+import { doSyncFn, getSlateNodeEntry } from "../support/tool";
 
 const emptyContent = `[{"type":"div","children":[{"text":""}]}]`;
 var content = emptyContent;
-
-const getSlateNodeEntry = (
-  editor: EditorType,
-  jqEl: JQuery<HTMLElement>
-): NodeEntry => {
-  try {
-    const node = ReactEditor.toSlateNode(editor, jqEl.get(0));
-    const nodePath = ReactEditor.findPath(editor, node);
-    return [node, nodePath];
-  } catch (error) {
-    console.error("get slate node error");
-    console.error(error);
-    throw "li is null";
-  }
-};
 
 function makeList(editor: EditorType) {
   Transforms.select(editor, [0]);
@@ -62,22 +46,24 @@ function selectLiPos(
   return cy
     .contains("li", content)
     .then((el) => {
-      const li = getSlateNodeEntry(editor, el);
-      const selectAction = {
-        start: () => Editor.start(editor, li[1]),
-        end: () => Editor.end(editor, li[1]),
-        middle: () => ({
-          path: li[1],
-          offset: parseInt(
-            String(
-              (Editor.start(editor, li[1]).offset +
-                Editor.end(editor, li[1]).offset) /
-                2
-            )
-          ),
-        }),
-      };
-      Transforms.select(editor, selectAction[pos]());
+      return doSyncFn(() => {
+        const li = getSlateNodeEntry(editor, el);
+        const selectAction = {
+          start: () => Editor.start(editor, li[1]),
+          end: () => Editor.end(editor, li[1]),
+          middle: () => ({
+            path: li[1],
+            offset: parseInt(
+              String(
+                (Editor.start(editor, li[1]).offset +
+                  Editor.end(editor, li[1]).offset) /
+                  2
+              )
+            ),
+          }),
+        };
+        Transforms.select(editor, selectAction[pos]());
+      }, 50);
     })
     .wait(50);
 }
@@ -374,12 +360,12 @@ describe("测试list组件", function () {
               selectLiPos(editor, "ios", "end");
               cy.focused().type("{enter}{enter}plain text...", { delay: 50 });
 
-              cy.document().then(() => {
+              doSyncFn(() => {
                 Transforms.insertNodes(editor, {
                   type: CET.IMG,
                   children: [{ text: "" }],
                 });
-              });
+              }, 50);
 
               selectLiPos(editor, "ios", "end");
               cy.focused().type("{del}");
@@ -607,17 +593,19 @@ describe("测试list组件", function () {
           // 选中 o appl 部分
           cy.contains("li", "two apple")
             .then((el) => {
-              const li = getSlateNodeEntry(editor, el);
-              Transforms.select(editor, {
-                anchor: {
-                  path: li[1],
-                  offset: 8,
-                },
-                focus: {
-                  path: li[1],
-                  offset: 2,
-                },
-              });
+              doSyncFn(() => {
+                const li = getSlateNodeEntry(editor, el);
+                Transforms.select(editor, {
+                  anchor: {
+                    path: li[1],
+                    offset: 8,
+                  },
+                  focus: {
+                    path: li[1],
+                    offset: 2,
+                  },
+                });
+              }, 50);
             })
             .wait(50);
         });
@@ -683,18 +671,20 @@ describe("测试list组件", function () {
           cy.contains("li", "two apple")
             .then((el) => {
               cy.contains("li", "banana").then((el2) => {
-                const li = getSlateNodeEntry(editor, el);
-                const li2 = getSlateNodeEntry(editor, el2);
-                Transforms.select(editor, {
-                  anchor: {
-                    path: li[1],
-                    offset: 8,
-                  },
-                  focus: {
-                    path: li2[1],
-                    offset: 2,
-                  },
-                });
+                return doSyncFn(() => {
+                  const li = getSlateNodeEntry(editor, el);
+                  const li2 = getSlateNodeEntry(editor, el2);
+                  Transforms.select(editor, {
+                    anchor: {
+                      path: li[1],
+                      offset: 8,
+                    },
+                    focus: {
+                      path: li2[1],
+                      offset: 2,
+                    },
+                  });
+                }, 50);
               });
             })
             .wait(50);
@@ -834,10 +824,15 @@ describe("测试list组件", function () {
       const { editor } = this;
 
       cy.contains("li", "banana").then(($li) => {
-        const li = getSlateNodeEntry(editor, $li);
-        // 选中li的倒数第二个位置
-        const liEndPos = Editor.end(editor, li[1]);
-        Transforms.select(editor, Editor.before(editor, liEndPos) || liEndPos);
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          // 选中li的倒数第二个位置
+          const liEndPos = Editor.end(editor, li[1]);
+          Transforms.select(
+            editor,
+            Editor.before(editor, liEndPos) || liEndPos
+          );
+        }, 50);
       });
 
       // 点击切换无序列表按钮
@@ -856,10 +851,15 @@ describe("测试list组件", function () {
       const { editor } = this;
 
       cy.contains("li", "banana").then(($li) => {
-        const li = getSlateNodeEntry(editor, $li);
-        // 选中li的倒数第二个位置
-        const liEndPos = Editor.end(editor, li[1]);
-        Transforms.select(editor, Editor.before(editor, liEndPos) || liEndPos);
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          // 选中li的倒数第二个位置
+          const liEndPos = Editor.end(editor, li[1]);
+          Transforms.select(
+            editor,
+            Editor.before(editor, liEndPos) || liEndPos
+          );
+        }, 50);
       });
 
       // 点击切换有序列表按钮
@@ -880,10 +880,15 @@ describe("测试list组件", function () {
       const { editor } = this;
 
       cy.contains("li", "two apple").then(($li) => {
-        const li = getSlateNodeEntry(editor, $li);
-        // 选中li的倒数第二个位置
-        const liEndPos = Editor.end(editor, li[1]);
-        Transforms.select(editor, Editor.before(editor, liEndPos) || liEndPos);
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          // 选中li的倒数第二个位置
+          const liEndPos = Editor.end(editor, li[1]);
+          Transforms.select(
+            editor,
+            Editor.before(editor, liEndPos) || liEndPos
+          );
+        }, 50);
       });
 
       // 点击切换有序列表按钮
@@ -901,10 +906,15 @@ describe("测试list组件", function () {
 
       cy.contains("two apple").then(($li) => {
         if (!$li) throw "error";
-        const li = getSlateNodeEntry(editor, $li);
-        // 选中li的倒数第二个位置
-        const liEndPos = Editor.end(editor, li[1]);
-        Transforms.select(editor, Editor.before(editor, liEndPos) || liEndPos);
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          // 选中li的倒数第二个位置
+          const liEndPos = Editor.end(editor, li[1]);
+          Transforms.select(
+            editor,
+            Editor.before(editor, liEndPos) || liEndPos
+          );
+        }, 50);
       });
 
       // 点击切换有序列表按钮
@@ -924,7 +934,7 @@ describe("测试list组件", function () {
       const editor: EditorType = this.editor;
       var copyedContent: Descendant[] | null = null;
       // 在list后插入文本，并选中部分文本，然后复制
-      cy.document().then(() => {
+      doSyncFn(() => {
         const [list] = Editor.nodes(editor, {
           match(n) {
             return ListLogic.isOrderList(n);
@@ -942,31 +952,35 @@ describe("测试list组件", function () {
             }
           );
         }
-      });
+      }, 50);
 
       cy.contains(/^haha$/).then(($el) => {
-        const div = getSlateNodeEntry(editor, $el as any);
-        const end = Editor.end(editor, div[1]);
-        const start = Cypress._.cloneDeep(end);
-        start.offset -= 2;
-        Transforms.select(editor, Editor.range(editor, start, end));
+        return doSyncFn(() => {
+          const div = getSlateNodeEntry(editor, $el as any);
+          const end = Editor.end(editor, div[1]);
+          const start = Cypress._.cloneDeep(end);
+          start.offset -= 2;
+          Transforms.select(editor, Editor.range(editor, start, end));
 
-        if (editor.selection) {
-          copyedContent = Editor.fragment(editor, editor.selection);
-        }
+          if (editor.selection) {
+            copyedContent = Editor.fragment(editor, editor.selection);
+          }
+        }, 50);
       });
 
       cy.contains("li", "banana").then(($li) => {
-        const li = getSlateNodeEntry(editor, $li);
-        // 选中li的倒数第二个位置
-        const liEndPos = Editor.end(editor, li[1]);
-        Transforms.select(editor, liEndPos);
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          // 选中li的倒数第二个位置
+          const liEndPos = Editor.end(editor, li[1]);
+          Transforms.select(editor, liEndPos);
+        }, 50);
       });
 
       cy.wait(300);
-      cy.document().then(() => {
+      doSyncFn(() => {
         copyedContent && editor.insertFragment(copyedContent);
-      });
+      }, 50);
 
       cy.contains("li", "bananaha").should("be.visible");
     });
@@ -976,15 +990,19 @@ describe("测试list组件", function () {
       var copyedContent: Descendant[] | null = null;
 
       cy.contains("li", "banana").then(($li) => {
-        const li = getSlateNodeEntry(editor, $li);
-        Transforms.select(editor, Editor.range(editor, li[1]));
-        copyedContent = editor.getFragment();
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          Transforms.select(editor, Editor.range(editor, li[1]));
+          copyedContent = editor.getFragment();
+        }, 50);
       });
 
       cy.contains("li", "apple").then(($li) => {
-        const li = getSlateNodeEntry(editor, $li);
-        Transforms.select(editor, Editor.end(editor, li[1]));
-        copyedContent && editor.insertFragment(copyedContent);
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          Transforms.select(editor, Editor.end(editor, li[1]));
+          copyedContent && editor.insertFragment(copyedContent);
+        }, 50);
       });
 
       cy.contains("li", "applebanana").should("be.visible");
@@ -996,24 +1014,28 @@ describe("测试list组件", function () {
 
       cy.contains("li", "banana").then(($li) => {
         cy.contains("li", "three apple").then(($li2) => {
-          const li1 = getSlateNodeEntry(editor, $li);
-          const li2 = getSlateNodeEntry(editor, $li2);
-          Transforms.select(
-            editor,
-            Editor.range(
+          return doSyncFn(() => {
+            const li1 = getSlateNodeEntry(editor, $li);
+            const li2 = getSlateNodeEntry(editor, $li2);
+            Transforms.select(
               editor,
-              Editor.start(editor, li1[1]),
-              Editor.end(editor, li2[1])
-            )
-          );
-          copyedContent = editor.getFragment();
+              Editor.range(
+                editor,
+                Editor.start(editor, li1[1]),
+                Editor.end(editor, li2[1])
+              )
+            );
+            copyedContent = editor.getFragment();
+          }, 50);
         });
       });
 
       cy.contains("li", "apple").then(($li) => {
-        const li = getSlateNodeEntry(editor, $li);
-        Transforms.select(editor, Editor.end(editor, li[1]));
-        copyedContent && editor.insertFragment(copyedContent);
+        return doSyncFn(() => {
+          const li = getSlateNodeEntry(editor, $li);
+          Transforms.select(editor, Editor.end(editor, li[1]));
+          copyedContent && editor.insertFragment(copyedContent);
+        }, 50);
       });
 
       cy.contains("li", "applebanana").should("be.visible");

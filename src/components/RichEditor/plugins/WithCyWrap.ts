@@ -430,6 +430,11 @@ export const withCyWrap = (editor: EditorType) => {
 
   // 在本编辑器复制的时候触发
   // dataTransfer 说明：https://developer.mozilla.org/zh-CN/docs/Web/API/DataTransfer
+  /**
+   * 当document的range存在时，按ctrl+c复制时触发
+   * 逻辑：当有文字选区要复制时，首先将复制的表格单元格给取消掉。
+   * @returns 
+   */
   editor.getFragment = () => {
     setCopyedCells(null);
     setCopyedMaxRowAndCol({ copyedAreaHeight: 0, copyedAreaWidth: 0 });
@@ -437,14 +442,24 @@ export const withCyWrap = (editor: EditorType) => {
     return getFragment();
   };
 
-  // 在粘贴的时候触发，只可能发生在editor被focus的时，也就是不可能会有单元格被选中的时候
+  /**
+   * 在粘贴的时候触发，只可能发生在editor被focus的时，也就是不可能会有单元格被选中的时候
+   * 两种情况，
+   * 一种是刚复制了单元格，然后粘贴到document的range里。如果刚复制单元格，在RichEditor.tsx中的onDOMBeforeInput中做了特殊处理
+   * 一种是没复制单元格，粘贴上一次复制的range。
+   * @param fragment 
+   */
   editor.insertFragment = (fragment) => {
     utils.removeRangeElement(editor);
 
     const copyedCells = getCopyedCells() || [];
+    const copyedCellsContent = utils.filterCopyedContent(
+      copyedCells.map((cell) => cell[0])
+    );
     const isCopyedSelectTdContent = copyedCells.length > 0;
     const isGoingToPastInTable = TableLogic.isInTable(editor);
-    const copyedContent = fragment;
+    const copyedContent =
+      copyedCells.length > 0 ? copyedCellsContent : fragment; // 如果有选中的单元格被复制，那么优先复制该内容
 
     if (isGoingToPastInTable) {
       copyedContent &&
@@ -452,11 +467,8 @@ export const withCyWrap = (editor: EditorType) => {
     } else {
       // 粘贴多个单元格内容到表格外
       if (isCopyedSelectTdContent) {
-        const finalContent = utils.filterCopyedContent(
-          copyedCells.map((cell) => cell[0])
-        );
         // 还要考虑是否全选了表格 【进行中》。。】
-        insertFragment(_.cloneDeep(finalContent));
+        insertFragment(_.cloneDeep(copyedContent));
       } else {
         copyedContent &&
           insertFragment(_.cloneDeep(utils.filterCopyedContent(copyedContent)));
