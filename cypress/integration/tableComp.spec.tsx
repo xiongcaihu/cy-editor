@@ -193,6 +193,17 @@ function getTdByText(tableIndex: number, text: string) {
     .filter((index, td) => td.innerText === text);
 }
 
+function getTextWrapper(editor: EditorType, text: string) {
+  const [tw] = Editor.nodes(editor, {
+    at: [],
+    match: (n, p) =>
+      utils.isTextWrapper(n) &&
+      Editor.string(editor, p, { voids: true }) === text,
+  });
+
+  return tw;
+}
+
 before((done) => {
   console.clear();
   console.log("开始生成数据");
@@ -333,6 +344,295 @@ describe("测试Table组件", function () {
 
           cy.get("table").eq(0).find("td").last().should("not.contain.text");
           cy.contains("td", "5").should("have.length", 1);
+        });
+      });
+      describe("区域选择表格部分内容", function () {
+        describe("从表格下方的普通文本往上选择", function () {
+          it("覆盖表格的部分", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              if (!tw) return;
+              const anchor = Editor.end(editor, tw[1]);
+              const td = getTd(editor, "merge cell1");
+              if (!td) return;
+              const focus = Editor.before(editor, Editor.end(editor, td[1]));
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            getTdByText(0, "merge cell").should("have.length", 1);
+
+            cy.get("table").should("have.length", 2);
+            cy.get("table").eq(0).find("td").should("have.length", 100);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              return tw;
+            }, 50).should("be.undefined");
+          });
+          it("覆盖表格全部", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              if (!tw) return;
+              const anchor = Editor.end(editor, tw[1]);
+              const tw2 = getTextWrapper(editor, "text1");
+              if (!tw2) return;
+              const focus = Editor.before(editor, Editor.end(editor, tw2[1]));
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            cy.get("table").should("have.length", 1);
+            cy.get("table").eq(0).find("td").should("have.length", 4);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              return tw;
+            }, 50).should("be.undefined");
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              return tw;
+            }, 50).should("be.undefined");
+          });
+          it("覆盖一个表格的全部，另一个表格的部分", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const [, table2] = Editor.nodes(editor, {
+                at: [],
+                match: (n) => TableLogic.isTable(n),
+              });
+              if (!table2) return;
+              const anchor = Editor.after(
+                editor,
+                Editor.end(editor, table2[1])
+              );
+              const td = getTd(editor, "merge cell1");
+              if (!td) return;
+              const focus = Editor.before(editor, Editor.end(editor, td[1]));
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            cy.get("table").should("have.length", 1);
+            cy.get("table").eq(0).find("td").should("have.length", 100);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              return tw;
+            }, 50).should("be.undefined");
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              return tw;
+            }, 50).should("not.be.undefined");
+            cy.contains("list2.1").should("have.length", 0);
+            cy.contains("todo2").should("have.length", 0);
+          });
+          it("覆盖两个表格的全部", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const [, table2] = Editor.nodes(editor, {
+                at: [],
+                match: (n) => TableLogic.isTable(n),
+              });
+              if (!table2) return;
+              const anchor = Editor.after(
+                editor,
+                Editor.end(editor, table2[1])
+              );
+              const tw2 = getTextWrapper(editor, "text1");
+              if (!tw2) return;
+              const focus = Editor.before(editor, Editor.end(editor, tw2[1]));
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            cy.get("table").should("have.length", 0);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              return tw;
+            }, 50).should("be.undefined");
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              return tw;
+            }, 50).should("be.undefined");
+            cy.contains("list2.1").should("have.length", 0);
+            cy.contains("todo2").should("have.length", 0);
+          });
+        });
+        describe("从表格上方的普通文本往下选择", function () {
+          it("覆盖表格的部分", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              if (!tw) return;
+              const anchor = Editor.start(editor, tw[1]);
+              const td = getTd(editor, "merge cell1");
+              if (!td) return;
+              const focus = Editor.end(editor, td[1]);
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            getTdByText(0, "merge cell1").should("have.length", 0);
+
+            cy.get("table").should("have.length", 2);
+            cy.get("table").eq(0).find("td").should("have.length", 100);
+            cy.get("table").eq(1).find("td").should("have.length", 4);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              return tw;
+            }, 50).should("be.undefined");
+          });
+          it("覆盖表格全部", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              if (!tw) return;
+              const anchor = Editor.start(editor, tw[1]);
+              const tw2 = getTextWrapper(editor, "text2");
+              if (!tw2) return;
+              const focus = Editor.before(editor, Editor.end(editor, tw2[1]));
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            cy.get("table").should("have.length", 1);
+            cy.get("table").eq(0).find("td").should("have.length", 4);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              return tw;
+            }, 50).should("be.undefined");
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              return tw;
+            }, 50).should("be.undefined");
+          });
+          it("覆盖一个表格的全部，另一个表格的部分", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              if (!tw) return;
+              const anchor = Editor.start(editor, tw[1]);
+              const td = getTd(editor, "table2.4");
+              if (!td) return;
+              const focus = Editor.before(editor, Editor.end(editor, td[1]));
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            cy.get("table").should("have.length", 1);
+            cy.get("table").eq(0).find("td").should("have.length", 4);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              return tw;
+            }, 50).should("be.undefined");
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              return tw;
+            }, 50).should("be.undefined");
+            cy.contains("list2.1").should("have.length", 0);
+            cy.contains("todo2").should("have.length", 0);
+          });
+          it("覆盖两个表格的全部", function () {
+            const editor: EditorType = this.editor;
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              if (!tw) return;
+              const anchor = Editor.start(editor, tw[1]);
+
+              const [, table2] = Editor.nodes(editor, {
+                at: [],
+                match: (n) => TableLogic.isTable(n),
+              });
+              if (!table2) return;
+              const focus = Editor.after(editor, Editor.end(editor, table2[1]));
+
+              if (anchor && focus) {
+                Transforms.select(editor, {
+                  anchor,
+                  focus,
+                });
+              }
+            }, 50);
+
+            cy.focused().type("{backspace}").wait(50);
+
+            cy.get("table").should("have.length", 0);
+
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text2");
+              return tw;
+            }, 50).should("be.undefined");
+            doSyncFn(() => {
+              const tw = getTextWrapper(editor, "text1");
+              return tw;
+            }, 50).should("be.undefined");
+            cy.contains("list2.1").should("have.length", 0);
+            cy.contains("todo2").should("have.length", 0);
+          });
         });
       });
     });
@@ -1333,6 +1633,55 @@ describe("测试Table组件", function () {
         });
       });
     });
+    describe("复制表格", function () {
+      it("当有单元格正在编辑时", function () {
+        const editor: EditorType = this.editor;
+
+        doSyncFn(() => {
+          selectTd(editor, 0, "start", "start");
+        }, 50);
+
+        doSyncFn(() => {
+          TableLogic.copyTable(editor);
+        }, 50);
+
+        cy.get("table").should("have.length", 3);
+        cy.get("table").eq(0).find("td").should("have.length", 100);
+        cy.get("table").eq(1).find("td").should("have.length", 100);
+        getTdByText(0, "merge cell1").should("have.length", 1);
+        getTdByText(1, "merge cell1").should("have.length", 1);
+      });
+      it("当有单个单元格被选中时", function () {
+        const editor: EditorType = this.editor;
+
+        chooseTd("1");
+
+        doSyncFn(() => {
+          TableLogic.copyTable(editor);
+        }, 50);
+
+        cy.get("table").should("have.length", 3);
+        getTdByText(0, "merge cell1").should("have.length", 1);
+        getTdByText(1, "merge cell1").should("have.length", 1);
+        cy.get("table").eq(0).find("td").should("have.length", 100);
+        cy.get("table").eq(1).find("td").should("have.length", 100);
+      });
+      it("当有多个单元格被选中时", function () {
+        const editor: EditorType = this.editor;
+
+        selectMultiTds(0, "1", "3");
+
+        doSyncFn(() => {
+          TableLogic.copyTable(editor);
+        }, 50);
+
+        cy.get("table").should("have.length", 3);
+        getTdByText(0, "merge cell1").should("have.length", 1);
+        getTdByText(1, "merge cell1").should("have.length", 1);
+        cy.get("table").eq(0).find("td").should("have.length", 100);
+        cy.get("table").eq(1).find("td").should("have.length", 100);
+      });
+    });
   });
   describe("合并与拆分单元格", function () {
     it("合并四个单元格并拆分", function () {
@@ -1367,7 +1716,7 @@ describe("测试Table组件", function () {
         "merge cell1\nmerge cell2\nmerge cell3\nmerge cell4"
       ).should("have.length", 1);
     });
-    it("合并已经合并过的单元格和与未合并的单元格", function () {
+    it("合并已经合并过的单元格和与未合并的单元格，然后拆分", function () {
       const editor: EditorType = this.editor;
 
       selectMultiTds(0, "merge cell1", "merge cell4");

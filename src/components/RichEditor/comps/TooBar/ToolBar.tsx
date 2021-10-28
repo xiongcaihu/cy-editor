@@ -31,6 +31,7 @@ import { InsertImgButton } from "./funcButtons/InsertImgButton";
 import { InsertFileButton } from "./funcButtons/InsertFileButton";
 import { InsertTableButton } from "./funcButtons/InsertTableButton";
 import { DeleteTableButton } from "./funcButtons/DeleteTableButton";
+import { CopyTableButton } from "./funcButtons/CopyTableButton";
 import { DeleteColumnButton } from "./funcButtons/DeleteColumnButton";
 import { DeleteRowButton } from "./funcButtons/DeleteRowButton";
 import { InsertTextAfterVoid } from "./funcButtons/InsertTextAfterVoid";
@@ -43,8 +44,7 @@ import { MergeCellButton } from "./funcButtons/MergeCellButton";
 import { SplitCellButton } from "./funcButtons/SplitCellButton";
 import { ClearCellButton } from "./funcButtons/ClearCellButton";
 import { CET } from "../../common/Defines";
-import { AddCodeBoxButton } from "./funcButtons/AddCodeBoxButton";
-import {SelectCellButton} from './funcButtons/SelectCellButton';
+import { SelectCellButton } from "./funcButtons/SelectCellButton";
 
 const ReadOnlyButton: React.FC<{}> = (props) => {
   const { readOnly, setReadOnly } = useContext(EditorContext);
@@ -61,7 +61,9 @@ const ReadOnlyButton: React.FC<{}> = (props) => {
   );
 };
 
-export const ToolBar: React.FC<{}> = (props) => {
+export const ToolBar: React.FC<{
+  moreButtons?: React.FC[];
+}> = (props) => {
   const editor = useSlateStatic();
 
   const diverComp = (
@@ -116,9 +118,6 @@ export const ToolBar: React.FC<{}> = (props) => {
         </Col>
         <Col>{diverComp}</Col>
         <Col>
-          <AddCodeBoxButton></AddCodeBoxButton>
-        </Col>
-        <Col>
           <ToDoListButton></ToDoListButton>
         </Col>
         <Col>
@@ -148,6 +147,9 @@ export const ToolBar: React.FC<{}> = (props) => {
         </Col>
         <Col>
           <DeleteTableButton></DeleteTableButton>
+        </Col>
+        <Col>
+          <CopyTableButton></CopyTableButton>
         </Col>
         <Col>
           <SelectCellButton></SelectCellButton>
@@ -228,6 +230,14 @@ export const ToolBar: React.FC<{}> = (props) => {
         <Col>
           <ReadOnlyButton></ReadOnlyButton>
         </Col>
+        <Col>{diverComp}</Col>
+        {(props.moreButtons || []).map((Button, i) => {
+          return (
+            <Col key={i}>
+              <Button></Button>
+            </Col>
+          );
+        })}
       </Row>
     </div>
   );

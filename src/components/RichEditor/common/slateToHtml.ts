@@ -1,21 +1,7 @@
 import escapeHtml from "escape-html";
 import _ from "lodash";
 import { Element, Text, Node, Editor } from "slate";
-import {
-  CET,
-  EditorType,
-  Marks,
-  CustomElement,
-  CustomText,
-} from "../common/Defines";
-
-declare module "slate" {
-  interface CustomTypes {
-    Editor: EditorType;
-    Element: CustomElement;
-    Text: CustomText;
-  }
-}
+import { CET, Marks } from "../common/Defines";
 
 const getStyle = (node: Node) => {
   const style: any = {};

@@ -5,10 +5,10 @@ import { mount, unmount } from "@cypress/react";
 import CyEditor from "../../src/components/RichEditor/RichEditor";
 import { Descendant, Editor, Path, Transforms } from "slate";
 import {
-  CET,
   CypressFlagValues,
   CypressTestFlag,
   EditorType,
+  CET,
 } from "../../src/components/RichEditor/common/Defines";
 import { ListLogic } from "../../src/components/RichEditor/comps/ListComp";
 import { doSyncFn, getSlateNodeEntry } from "../support/tool";

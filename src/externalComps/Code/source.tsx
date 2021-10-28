@@ -21,6 +21,7 @@ require("codemirror/mode/javascript/javascript.js");
 require("codemirror/mode/jsx/jsx.js");
 require("codemirror/mode/vue/vue.js");
 require("codemirror/mode/clike/clike.js");
+require('./source.css');
 
 const lans = [
   {
@@ -85,7 +86,7 @@ export const CodeComp: (props: RenderElementProps) => JSX.Element = ({
   const codeConfig = useMemo(() => {
     return {
       mode: element.defaultMode,
-      theme: "darcula",
+      theme: "vscode-dark",
       lineNumbers: true,
       readOnly: readOnly ? "nocursor" : false,
     };
@@ -162,7 +163,7 @@ export const CodeComp: (props: RenderElementProps) => JSX.Element = ({
   );
 
   return (
-    <div {...attributes} contentEditable={false}>
+    <div className="CodeComp" {...attributes} contentEditable={false} style={{ paddingTop: 30 }}>
       <Resizable
         enable={enableResize()}
         style={{ display: "inline-block", position: "relative" }}
@@ -176,15 +177,24 @@ export const CodeComp: (props: RenderElementProps) => JSX.Element = ({
           style={{
             color: "white",
             position: "absolute",
-            right: 30,
-            top: 5,
+            backgroundColor: "#2B2B2B",
+            right: 0,
+            width: "100%",
+            top: -24,
             zIndex: 7,
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems:'center'
           }}
         >
           <Select
             size="small"
             defaultValue={element.defaultMode}
-            style={{ width: 120, color: "white", textAlign: "right" }}
+            style={{
+              width: 120,
+              color: "white",
+              textAlign: "right",
+            }}
             bordered={false}
             showArrow={false}
             onChange={onLanChange}

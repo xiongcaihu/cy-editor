@@ -23,6 +23,7 @@ import {
   getCopyedCells,
 } from "../common/globalStore";
 import { ToDoListLogic } from "../comps/TodoListComp";
+import { TdLogic } from "../comps/Td";
 
 export const withCyWrap = (editor: EditorType) => {
   const {
@@ -37,7 +38,13 @@ export const withCyWrap = (editor: EditorType) => {
     isVoid,
     normalizeNode,
     apply,
+    undo,
   } = editor;
+
+  editor.undo = () => {
+    TdLogic.deselectAllTd(editor); // 为了避免区域选择出问题
+    undo();
+  };
 
   editor.apply = (e) => {
     try {
@@ -114,7 +121,6 @@ export const withCyWrap = (editor: EditorType) => {
 
   editor.deleteFragment = () => {
     utils.removeRangeElement(editor);
-    // deleteFragment(direction);
   };
 
   editor.deleteForward = (unit) => {
@@ -185,25 +191,6 @@ export const withCyWrap = (editor: EditorType) => {
         return true;
       }
     };
-    const dealCode = (editor: EditorType) => {
-      if (!editor.selection) return;
-      const afterPos = Editor.after(editor, editor.selection.anchor);
-      if (afterPos) {
-        const code = Editor.above(editor, {
-          at: afterPos,
-          match(n) {
-            return Element.isElement(n) && n.type === CET.CODE;
-          },
-        });
-        if (code) {
-          Transforms.removeNodes(editor, {
-            at: code[1],
-            hanging: true,
-          });
-          return true;
-        }
-      }
-    };
     const dealTable = (editor: EditorType) => {
       if (!editor.selection) return;
       const isInTable = TableLogic.isInTable(editor);
@@ -214,15 +201,11 @@ export const withCyWrap = (editor: EditorType) => {
     };
 
     // 函数如果不需要默认的退格行为，则返回true
-    const rel = [
-      dealList,
-      dealCode,
-      dealToDoList,
-      dealTable,
-      dealTextWrapper,
-    ].some((func) => {
-      return func(editor);
-    });
+    const rel = [dealList, dealToDoList, dealTable, dealTextWrapper].some(
+      (func) => {
+        return func(editor);
+      }
+    );
 
     if (rel) return;
 
@@ -317,25 +300,6 @@ export const withCyWrap = (editor: EditorType) => {
         return true;
       }
     };
-    const dealCode = (editor: EditorType) => {
-      if (!editor.selection) return;
-      const prePos = Editor.before(editor, editor.selection.anchor);
-      if (prePos) {
-        const code = Editor.above(editor, {
-          at: prePos,
-          match(n) {
-            return Element.isElement(n) && n.type === CET.CODE;
-          },
-        });
-        if (code) {
-          Transforms.removeNodes(editor, {
-            at: code[1],
-            hanging: true,
-          });
-          return true;
-        }
-      }
-    };
     const dealTable = (editor: EditorType) => {
       if (!editor.selection) return;
       if (isInTable && nowTd != null) {
@@ -406,15 +370,11 @@ export const withCyWrap = (editor: EditorType) => {
     };
 
     // 函数如果不需要默认的退格行为，则返回true
-    const rel = [
-      dealList,
-      dealCode,
-      dealToDoList,
-      dealTable,
-      dealTextWrapper,
-    ].some((func) => {
-      return func(editor);
-    });
+    const rel = [dealList, dealToDoList, dealTable, dealTextWrapper].some(
+      (func) => {
+        return func(editor);
+      }
+    );
 
     if (rel) return;
 
@@ -433,7 +393,7 @@ export const withCyWrap = (editor: EditorType) => {
   /**
    * 当document的range存在时，按ctrl+c复制时触发
    * 逻辑：当有文字选区要复制时，首先将复制的表格单元格给取消掉。
-   * @returns 
+   * @returns
    */
   editor.getFragment = () => {
     setCopyedCells(null);
@@ -447,7 +407,7 @@ export const withCyWrap = (editor: EditorType) => {
    * 两种情况，
    * 一种是刚复制了单元格，然后粘贴到document的range里。如果刚复制单元格，在RichEditor.tsx中的onDOMBeforeInput中做了特殊处理
    * 一种是没复制单元格，粘贴上一次复制的range。
-   * @param fragment 
+   * @param fragment
    */
   editor.insertFragment = (fragment) => {
     utils.removeRangeElement(editor);
@@ -544,7 +504,7 @@ export const withCyWrap = (editor: EditorType) => {
     return isInline(node);
   };
   editor.isVoid = (node) => {
-    if ([CET.IMG, CET.FILE, CET.CODE, CET.CHECKBOX].includes(node.type)) {
+    if ([CET.IMG, CET.FILE, CET.CHECKBOX].includes(node.type)) {
       return true;
     }
     return isVoid(node);

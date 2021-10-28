@@ -1,7 +1,8 @@
 /* eslint-disable eqeqeq */
+import _ from "lodash";
 import { DOMAttributes } from "react";
 import { useEffect } from "react";
-import { Editor, Node, Element, Transforms, Path, NodeEntry } from "slate";
+import { Editor, Element, Transforms, Path, NodeEntry } from "slate";
 import {
   ReactEditor,
   RenderElementProps,
@@ -606,14 +607,24 @@ export const TdLogic = {
   },
   clearTd(editor: EditorType) {
     // 清空带有selected属性的td
-    const selectedTds = TableLogic.getSelectedTds(editor);
-    for (const [, p] of selectedTds) {
-      for (const [, childP] of Node.children(editor, p, {
-        reverse: true,
-      })) {
-        Transforms.removeNodes(editor, { at: childP });
+    Editor.withoutNormalizing(editor, () => {
+      const selectedTds = TableLogic.getSelectedTds(editor);
+      for (const [n, p] of selectedTds) {
+        const isEmptyCell =
+          n.children.length === 1 &&
+          Editor.string(editor, p, { voids: true }) === "";
+
+        if (isEmptyCell) continue;
+
+        const emptyTd = _.assign({}, n, {
+          children: [{ type: CET.DIV, children: [{ text: "" }] }],
+        });
+
+        // 如果td不为空则执行
+        Transforms.removeNodes(editor, { at: p });
+        Transforms.insertNodes(editor, _.cloneDeep(emptyTd), { at: p });
       }
-      Transforms.unsetNodes(editor, ["selected", "start"], { at: p });
-    }
+      TdLogic.deselectAllTd(editor);
+    });
   },
 };

@@ -1,10 +1,10 @@
 import { CodeOutlined } from "@ant-design/icons";
 import { Editor, Path, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
-import { CET } from "../../../common/Defines";
-import { ReactButton } from "../common/ReactButton";
+import { CET } from "../../components/RichEditor/common/Defines";
+import { ReactButton } from "../../components/RichEditor/comps/TooBar/common/ReactButton";
 
-export const AddCodeBoxButton = () => {
+export const Button = () => {
   const editor = useSlateStatic();
   return (
     <ReactButton

@@ -1,34 +1,37 @@
-import {
-  EditorType,
-  CustomElement,
-  CustomText,
-  CET,
-  TextWrappers,
-} from "../common/Defines";
+import { TextWrappers, CET } from "../common/Defines";
 import { TD } from "../comps/Td";
 import { Table } from "../comps/Table";
 import { ImgComp } from "../comps/ImgComp";
 import { FileComp as File } from "../comps/FileComp";
 import { LinkComp } from "../comps/LinkComp";
-import { CodeComp as CODE } from "../comps/Code";
 import { TodoListComp as TODO } from "../comps/TodoListComp";
 import { CheckBoxComp } from "../comps/CheckBox";
 import { RenderElementProps } from "slate-react";
 
-declare module "slate" {
-  interface CustomTypes {
-    Editor: EditorType;
-    Element: CustomElement;
-    Text: CustomText;
+export type externalCompShape = {
+  comp: React.FC<RenderElementProps>;
+  name: string;
+};
+
+export const MyElements: (
+  props: RenderElementProps & {
+    comps?: externalCompShape[];
   }
-}
-export const MyElements: (props: RenderElementProps) => JSX.Element = (
-  props
-) => {
+) => JSX.Element = (props) => {
   const { attributes, children, element } = props;
   const style: any = {};
   if (TextWrappers.includes(element.type) && element.textAlign)
     style.textAlign = element.textAlign;
+
+  // 加载外部的组件
+  const ExternalComp = (props.comps || []).find((comp) => {
+    return element.type === comp.name;
+  });
+
+  if (ExternalComp) {
+    const Comp = ExternalComp.comp;
+    return <Comp {...props}></Comp>;
+  }
 
   switch (element.type) {
     case CET.CHECKBOX:
@@ -95,8 +98,6 @@ export const MyElements: (props: RenderElementProps) => JSX.Element = (
       );
     case CET.TD:
       return <TD {...props}></TD>;
-    case CET.CODE:
-      return <CODE {...props}></CODE>;
     case CET.FILE:
       return <File {...props}></File>;
     default:

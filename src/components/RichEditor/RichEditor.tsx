@@ -14,6 +14,7 @@ import {
   CustomElement,
   EditableProps,
   EditorCompShape,
+  EditorType,
   Marks,
   StateShape,
 } from "./common/Defines";
@@ -28,6 +29,7 @@ import { MyLeaf } from "./RenderElements/RenderLeaf";
 import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
 import "./RichEditor.css";
 import { getCopyedCells } from "./common/globalStore";
+import { FixLayoutBox } from "./comps/FixLayoutBox";
 
 type savedMarksShape =
   | (Partial<{
@@ -53,13 +55,54 @@ export const EditorContext = createContext<{
   setReadOnly: () => {},
 });
 
+const loadPlugins = (plugins: ((editor: EditorType) => EditorType)[]) => {
+  return plugins.reduce((p, c) => {
+    return c(p);
+  }, createEditor());
+};
+
 const EditorComp: EditorCompShape = (props) => {
+  const { plugins } = props;
+  const editorDomRef = useRef<any>(null);
+
+  const [fixBox, setFixBox] = useState<{
+    left: number;
+    top: number;
+    visible: boolean;
+    childrenComp?: React.FC<any>;
+  }>({
+    left: 0,
+    top: 0,
+    visible: false,
+  });
+
   /**
    * 解决live refresh问题的链接
    * https://github.com/ianstormtaylor/slate/issues/4081
    */
-  const [editor] = useState(withCyWrap(withHistory(withReact(createEditor()))));
-  // const [editor] = useState(withCyWrap(withReact(createEditor())));
+  const [editor] = useState(() =>
+    loadPlugins([
+      (editor) => {
+        editor.setFixLayoutBox = ({ left = 0, top = 0, visible }, children) => {
+          const editorDom = editorDomRef.current;
+          let topOffset = editorDom.offsetTop || 0;
+          let leftOffset = editorDom.offsetLeft || 0;
+          setFixBox((t) => ({
+            ...t,
+            left: left - leftOffset,
+            top: top - topOffset,
+            visible,
+            childrenComp: children,
+          }));
+        };
+        return editor;
+      },
+      ...(plugins?.map((plugin) => plugin.rule) || []),
+      withCyWrap,
+      withHistory,
+      withReact,
+    ])
+  );
   const [value, setValue] = useState<StateShape>(() => {
     const content =
       props.content ||
@@ -87,26 +130,35 @@ const EditorComp: EditorCompShape = (props) => {
   const [readOnly, setReadOnly] = useState(false);
 
   useEffect(() => {
-    // setTimeout(() => {
-    //   unitTest(editor);
-    // }, 100);
-    // TableLogic.resetSelectedTds(editor);
     props.getEditor?.(editor);
-
-    editor.normalizeNode([editor, []]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor]);
+  }, [editor, fixBox, props]);
 
   const renderElement: EditableProps["renderElement"] = useCallback(
-    (props) => <MyElements {...props} editorRef={ref}></MyElements>,
-    []
+    (props) => (
+      <MyElements
+        {...props}
+        comps={plugins?.map((plugin) => ({
+          comp: plugin.comp,
+          name: plugin.name,
+        }))}
+        editorRef={ref}
+      ></MyElements>
+    ),
+    [plugins]
   );
   const renderLeaf: EditableProps["renderLeaf"] = useCallback((props) => {
     return <MyLeaf {...props}></MyLeaf>;
   }, []);
   const MyToolBar = useMemo(() => {
-    return <ToolBar></ToolBar>;
-  }, []);
+    return (
+      <ToolBar
+        moreButtons={
+          (plugins?.map((plugin) => plugin.button)?.filter((o) => !!o) ||
+            []) as any
+        }
+      ></ToolBar>
+    );
+  }, [plugins]);
 
   const handleSelect = () => {
     // 处理格式刷逻辑
@@ -185,13 +237,16 @@ const EditorComp: EditorCompShape = (props) => {
           {MyToolBar}
           <div
             className="cyEditor__content"
+            ref={editorDomRef}
             style={{
               overflow: "auto",
               height: window.screen.availHeight - 200,
               border: "1px solid",
               padding: 12,
+              position: "relative",
             }}
           >
+            <FixLayoutBox {...fixBox}></FixLayoutBox>
             <Editable
               renderElement={renderElement}
               renderLeaf={renderLeaf}
@@ -203,7 +258,9 @@ const EditorComp: EditorCompShape = (props) => {
               onDOMBeforeInput={(e) => {
                 const copyedCells = getCopyedCells() || [];
                 if (copyedCells.length > 0) {
-                  window?.navigator?.clipboard?.writeText("selected td paste only");
+                  window?.navigator?.clipboard?.writeText(
+                    "selected td paste only"
+                  );
                 }
               }}
               placeholder="welcome to cyEditor!"

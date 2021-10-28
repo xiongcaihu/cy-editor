@@ -1,6 +1,15 @@
-import { BaseEditor, Descendant } from "slate";
+import React from "react";
+import { BaseEditor } from "slate";
 import { HistoryEditor } from "slate-history";
-import { Editable, ReactEditor, Slate } from "slate-react";
+import { Editable, ReactEditor, RenderElementProps, Slate } from "slate-react";
+
+declare module "slate" {
+  interface CustomTypes {
+    Editor: EditorType;
+    Element: CustomElement;
+    Text: CustomText;
+  }
+}
 
 export enum CET {
   EDITOR = "editor",
@@ -66,13 +75,29 @@ export type CustomElement = {
 export type CustomText = { text: string; [key: string]: any } & Partial<{
   [key in Marks]: any;
 }>;
-export type EditorType = BaseEditor & ReactEditor & HistoryEditor;
+export type EditorType = BaseEditor &
+  ReactEditor &
+  HistoryEditor & {
+    setFixLayoutBox?(
+      attr: {
+        visible: boolean;
+        left?: number;
+        top?: number;
+      },
+      children: React.FC<any>
+    ): void; // 设置相对于视口定位的悬浮窗的隐藏和显示内容
+  };
 
 export type StateShape = Parameters<typeof Slate>[0]["value"];
 export type EditorCompPropShape = {
   content?: string;
   getEditor?: (editor: EditorType) => void;
-  onChange?: (editor: EditorType, content: Descendant[]) => void;
+  plugins?: {
+    rule: (editor: EditorType) => EditorType;
+    comp: React.FC<RenderElementProps>;
+    name: string;
+    button?: React.FC; // 工具条上的button
+  }[];
 };
 export type EditorCompShape = (
   props: EditorCompPropShape
@@ -84,5 +109,5 @@ export enum CypressFlagValues {
   ORDER_LIST = "order_list",
   NORMALIZE_LIST = "unorder_list",
   TODO_LIST = "todo_list",
-  SELECTE_TD = 'select_td'
+  SELECTE_TD = "select_td",
 }

@@ -11,6 +11,7 @@ import {
   Editor,
   Path,
   Point,
+  Descendant,
 } from "slate";
 import {
   ReactEditor,
@@ -159,7 +160,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     return { deselectedPath, newSelectedPath };
   };
 
-  const selectTd = _.debounce((pa: Point, pb: Point) => {
+  const selectTd = _.throttle((pa: Point, pb: Point) => {
     const commonNode = Node.common(editor, pa.path, pb.path);
     if (!commonNode) return;
     const pbTd = Editor.above(editor, {
@@ -286,7 +287,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
     ref.current.lastSelectedPaths = nowTdsPath;
 
     Transforms.deselect(editor);
-  }, 3);
+  }, 20);
 
   const handleTableMouseDown = (e: any) => {
     // 防止事件冒泡到父元素的td
@@ -338,8 +339,10 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
             }
 
             // 如果移动距离不超过1，那么不进入逻辑
+            const editorDom = ReactEditor.toDOMNode(editor, editor);
             if (
               ref.current.isBeginSelectTd &&
+              editorDom.contains(e.target) &&
               (Math.abs(e.clientX - ref.current.initX) > 1 ||
                 Math.abs(e.clientY - ref.current.initY) > 1)
             ) {
@@ -986,87 +989,97 @@ export const TableLogic = {
     TableLogic.resetSelectedTds(editor);
   },
   splitTd(editor: EditorType) {
-    const selectedTds = Editor.nodes(editor, {
-      at: [],
-      match(n) {
-        return (
-          TableLogic.isSelectedTd(n) ||
-          (Element.isElement(n) && n.tdIsEditing == true)
-        );
-      },
-    });
+    let selectedTds = TableLogic.getSelectedTds(
+      editor
+    ) as NodeEntry<CustomElement>[];
+    if (selectedTds.length === 0)
+      selectedTds = [
+        TableLogic.getEditingTd(editor),
+      ] as NodeEntry<CustomElement>[];
     if (!selectedTds) return;
 
-    let tbody = null;
-    for (const [td, tdPath] of selectedTds) {
-      if (!Element.isElement(td)) continue;
-      Transforms.setNodes(editor, { colSpan: 1, rowSpan: 1 }, { at: tdPath });
-      Transforms.unsetNodes(editor, ["selected", "start"], { at: tdPath });
-      if ((!td.colSpan || td.colSpan < 2) && (!td.rowSpan || td.rowSpan < 2))
-        continue;
+    // 对选中的td进行过滤，排除那些只有一个单元格的
+    selectedTds = selectedTds.filter((td) => {
+      return (
+        Element.isElement(td[0]) &&
+        ((td[0].colSpan || 1) > 1 || (td[0].rowSpan || 1) > 1)
+      );
+    });
+    // 然后逆序处理tds
+    selectedTds.sort((td1, td2) => {
+      return Path.compare(td2[1], td1[1]);
+    });
 
-      if (!tbody) {
-        tbody = Editor.above(editor, {
+    Editor.withoutNormalizing(editor, () => {
+      TdLogic.deselectAllTd(editor);
+      let tbody = null;
+      for (const [td, tdPath] of selectedTds) {
+        if (!Element.isElement(td)) continue;
+        Transforms.setNodes(editor, { colSpan: 1, rowSpan: 1 }, { at: tdPath });
+        Transforms.unsetNodes(editor, ["selected", "start", "tdIsEditing"], {
           at: tdPath,
-          mode: "lowest",
-          match(n) {
-            return Element.isElement(n) && n.type == CET.TBODY;
-          },
         });
-        if (!tbody) continue;
-      }
 
-      const belongTr = Editor.parent(editor, tdPath),
-        tdCol = tdPath[tdPath.length - 1],
-        tdRow = tdPath[tdPath.length - 2],
-        tdColSpan = td.colSpan || 1,
-        tdRowSpan = td.rowSpan || 1;
-      let leftSumColSpan = 0;
-      for (let i = 0; i < tdCol; i++) {
-        leftSumColSpan =
-          leftSumColSpan + (belongTr[0]?.children?.[i]?.colSpan || 1);
-      }
-
-      // 找到当前tr应该插入新td的位置
-      const findInsertCol = (tr: NodeEntry) => {
-        let sumColSpan = 0;
-        for (let i = 0; i < tr[0].children.length; i++) {
-          sumColSpan = sumColSpan + (tr[0].children[i].colSpan || 1);
-          if (sumColSpan == leftSumColSpan) return i + 1;
+        if (!tbody) {
+          tbody = Editor.above(editor, {
+            at: tdPath,
+            mode: "lowest",
+            match(n) {
+              return Element.isElement(n) && n.type == CET.TBODY;
+            },
+          });
+          if (!tbody) continue;
         }
-        return 0;
-      };
 
-      for (let row = tdRow, count = 0; count < tdRowSpan; count++, row++) {
-        const isInNowTr = row == tdRow;
-        const insertCol = findInsertCol(
-          Editor.node(editor, [...tbody[1], row])
-        );
+        const belongTr = Editor.parent(editor, tdPath),
+          tdCol = tdPath[tdPath.length - 1],
+          tdRow = tdPath[tdPath.length - 2],
+          tdColSpan = td.colSpan || 1,
+          tdRowSpan = td.rowSpan || 1;
+        let leftSumColSpan = 0;
+        for (let i = 0; i < tdCol; i++) {
+          leftSumColSpan =
+            leftSumColSpan + (belongTr[0]?.children?.[i]?.colSpan || 1);
+        }
 
-        // 插入几个td
-        const insertTdCount = tdColSpan - (isInNowTr ? 1 : 0);
-        Transforms.insertNodes(
-          editor,
-          new Array(insertTdCount).fill(0).map(() => {
-            return _.cloneDeep({
-              type: CET.TD,
-              children: [
-                {
-                  type: CET.DIV,
-                  children: [{ text: "" }],
-                },
-              ],
-            });
-          }),
-          {
-            at: [...tbody[1], row, insertCol + (isInNowTr ? 1 : 0)],
+        // 找到当前tr应该插入新td的位置
+        const findInsertCol = (tr: NodeEntry) => {
+          let sumColSpan = 0;
+          for (let i = 0; i < tr[0].children.length; i++) {
+            sumColSpan = sumColSpan + (tr[0].children[i].colSpan || 1);
+            if (sumColSpan == leftSumColSpan) return i + 1;
           }
-        );
+          return 0;
+        };
+
+        for (let row = tdRow, count = 0; count < tdRowSpan; count++, row++) {
+          const isInNowTr = row == tdRow;
+          const insertCol = findInsertCol(
+            Editor.node(editor, [...tbody[1], row])
+          );
+
+          // 插入几个td
+          const insertTdCount = tdColSpan - (isInNowTr ? 1 : 0);
+          Transforms.insertNodes(
+            editor,
+            new Array(insertTdCount).fill(0).map(() => {
+              return _.cloneDeep({
+                type: CET.TD,
+                children: [
+                  {
+                    type: CET.DIV,
+                    children: [{ text: "" }],
+                  },
+                ],
+              });
+            }),
+            {
+              at: [...tbody[1], row, insertCol + (isInNowTr ? 1 : 0)],
+            }
+          );
+        }
       }
-      TableLogic.splitTd(editor);
-      TableLogic.resetSelectedTds(editor);
-      return;
-    }
+    });
   },
   mergeTd(editor: EditorType) {
     const isOnlyOne = TableLogic.getSelectedTdsSize(editor) == 1;
@@ -1116,22 +1129,29 @@ export const TableLogic = {
       { at: newTdPath }
     );
 
-    tds.forEach((td) => {
-      if (td.col == firstTd.col && td.row == firstTd.row) return;
+    const toBeDeletedTdsPath: Path[] = [];
+    const toBeAddedChildren: Descendant[] = [];
+    tds.forEach((td, i) => {
       const tdPath = [...tbodyPath, td.originRow, td.originCol];
-      Transforms.setNodes(editor, { toBeDeleted: true }, { at: tdPath });
+      toBeDeletedTdsPath.unshift(tdPath);
       if (Editor.string(editor, tdPath, { voids: true }) === "") return;
-      const fragment = td.children;
-      Transforms.insertNodes(editor, fragment, {
-        at: [...newTdPath, Editor.node(editor, newTdPath)?.[0].children.length],
-      });
+      toBeAddedChildren.push(...td.children);
     });
+    // 需要把区域内的td全部删掉，然后再插入一个克隆版本的新TD
+    const firstTdClone = _.cloneDeep(
+      _.merge({}, Editor.node(editor, newTdPath)[0], {
+        toBeDeleted: null,
+        children: toBeAddedChildren,
+      })
+    );
 
-    Transforms.removeNodes(editor, {
-      at: [],
-      match(n) {
-        return TableLogic.isTd(n) && n.toBeDeleted == true;
-      },
+    Editor.withoutNormalizing(editor, () => {
+      toBeDeletedTdsPath.forEach((path) => {
+        Transforms.removeNodes(editor, {
+          at: path,
+        });
+      });
+      Transforms.insertNodes(editor, firstTdClone, { at: newTdPath });
     });
 
     TableLogic.resetSelectedTds(editor);
@@ -1141,6 +1161,19 @@ export const TableLogic = {
     if (!table) return;
     Transforms.removeNodes(editor, { at: table[1] });
     TableLogic.resetSelectedTds(editor);
+  },
+  copyTable(editor: EditorType) {
+    const table = getEditingOrSelectedTdBelongTable(editor);
+    if (!table) return;
+
+    TdLogic.deselectAllTd(editor);
+
+    const copyedTable = _.cloneDeep(Editor.node(editor, table[1])?.[0]);
+    if (!copyedTable) return;
+
+    Transforms.insertNodes(editor, copyedTable, {
+      at: Path.next(table[1]),
+    });
   },
   getSelectedTdsPath(editor: EditorType) {
     const selectedTds = getStrPathSetOfSelectedTds(editor);
