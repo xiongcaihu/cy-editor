@@ -119,6 +119,32 @@ export const utils = {
       : {};
   },
   /**
+   * 计算从A往上直到B的offsetLeft和offsetTop距离，
+   * 其中A是B的子元素
+   * @param A
+   * @param B
+   */
+  calcOffsetDistanceFromAToB(A: HTMLElement, B: HTMLElement) {
+    if (!B?.contains?.(A))
+      return {
+        offsetLeft: -999999,
+        offsetTop: -999999,
+      };
+
+    let nowNode: any = A;
+    let leftDistance = 0,
+      topDistance = 0;
+    do {
+      leftDistance += nowNode.offsetLeft;
+      topDistance += nowNode.offsetTop;
+      nowNode = nowNode.offsetParent;
+    } while (nowNode != B);
+    return {
+      offsetLeft: leftDistance,
+      offsetTop: topDistance,
+    };
+  },
+  /**
    * 从startDom开始往上找到与targetDom相同的dom元素，如果没找到，则返回null
    * @param startDom
    * @param targetDom

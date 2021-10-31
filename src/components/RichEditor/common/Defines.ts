@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactElement } from "react";
 import { BaseEditor } from "slate";
 import { HistoryEditor } from "slate-history";
 import { Editable, ReactEditor, RenderElementProps, Slate } from "slate-react";
@@ -84,7 +84,7 @@ export type EditorType = BaseEditor &
         left?: number;
         top?: number;
       },
-      children: React.FC<any>
+      children?: ReactElement<any>
     ): void; // 设置相对于视口定位的悬浮窗的隐藏和显示内容
   };
 
@@ -110,4 +110,6 @@ export enum CypressFlagValues {
   NORMALIZE_LIST = "unorder_list",
   TODO_LIST = "todo_list",
   SELECTE_TD = "select_td",
+  AT_PERSON_MODAL = "atPersonModal",
+  AT_PERSON_TEXT = "atPersonText",
 }

@@ -9,6 +9,13 @@
   transition: 0s !important;
 }
 
+.cyEditor [data-no-base-class="externalComp"] * {
+  animation-duration: 1s !important;
+  -webkit-animation-duration: 1s !important;
+  transition-duration: 1s !important;
+  transition: 1s !important;
+}
+
 /* 当鼠标移动到td的padding上时，可以选择当前td */
 .cyEditor td {
   cursor: cell;
@@ -34,7 +41,6 @@
 .cyEditor table tr td:first-child {
   border-left: 1px solid var(--table-border-color);
 }
-
 
 /* 改变user selection color */
 /* .cyEditor span::selection {

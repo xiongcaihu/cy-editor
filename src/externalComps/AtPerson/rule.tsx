@@ -1,11 +1,11 @@
-import { ReactEditor } from "slate-react";
+import { Range, Transforms } from "slate";
 import { EditorType } from "../../components/RichEditor/common/Defines";
-import { Box } from "./box";
+import { utils } from "../../components/RichEditor/common/utils";
 
 export const type = "atPerson";
 
 export const rule = (editor: EditorType) => {
-  const { isVoid, setFixLayoutBox, insertText } = editor;
+  const { isVoid,  isInline, insertText } = editor;
 
   editor.isVoid = (node) => {
     if ([type].includes(node.type)) {
@@ -13,22 +13,28 @@ export const rule = (editor: EditorType) => {
     }
     return isVoid(node);
   };
+  editor.isInline = (node) => {
+    if ([type].includes(node.type)) {
+      return true;
+    }
+    return isInline(node);
+  };
 
   editor.insertText = (text) => {
-    const range =
-      editor.selection && ReactEditor.toDOMRange(editor, editor.selection);
-    const rangePos = range && range.getBoundingClientRect();
-    console.log(rangePos);
-    insertText(text);
     if (text === "@") {
-      setFixLayoutBox?.(
-        {
-          left: rangePos?.left,
-          top: (rangePos?.top || 0) + 24,
-          visible: true,
+      if (editor.selection && Range.isExpanded(editor.selection)) {
+        utils.removeRangeElement(editor);
+      }
+      Transforms.insertNodes(editor, {
+        type,
+        person: {
+          name: "点击搜索员工",
+          id: '',
         },
-        Box
-      );
+        children: [{ text: "@点击搜索员工" }],
+      } as any);
+    } else {
+      insertText(text);
     }
   };
 

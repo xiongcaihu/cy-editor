@@ -1,4 +1,4 @@
-import React from "react";
+import React, { ReactElement } from "react";
 
 const style: React.CSSProperties = {
   position: "absolute",
@@ -8,7 +8,7 @@ export const FixLayoutBox: React.FC<{
   visible: boolean;
   left: number;
   top: number;
-  childrenComp?: React.FC<any>;
+  childrenComp?: ReactElement<any>;
 }> = (props) => {
   const { visible = false, left, top } = props;
   return (
@@ -20,7 +20,7 @@ export const FixLayoutBox: React.FC<{
         top,
       }}
     >
-      {props.childrenComp ? <props.childrenComp /> : null}
+      {props.childrenComp}
     </div>
   );
 };

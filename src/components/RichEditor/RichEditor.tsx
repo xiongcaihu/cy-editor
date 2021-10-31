@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   createContext,
+  ReactElement,
 } from "react";
 import { createEditor, Transforms, Editor, Operation, Selection } from "slate";
 import { Slate, Editable, withReact } from "slate-react";
@@ -69,7 +70,7 @@ const EditorComp: EditorCompShape = (props) => {
     left: number;
     top: number;
     visible: boolean;
-    childrenComp?: React.FC<any>;
+    childrenComp?: ReactElement<any>;
   }>({
     left: 0,
     top: 0,
@@ -83,14 +84,12 @@ const EditorComp: EditorCompShape = (props) => {
   const [editor] = useState(() =>
     loadPlugins([
       (editor) => {
+        // 定义浮窗打开逻辑
         editor.setFixLayoutBox = ({ left = 0, top = 0, visible }, children) => {
-          const editorDom = editorDomRef.current;
-          let topOffset = editorDom.offsetTop || 0;
-          let leftOffset = editorDom.offsetLeft || 0;
           setFixBox((t) => ({
             ...t,
-            left: left - leftOffset,
-            top: top - topOffset,
+            left,
+            top,
             visible,
             childrenComp: children,
           }));
