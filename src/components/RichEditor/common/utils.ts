@@ -20,6 +20,7 @@ import {
   setCopyedContent,
   setCopyedMaxRowAndCol,
 } from "../common/globalStore";
+import { ReactEditor } from "slate-react";
 
 const deserialize: any = (el: any) => {
   // text node
@@ -106,6 +107,31 @@ const deserialize: any = (el: any) => {
 
 export const utils = {
   /**
+   * 获得光标相对文档区域原点的相对位置
+   * @param editor 
+   * @returns 
+   */
+  getCursorPos(editor: EditorType) {
+    if (!editor.selection || Range.isExpanded(editor.selection))
+      return [-1, -1];
+
+    const { startContainer, startOffset } = ReactEditor.toDOMRange(
+      editor,
+      editor.selection
+    );
+    const cursorOffsetX = utils.calcTextWidth(
+      startContainer.textContent?.slice(0, startOffset)
+    );
+    const parentOffset = utils.calcOffsetDistanceFromAToB(
+      startContainer.parentNode as HTMLElement,
+      ReactEditor.toDOMNode(editor, editor).parentElement as HTMLElement
+    );
+    const modalX = parentOffset.offsetLeft + cursorOffsetX,
+      modalY = parentOffset.offsetTop;
+
+    return [modalX, modalY];
+  },
+  /**
    * 为组件注入cypress flag，用于cypress测试
    * @param props
    * @param key
@@ -117,6 +143,16 @@ export const utils = {
           [CypressTestFlag]: props[key],
         }
       : {};
+  },
+  calcTextWidth(text: any) {
+    if (typeof text !== "string") return 0;
+    const span = document.createElement("span");
+    span.innerHTML = text.replace(/ /gi, "&nbsp;");
+    span.style.opacity = "0.01";
+    document.body.appendChild(span);
+    const width = span.offsetWidth;
+    span.remove();
+    return width;
   },
   /**
    * 计算从A往上直到B的offsetLeft和offsetTop距离，
@@ -169,11 +205,14 @@ export const utils = {
   isElementEmpty(editor: EditorType, el: NodeEntry) {
     const isThereHasNoEmptyChild = Array.from(Node.descendants(el[0])).some(
       (childEntry) => {
-        const node = childEntry[0];
+        const [node, path] = childEntry;
         return (
           (Text.isText(node) && node.text.length > 0) ||
           Editor.isVoid(editor, node) ||
-          Editor.isInline(editor, node)
+          Editor.isInline(
+            editor,
+            node || Editor.string(editor, path, { voids: true }) !== ""
+          )
         );
       }
     );

@@ -9,13 +9,6 @@
   transition: 0s !important;
 }
 
-.cyEditor [data-no-base-class="externalComp"] * {
-  animation-duration: 1s !important;
-  -webkit-animation-duration: 1s !important;
-  transition-duration: 1s !important;
-  transition: 1s !important;
-}
-
 /* 当鼠标移动到td的padding上时，可以选择当前td */
 .cyEditor td {
   cursor: cell;
@@ -96,4 +89,23 @@
   overflow: hidden;
   padding: 4px;
   position: relative;
+}
+
+/* 是否隐藏popover的箭头 */
+.cyEditor .atPersonPopModal {
+  /* padding-top: 0; */
+}
+
+.cyEditor .atPersonPopModal .ant-popover-inner-content {
+  padding: 8px 8px;
+}
+
+.cyEditor [data-no-base-class="externalComp"] * {
+  /* animation-duration: 0.3s !important;
+  -webkit-animation-duration: 0.3s !important; */
+}
+
+.cyEditor [data-no-base-class="externalComp"] .ant-select-item-option-state {
+  display: flex;
+  align-items: center;
 }

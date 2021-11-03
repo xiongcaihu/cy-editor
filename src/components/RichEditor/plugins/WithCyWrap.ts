@@ -38,6 +38,7 @@ export const withCyWrap = (editor: EditorType) => {
     isVoid,
     normalizeNode,
     apply,
+    deleteFragment,
     undo,
   } = editor;
 
@@ -120,7 +121,12 @@ export const withCyWrap = (editor: EditorType) => {
   };
 
   editor.deleteFragment = () => {
-    utils.removeRangeElement(editor);
+    const [hasTable] = Editor.nodes(editor, {
+      match: (n) => TableLogic.isTable(n),
+      mode: "highest",
+    });
+    if (hasTable) utils.removeRangeElement(editor);
+    else deleteFragment();
   };
 
   editor.deleteForward = (unit) => {
@@ -520,14 +526,11 @@ export const withCyWrap = (editor: EditorType) => {
     const preLastNode = utils.getNodeByPath(editor, [
       editor.children.length - 2,
     ]);
-    if (
-      !(
-        utils.isTextWrapper(editorLastNode[0]) &&
-        Editor.string(editor, editorLastNode[1], {
-          voids: true,
-        }) === ""
-      )
-    ) {
+    const isLastNodeNotEmpty = !(
+      utils.isTextWrapper(editorLastNode[0]) &&
+      utils.isElementEmpty(editor, editorLastNode as NodeEntry)
+    );
+    if (isLastNodeNotEmpty) {
       Transforms.insertNodes(
         editor,
         {
@@ -540,13 +543,11 @@ export const withCyWrap = (editor: EditorType) => {
       );
       return true;
     }
-    // 如果文档的倒数第二个元素也是空的，那么删除
-    if (
+    const isPreLastNodeEmpty =
       utils.isTextWrapper(preLastNode[0]) &&
-      Editor.string(editor, preLastNode[1], {
-        voids: true,
-      }) === ""
-    ) {
+      utils.isElementEmpty(editor, preLastNode as NodeEntry);
+    // 如果文档的倒数第二个元素也是空的，那么删除
+    if (isPreLastNodeEmpty) {
       Transforms.removeNodes(editor, { at: preLastNode[1] });
       return true;
     }

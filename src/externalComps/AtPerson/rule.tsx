@@ -1,18 +1,17 @@
-import { Range, Transforms } from "slate";
-import { EditorType } from "../../components/RichEditor/common/Defines";
+import { Transforms } from "slate";
+import { ReactEditor } from "slate-react";
+import {
+  EditorType,
+  FixlayoutBoxId,
+} from "../../components/RichEditor/common/Defines";
 import { utils } from "../../components/RichEditor/common/utils";
+import { ChoosePersonComp } from "./ChoosePersonComp";
 
 export const type = "atPerson";
 
 export const rule = (editor: EditorType) => {
-  const { isVoid,  isInline, insertText } = editor;
+  const { isInline, insertText } = editor;
 
-  editor.isVoid = (node) => {
-    if ([type].includes(node.type)) {
-      return true;
-    }
-    return isVoid(node);
-  };
   editor.isInline = (node) => {
     if ([type].includes(node.type)) {
       return true;
@@ -21,20 +20,55 @@ export const rule = (editor: EditorType) => {
   };
 
   editor.insertText = (text) => {
+    insertText(text);
     if (text === "@") {
-      if (editor.selection && Range.isExpanded(editor.selection)) {
-        utils.removeRangeElement(editor);
-      }
-      Transforms.insertNodes(editor, {
-        type,
-        person: {
-          name: "点击搜索员工",
-          id: '',
-        },
-        children: [{ text: "@点击搜索员工" }],
-      } as any);
-    } else {
-      insertText(text);
+      setTimeout(() => {
+        const [modalX, modalY] = utils.getCursorPos(editor);
+
+        editor.setFixLayoutBox?.(
+          {
+            visible: true,
+            left: modalX,
+            top: modalY + 16,
+          },
+          <ChoosePersonComp
+            onChange={(persons) => {
+              editor.setFixLayoutBox?.({ visible: false });
+              ReactEditor.focus(editor);
+              Transforms.delete(editor, { reverse: true });
+              if (persons) {
+                Transforms.insertNodes(
+                  editor,
+                  persons.map((person) => {
+                    return {
+                      type,
+                      children: [
+                        {
+                          text: "@" + person.name + person.id,
+                        },
+                      ],
+                    };
+                  }) as any
+                );
+                setTimeout(() => {
+                  Transforms.move(editor);
+                  Transforms.move(editor, { reverse: true });
+                }, 0);
+              }
+            }}
+          ></ChoosePersonComp>
+        );
+        const handleClick = (e: any) => {
+          if (
+            !document.querySelector(`#${FixlayoutBoxId}`)?.contains(e.target)
+          ) {
+            editor.setFixLayoutBox?.({ visible: false });
+            window.removeEventListener("click", handleClick);
+          }
+        };
+
+        window.addEventListener("click", handleClick);
+      }, 0);
     }
   };
 

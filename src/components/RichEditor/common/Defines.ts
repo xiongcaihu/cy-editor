@@ -65,6 +65,7 @@ export type CustomElement = {
   tdIsEditing?: boolean; // 光标是否处于该td上
   liColor?: string; // li color
   checked?: boolean; // todoList属性
+  openPopModal?: boolean; // 是否打开弹窗
   wrapperWidthWhenCreated?: number; // table创建时所在的容器宽度，用于动态计算td的宽度
   defaultMode?: string; // code 专属
   defaultCode?: string; // code 专属
@@ -113,3 +114,5 @@ export enum CypressFlagValues {
   AT_PERSON_MODAL = "atPersonModal",
   AT_PERSON_TEXT = "atPersonText",
 }
+
+export const FixlayoutBoxId = "CyEditor_FixlayoutBox";

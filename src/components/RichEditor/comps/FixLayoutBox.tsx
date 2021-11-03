@@ -1,8 +1,9 @@
 import React, { ReactElement } from "react";
+import { FixlayoutBoxId } from "../common/Defines";
 
 const style: React.CSSProperties = {
   position: "absolute",
-  zIndex: 9999999,
+  zIndex: 999,
 };
 export const FixLayoutBox: React.FC<{
   visible: boolean;
@@ -13,6 +14,7 @@ export const FixLayoutBox: React.FC<{
   const { visible = false, left, top } = props;
   return (
     <div
+      id={FixlayoutBoxId}
       style={{
         ...style,
         display: visible === true ? "block" : "none",
