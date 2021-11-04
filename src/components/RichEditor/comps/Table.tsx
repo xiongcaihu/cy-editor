@@ -290,8 +290,8 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
   }, 20);
 
   const handleTableMouseDown = (e: any) => {
-    // 防止事件冒泡到父元素的td
-    e.stopPropagation();
+    // 防止事件冒泡到父元素的td（用于之前表格嵌套表格的逻辑，现在已经取消）
+    // e.stopPropagation();
     try {
       TdLogic.deselectAllTd(editor);
 
@@ -810,14 +810,14 @@ export const TableLogic = {
     )
       return;
 
-    const editorDom = ReactEditor.toDOMNode(editor, editor);
+    // const editorDom = ReactEditor.toDOMNode(editor, editor);
 
     const getInsertCells = (): CustomElement[] => {
       return _.cloneDeep(
         new Array(count).fill(0).map(() => {
           return _.cloneDeep({
             type: CET.TD,
-            width: editorDom.offsetWidth / 10,
+            // width: editorDom.offsetWidth / 10,
             height: tdMinHeight,
             children: [
               {
@@ -905,11 +905,11 @@ export const TableLogic = {
     )
       return;
 
-    const editorDom = ReactEditor.toDOMNode(editor, editor);
+    // const editorDom = ReactEditor.toDOMNode(editor, editor);
 
     const insertNode = {
       type: CET.TD,
-      width: editorDom.offsetWidth / 10,
+      // width: editorDom.offsetWidth / 10,
       height: tdMinHeight,
       children: [
         {

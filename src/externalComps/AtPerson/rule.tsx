@@ -22,6 +22,7 @@ export const rule = (editor: EditorType) => {
   editor.insertText = (text) => {
     insertText(text);
     if (text === "@") {
+      // 打开选人弹窗
       setTimeout(() => {
         const [modalX, modalY] = utils.getCursorPos(editor);
 
@@ -58,16 +59,34 @@ export const rule = (editor: EditorType) => {
             }}
           ></ChoosePersonComp>
         );
-        const handleClick = (e: any) => {
-          if (
-            !document.querySelector(`#${FixlayoutBoxId}`)?.contains(e.target)
-          ) {
+        // 只有当用户mousedown和mouseup都在弹窗范围之外，才关闭
+        const isMouseDownOutSide = (e: any) => {
+          return !document
+            .querySelector(`#${FixlayoutBoxId}`)
+            ?.contains(e.target);
+        };
+        const handlePressEsc = (e: any) => {
+          if (e.key === "Escape") {
             editor.setFixLayoutBox?.({ visible: false });
-            window.removeEventListener("click", handleClick);
+            window.removeEventListener("mousedown", handleMouseDown);
+            window.removeEventListener("keydown", handlePressEsc);
           }
         };
-
-        window.addEventListener("click", handleClick);
+        const handleMouseDown = (e: any) => {
+          if (isMouseDownOutSide(e)) {
+            const handleMouseUp = (e: any) => {
+              if (isMouseDownOutSide(e)) {
+                editor.setFixLayoutBox?.({ visible: false });
+                window.removeEventListener("mousedown", handleMouseDown);
+                window.removeEventListener("mouseup", handleMouseUp);
+                window.removeEventListener("keydown", handlePressEsc);
+              }
+            };
+            window.addEventListener("mouseup", handleMouseUp);
+          }
+        };
+        window.addEventListener("mousedown", handleMouseDown);
+        window.addEventListener("keydown", handlePressEsc);
       }, 0);
     }
   };

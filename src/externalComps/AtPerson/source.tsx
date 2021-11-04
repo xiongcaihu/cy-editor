@@ -1,5 +1,9 @@
 /* eslint-disable jsx-a11y/anchor-is-valid */
 import { RenderElementProps } from "slate-react";
+import {
+  CypressFlagValues,
+  CypressTestFlag,
+} from "../../components/RichEditor/common/Defines";
 
 export type PersonShape = {
   name: string;
@@ -16,7 +20,12 @@ export const Source: (props: RenderElementProps) => JSX.Element = ({
   children,
 }) => {
   return (
-    <a {...attributes} id="atPersonText" style={{ margin: "0 0.2em" }}>
+    <a
+      {...attributes}
+      className={CypressFlagValues.AT_PERSON_TEXT}
+      {...{ [CypressTestFlag]: CypressFlagValues.AT_PERSON_TEXT }}
+      style={{ margin: "0 0.2em" }}
+    >
       {children}
     </a>
   );

@@ -91,21 +91,19 @@
   position: relative;
 }
 
-/* 是否隐藏popover的箭头 */
-.cyEditor .atPersonPopModal {
-  /* padding-top: 0; */
-}
-
 .cyEditor .atPersonPopModal .ant-popover-inner-content {
   padding: 8px 8px;
 }
 
-.cyEditor [data-no-base-class="externalComp"] * {
-  /* animation-duration: 0.3s !important;
-  -webkit-animation-duration: 0.3s !important; */
+.cyEditor [data-no-base-class="choosePersonComp"] .ant-select-arrow-loading *,
+.cyEditor [data-no-base-class="choosePersonComp"] .ant-spin-spinning * {
+  animation-duration: 1s !important;
+  -webkit-animation-duration: 1s !important;
 }
 
-.cyEditor [data-no-base-class="externalComp"] .ant-select-item-option-state {
+.cyEditor
+  [data-no-base-class="choosePersonComp"]
+  .ant-select-item-option-state {
   display: flex;
   align-items: center;
 }

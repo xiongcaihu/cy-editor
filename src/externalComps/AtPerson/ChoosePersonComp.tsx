@@ -1,11 +1,13 @@
 import { PersonShape } from "./source";
-import { Button, Card, Col, Row, Select, Space, Tag } from "antd";
+import { Button, Card, Col, Empty, Row, Select, Space, Spin, Tag } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "lodash";
-import { utils } from "../../components/RichEditor/common/utils";
-import { CypressFlagValues } from "../../components/RichEditor/common/Defines";
+import {
+  CypressFlagValues,
+  CypressTestFlag,
+} from "../../components/RichEditor/common/Defines";
 import { Avatar, Typography } from "antd";
-import { UserOutlined } from "@ant-design/icons";
+import { LoadingOutlined, UserOutlined } from "@ant-design/icons";
 import { Random } from "mockjs";
 
 const datas: PersonShape[] = new Array(100).fill(0).map((item, index) => {
@@ -50,7 +52,7 @@ function fetchUsers(searchContent: string, taskId: number) {
           })
         )
       );
-    }, 100);
+    }, 300);
   });
 }
 
@@ -70,7 +72,6 @@ const getUsers = _.debounce<(a: string, b: (p: PersonShape[]) => void) => void>(
 export const ChoosePersonComp: React.FC<{
   initPerson?: PersonShape;
   onChange?(person: PersonShape[] | undefined | null): void;
-  cypressId?: CypressFlagValues;
 }> = (props) => {
   const { initPerson } = props;
   const [personsList, setPersonsList] = useState<PersonShape[]>(
@@ -113,23 +114,34 @@ export const ChoosePersonComp: React.FC<{
       dropdownClassName: "choosePersonCompDropDown",
       style: { width: 450 },
       filterOption: false,
-      loading: isFetching,
       placeholder: "输入工号或姓名进行搜索",
       optionLabelProp: "label",
       value: nowPersons.map((p) => p.id),
       tagRender: (props) => {
         return (
-          <Tag {...props} style={{ marginTop: 4, marginBottom: 4 }}>
+          <Tag
+            {...props}
+            style={{ marginTop: 4, marginBottom: 4, textAlign: "center" }}
+          >
             <Typography.Text
-              title={String(props.label)}
+              title={String(props.label)?.split('@')?.join('')}
               ellipsis
-              style={{ width: 92 }}
+              style={{ width: 36 }}
             >
-              {props.label}
+              {String(props.label)?.split("@")?.[0]}
             </Typography.Text>
           </Tag>
         );
       },
+      notFoundContent: isFetching ? (
+        <Spin
+          size="small"
+          style={{ marginLeft: 10 }}
+          indicator={<LoadingOutlined spin></LoadingOutlined>}
+        />
+      ) : (
+        <Empty />
+      ),
       getPopupContainer: mountPopComp,
       onClear: () => {
         setPersonsList([]);
@@ -137,37 +149,27 @@ export const ChoosePersonComp: React.FC<{
       },
       onSearch: (value) => {
         setIsFetching(true);
+        setPersonsList([]);
         getUsers(value, (users) => {
-          setIsFetching(false);
           setPersonsList(users);
+          setIsFetching(false);
         });
       },
       onChange: (ids) => {
-        setNowPersons(
-          personsList.filter((person) =>
-            (ids as string[]).find((id) => id === String(person.id))
+        setNowPersons((t) =>
+          _.uniqBy(
+            [
+              ...t.filter((p) => (ids as string[])?.includes?.(String(p.id))),
+              ...personsList.filter((person) =>
+                (ids as string[]).find((id) => id === String(person.id))
+              ),
+            ],
+            "id"
           )
         );
       },
       dropdownStyle: {
         zIndex: Number.MAX_SAFE_INTEGER,
-      },
-      dropdownRender: (originNode) => {
-        const ColAttr = {
-          offset: 1,
-        };
-        return (
-          <Row style={{ flexDirection: "column" }}>
-            <Col {...ColAttr}>
-              <Typography.Text type="secondary">联系人</Typography.Text>
-            </Col>
-            <Col>{originNode}</Col>
-            <Col {...ColAttr}>
-              <Typography.Text type="secondary">群组</Typography.Text>
-            </Col>
-            <Col {...ColAttr}>more</Col>
-          </Row>
-        );
       },
     };
   }, [isFetching, nowPersons, personsList]);
@@ -176,49 +178,58 @@ export const ChoosePersonComp: React.FC<{
     props?.onChange?.(_.cloneDeep(nowPersons));
   };
 
-  const renderOption = personsList.map((person) => {
+  const renderPersonList = (person: PersonShape) => {
+    return (
+      <Row
+        style={{ flexDirection: "row", flexWrap: "nowrap" }}
+        align="middle"
+        gutter={12}
+      >
+        <Col>
+          <Avatar
+            size="default"
+            src={person.moreInfo?.avatarSrc}
+            icon={<UserOutlined />}
+          />
+        </Col>
+        <Col flex="1">
+          <Row
+            style={{
+              width: "calc(100% - 44px)",
+              height: "100%",
+              lineHeight: 1.5,
+            }}
+            justify="center"
+          >
+            <Col>
+              <Typography.Text strong>
+                {person.name}{" "}
+                <Typography.Text type="secondary">{person.id}</Typography.Text>
+              </Typography.Text>
+              <br></br>
+              <Typography.Text
+                type="secondary"
+                ellipsis
+                title={person.moreInfo?.org}
+              >
+                {person.moreInfo?.org}
+              </Typography.Text>
+            </Col>
+          </Row>
+        </Col>
+      </Row>
+    );
+  };
+
+  const optionRenderComp = personsList.map((person) => {
     return (
       <Select.Option
         key={person.id}
         value={person.id}
-        label={person.name + person.id}
+        label={person.name + "@" + person.id}
         style={{ fontSize: 10, paddingTop: 4, paddingBottom: 4 }}
       >
-        <Row
-          style={{ flexDirection: "row", flexWrap: "nowrap" }}
-          align="middle"
-          gutter={12}
-        >
-          <Col>
-            <Avatar
-              size="default"
-              src={person.moreInfo?.avatarSrc}
-              icon={<UserOutlined />}
-            />
-          </Col>
-          <Col flex="1">
-            <Row
-              style={{
-                width: "calc(100% - 44px)",
-                height: "100%",
-                lineHeight: 1.5,
-              }}
-              justify="center"
-            >
-              <Col>
-                <Typography.Text strong>{person.name}</Typography.Text>
-                <br></br>
-                <Typography.Text
-                  type="secondary"
-                  ellipsis
-                  title={person.moreInfo?.org}
-                >
-                  {person.moreInfo?.org}
-                </Typography.Text>
-              </Col>
-            </Row>
-          </Col>
-        </Row>
+        {renderPersonList(person)}
       </Select.Option>
     );
   });
@@ -227,8 +238,8 @@ export const ChoosePersonComp: React.FC<{
     <div
       ref={ref}
       id="ChoosePersonComp"
-      data-no-base-class="externalComp"
-      {...utils.insertCypressId(props, "cypressId")}
+      data-no-base-class="choosePersonComp"
+      {...{ [CypressTestFlag]: CypressFlagValues.AT_PERSON_MODAL }}
     >
       <Card
         bodyStyle={{
@@ -237,13 +248,21 @@ export const ChoosePersonComp: React.FC<{
             "0 1px 2px -2px #00000029, 0 3px 6px #0000001f, 0 5px 12px 4px #00000017",
         }}
       >
-        <Space>
-          {/* 选人下拉框 */}
-          <Select {...selectCompProps}>{renderOption}</Select>
-          <Button type="primary" onClick={submitPerson}>
-            确定
-          </Button>
-        </Space>
+        <Row style={{ flexDirection: "column" }}>
+          <Col>
+            <Space>
+              {/* 选人下拉框 */}
+              <Select {...selectCompProps}>{optionRenderComp}</Select>
+              <Button
+                type="primary"
+                onClick={submitPerson}
+                style={{ float: "right" }}
+              >
+                确定
+              </Button>
+            </Space>
+          </Col>
+        </Row>
       </Card>
     </div>
   );
