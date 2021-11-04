@@ -121,7 +121,7 @@ https://docs.slatejs.org/concepts/11-normalizing
 - [x] todo组件的用例
 - [x] 表格组件的用例
   - 问题
-  - [ ] 表格新增行会出现滚动条
+  - [x] 表格新增行会出现滚动条
 - [x] 重构扩展组件逻辑
   - 存放路径/externalComps/comps
 - [x] 容器内增加通用透明悬浮div，通过editor.setFixLayoutBox方法来调用
@@ -133,7 +133,7 @@ https://docs.slatejs.org/concepts/11-normalizing
     - [x] 基本功能实现
     - [x] 美化外观
     - [ ] 补充测试用例
-  - [ ] 问题
+  - [x] 问题
     - [x] 点击多个不同的@组件后，再选择人，会报warn：作用在了已经ummount的组件上
     - [x] 当选人的组件放在屏幕的最右边时，弹窗出现后，会出现滚动条。
     - [x] 选人后，搜索框里的值没变
