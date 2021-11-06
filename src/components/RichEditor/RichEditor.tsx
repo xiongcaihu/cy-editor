@@ -8,7 +8,7 @@ import {
   ReactElement,
 } from "react";
 import { createEditor, Transforms, Editor, Operation, Selection } from "slate";
-import { Slate, Editable, withReact } from "slate-react";
+import { Slate, Editable, withReact, ReactEditor } from "slate-react";
 import { withHistory } from "slate-history";
 import {
   CET,
@@ -57,7 +57,7 @@ export const EditorContext = createContext<{
 });
 
 const loadPlugins = (plugins: ((editor: EditorType) => EditorType)[]) => {
-  return plugins.reduce((p, c) => {
+  return plugins.reduceRight((p, c) => {
     return c(p);
   }, createEditor());
 };
@@ -255,11 +255,13 @@ const EditorComp: EditorCompShape = (props) => {
                 utils.removeRangeElement(editor);
               }}
               onDOMBeforeInput={(e) => {
-                const copyedCells = getCopyedCells() || [];
-                if (copyedCells.length > 0) {
-                  window?.navigator?.clipboard?.writeText(
-                    "selected td paste only"
-                  );
+                // 当插入内容来源粘贴时，如果此时有已经复制的表格内容，那么拦截默认行为。
+                if (e.inputType === "insertFromPaste") {
+                  const copyedCells = getCopyedCells() || [];
+                  if (copyedCells.length > 0) {
+                    e.preventDefault();
+                    ReactEditor.insertData(editor, utils.getDataTransfer([]));
+                  }
                 }
               }}
               placeholder="welcome to cyEditor!"

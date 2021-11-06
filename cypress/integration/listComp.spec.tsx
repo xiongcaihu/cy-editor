@@ -11,7 +11,7 @@ import {
   CET,
 } from "../../src/components/RichEditor/common/Defines";
 import { ListLogic } from "../../src/components/RichEditor/comps/ListComp";
-import { doSyncFn, getSlateNodeEntry } from "../support/tool";
+import { doCopy, doPaste, doSyncFn, getSlateNodeEntry } from "../support/tool";
 
 const emptyContent = `[{"type":"div","children":[{"text":""}]}]`;
 var content = emptyContent;
@@ -932,7 +932,6 @@ describe("测试list组件", function () {
   describe("测试复制粘贴", function () {
     it("复制list外部元素（普通文本）并粘贴到list中", function () {
       const editor: EditorType = this.editor;
-      var copyedContent: Descendant[] | null = null;
       // 在list后插入文本，并选中部分文本，然后复制
       doSyncFn(() => {
         const [list] = Editor.nodes(editor, {
@@ -961,12 +960,10 @@ describe("测试list组件", function () {
           const start = Cypress._.cloneDeep(end);
           start.offset -= 2;
           Transforms.select(editor, Editor.range(editor, start, end));
-
-          if (editor.selection) {
-            copyedContent = Editor.fragment(editor, editor.selection);
-          }
         }, 50);
       });
+
+      doCopy();
 
       cy.contains("li", "banana").then(($li) => {
         return doSyncFn(() => {
@@ -978,42 +975,38 @@ describe("测试list组件", function () {
       });
 
       cy.wait(300);
-      doSyncFn(() => {
-        copyedContent && editor.insertFragment(copyedContent);
-      }, 50);
+
+      doPaste();
 
       cy.contains("li", "bananaha").should("be.visible");
     });
 
     it("复制单条li内容到list内部元素", function () {
       const editor: EditorType = this.editor;
-      var copyedContent: Descendant[] | null = null;
-
       cy.contains("li", "banana").then(($li) => {
         return doSyncFn(() => {
           const li = getSlateNodeEntry(editor, $li);
           Transforms.select(editor, Editor.range(editor, li[1]));
-          copyedContent = editor.getFragment();
         }, 50);
       });
+
+      doCopy();
 
       cy.contains("li", "apple").then(($li) => {
         return doSyncFn(() => {
           const li = getSlateNodeEntry(editor, $li);
           Transforms.select(editor, Editor.end(editor, li[1]));
-          copyedContent && editor.insertFragment(copyedContent);
         }, 50);
       });
 
+      doPaste();
       cy.contains("li", "applebanana").should("be.visible");
     });
 
     it("复制多条li内容到list内部元素", function () {
       const editor: EditorType = this.editor;
-      var copyedContent: Descendant[] | null = null;
-
       cy.contains("li", "banana").then(($li) => {
-        cy.contains("li", "three apple").then(($li2) => {
+        return cy.contains("li", "three apple").then(($li2) => {
           return doSyncFn(() => {
             const li1 = getSlateNodeEntry(editor, $li);
             const li2 = getSlateNodeEntry(editor, $li2);
@@ -1025,18 +1018,20 @@ describe("测试list组件", function () {
                 Editor.end(editor, li2[1])
               )
             );
-            copyedContent = editor.getFragment();
           }, 50);
         });
       });
+
+      doCopy();
 
       cy.contains("li", "apple").then(($li) => {
         return doSyncFn(() => {
           const li = getSlateNodeEntry(editor, $li);
           Transforms.select(editor, Editor.end(editor, li[1]));
-          copyedContent && editor.insertFragment(copyedContent);
         }, 50);
       });
+      
+      doPaste();
 
       cy.contains("li", "applebanana").should("be.visible");
       cy.contains("li", "two applethree apple").should("be.visible");

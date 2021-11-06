@@ -3,14 +3,14 @@
 /* eslint-disable no-undef */
 import { mount, unmount } from "@cypress/react";
 import CyEditor from "../../src/components/RichEditor/RichEditor";
-import { Descendant, Editor, Transforms } from "slate";
+import { Editor, Transforms } from "slate";
 import { EditorType } from "../../src/components/RichEditor/common/Defines";
 import { ToDoListLogic } from "../../src/components/RichEditor/comps/TodoListComp";
 import { TableLogic } from "../../src/components/RichEditor/comps/Table";
 import { utils } from "../../src/components/RichEditor/common/utils";
 import { TdLogic } from "../../src/components/RichEditor/comps/Td";
 import { ListLogic } from "../../src/components/RichEditor/comps/ListComp";
-import { doSyncFn, getSlateNodeEntry } from "../support/tool";
+import { doCopy, doPaste, doSyncFn, getSlateNodeEntry } from "../support/tool";
 
 const emptyContent = `[{"type":"div","children":[{"text":""}]}]`;
 var content = emptyContent;
@@ -978,15 +978,14 @@ describe("测试Table组件", function () {
               match: (n) => ListLogic.isOrderList(n),
             });
             list && Transforms.select(editor, list[1]);
-            editor.getFragment(); // 触发复制行为
             return;
           }, 300);
 
+          doCopy();
+
           chooseTd("1");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           cy.contains("td", "list2.2")
             .then((el) => {
@@ -1006,15 +1005,14 @@ describe("测试Table组件", function () {
                 Editor.string(editor, p) === "todo2",
             });
             todo && Transforms.select(editor, todo[1]);
-            editor.getFragment(); // 触发复制行为
             return;
           }, 300);
 
+          doCopy();
+
           chooseTd("1");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           cy.contains("td", "todo2").should("have.length", 1);
         });
@@ -1027,33 +1025,24 @@ describe("测试Table组件", function () {
                 utils.isTextWrapper(n) && Editor.string(editor, p) === "text2",
             });
             tw && Transforms.select(editor, tw[1]);
-            editor.getFragment(); // 触发复制行为
             return;
           }, 300);
 
+          doCopy();
+
           chooseTd("1");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           cy.contains("td", "text2").should("have.length", 1);
         });
         describe("粘贴另一个table里的内容", function () {
           it("粘贴多个选中的td", function () {
-            const editor: EditorType = this.editor;
-
             selectMultiTds(1, "table2.1", "table2.4");
 
-            doSyncFn(() => {
-              TableLogic.copyCells(editor);
-            }, 300);
-
+            doCopy();
             chooseTd("1");
-
-            doSyncFn(() => {
-              TableLogic.pasteCells(editor);
-            }, 300);
+            doPaste();
 
             getTdByText(0, "table2.1").should("have.length", 1);
             getTdByText(0, "table2.2").should("have.length", 1);
@@ -1062,19 +1051,13 @@ describe("测试Table组件", function () {
             cy.get("table").eq(0).find("td").should("have.length", 100);
           });
           it("粘贴单个选中的td", function () {
-            const editor: EditorType = this.editor;
-
             chooseTd("table2.4");
 
-            doSyncFn(() => {
-              TableLogic.copyCells(editor);
-            }, 300);
+            doCopy();
 
             chooseTd("1");
 
-            doSyncFn(() => {
-              TableLogic.pasteCells(editor);
-            }, 300);
+            doPaste();
 
             getTdByText(0, "table2.4").should("have.length", 1);
             cy.get("table").eq(0).find("td").should("have.length", 100);
@@ -1093,14 +1076,13 @@ describe("测试Table组件", function () {
                 },
               });
               td && Transforms.select(editor, td[1]);
-              editor.getFragment();
             }, 300);
+
+            doCopy();
 
             chooseTd("1");
 
-            doSyncFn(() => {
-              TableLogic.pasteCells(editor);
-            }, 300);
+            doPaste();
 
             getTdByText(0, "table2.1").should("have.length", 1);
             cy.get("table").eq(0).find("td").should("have.length", 100);
@@ -1116,15 +1098,14 @@ describe("测试Table组件", function () {
               match: (n) => ListLogic.isOrderList(n),
             });
             list && Transforms.select(editor, list[1]);
-            editor.getFragment(); // 触发复制行为
             return;
           }, 300);
 
+          doCopy();
+
           selectMultiTds(0, "1", "3");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           cy.get('td:contains("list2.1")').should("have.length", 3);
           cy.get('td:contains("list4")').should("have.length", 3);
@@ -1139,15 +1120,14 @@ describe("测试Table组件", function () {
                 Editor.string(editor, p) === "todo2",
             });
             todo && Transforms.select(editor, todo[1]);
-            editor.getFragment(); // 触发复制行为
             return;
           }, 300);
 
+          doCopy();
+
           selectMultiTds(0, "1", "3");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           cy.get('td:contains("todo2")').should("have.length", 3);
         });
@@ -1160,33 +1140,26 @@ describe("测试Table组件", function () {
                 utils.isTextWrapper(n) && Editor.string(editor, p) === "text2",
             });
             tw && Transforms.select(editor, tw[1]);
-            editor.getFragment(); // 触发复制行为
             return;
           }, 300);
 
+          doCopy();
+
           selectMultiTds(0, "1", "3");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           cy.get('td:contains("text2")').should("have.length", 3);
         });
         describe("粘贴另一个table里的内容", function () {
           it("粘贴多个选中的td", function () {
-            const editor: EditorType = this.editor;
-
             selectMultiTds(1, "table2.1", "table2.4");
 
-            doSyncFn(() => {
-              TableLogic.copyCells(editor);
-            }, 300);
+            doCopy();
 
             selectMultiTds(0, "1", "3");
 
-            doSyncFn(() => {
-              TableLogic.pasteCells(editor);
-            }, 300);
+            doPaste();
 
             getTdByText(0, "table2.1").should("have.length", 1);
             getTdByText(0, "table2.2").should("have.length", 1);
@@ -1195,19 +1168,13 @@ describe("测试Table组件", function () {
             cy.get("table").eq(0).find("td").should("have.length", 100);
           });
           it("粘贴单个选中的td", function () {
-            const editor: EditorType = this.editor;
-
             chooseTd("table2.4");
 
-            doSyncFn(() => {
-              TableLogic.copyCells(editor);
-            }, 300);
+            doCopy();
 
             selectMultiTds(0, "1", "3");
 
-            doSyncFn(() => {
-              TableLogic.pasteCells(editor);
-            }, 300);
+            doPaste();
 
             getTdByText(0, "table2.4").should("have.length", 3);
             cy.get("table").eq(0).find("td").should("have.length", 100);
@@ -1226,14 +1193,13 @@ describe("测试Table组件", function () {
                 },
               });
               td && Transforms.select(editor, td[1]);
-              editor.getFragment();
             }, 300);
+
+            doCopy();
 
             selectMultiTds(0, "1", "3");
 
-            doSyncFn(() => {
-              TableLogic.pasteCells(editor);
-            }, 300);
+            doPaste();
 
             getTdByText(0, "table2.1").should("have.length", 3);
             cy.get("table").eq(0).find("td").should("have.length", 100);
@@ -1243,24 +1209,22 @@ describe("测试Table组件", function () {
       describe("没有选中的td，但是有正在编辑的td", function () {
         it("粘贴li", function () {
           const editor: EditorType = this.editor;
-          var copyedContent: Descendant[];
           doSyncFn(() => {
             const [list] = Editor.nodes(editor, {
               at: [],
               match: (n) => ListLogic.isOrderList(n),
             });
             list && Transforms.select(editor, list[1]);
-            copyedContent = editor.getFragment(); // 触发复制行为
             return;
           }, 300);
+
+          doCopy();
 
           doSyncFn(() => {
             selectTd(editor, 0, "start", "end");
           });
 
-          doSyncFn(() => {
-            editor.insertFragment(copyedContent);
-          }, 300);
+          doPaste();
 
           cy.get('td:contains("list2.1")').should("have.length", 1);
           cy.get('td:contains("list4")').should("have.length", 1);
@@ -1284,7 +1248,6 @@ describe("测试Table组件", function () {
         });
         it("粘贴todo", function () {
           const editor: EditorType = this.editor;
-          var copyedContent: Descendant[];
           doSyncFn(() => {
             const [todo] = Editor.nodes(editor, {
               at: [],
@@ -1293,17 +1256,16 @@ describe("测试Table组件", function () {
                 Editor.string(editor, p) === "todo2",
             });
             todo && Transforms.select(editor, todo[1]);
-            copyedContent = editor.getFragment(); // 触发复制行为
             return;
           }, 300);
+
+          doCopy();
 
           doSyncFn(() => {
             selectTd(editor, 0, "start", "end");
           });
 
-          doSyncFn(() => {
-            editor.insertFragment(copyedContent);
-          }, 300);
+          doPaste();
 
           cy.get('td:contains("todo2")').should("have.length", 1);
 
@@ -1322,7 +1284,6 @@ describe("测试Table组件", function () {
         });
         it("粘贴带inline的文本", function () {
           const editor: EditorType = this.editor;
-          var copyedContent: Descendant[];
           doSyncFn(() => {
             const [tw] = Editor.nodes(editor, {
               at: [],
@@ -1330,17 +1291,16 @@ describe("测试Table组件", function () {
                 utils.isTextWrapper(n) && Editor.string(editor, p) === "text2",
             });
             tw && Transforms.select(editor, tw[1]);
-            copyedContent = editor.getFragment(); // 触发复制行为
             return;
           }, 300);
+
+          doCopy();
 
           doSyncFn(() => {
             selectTd(editor, 0, "start", "end");
           });
 
-          doSyncFn(() => {
-            editor.insertFragment(copyedContent);
-          }, 300);
+          doPaste();
 
           cy.get('td:contains("text2")').should("have.length", 1);
 
@@ -1358,17 +1318,13 @@ describe("测试Table组件", function () {
 
             selectMultiTds(1, "table2.1", "table2.4");
 
-            doSyncFn(() => {
-              TableLogic.copyCells(editor);
-            }, 300);
+            doCopy();
 
             doSyncFn(() => {
               selectTd(editor, 0, "start", "end");
             }, 300);
 
-            doSyncFn(() => {
-              editor.insertFragment([]);
-            }, 300);
+            doPaste();
 
             cy.contains("td", "table2.1")
               .then((el) => {
@@ -1383,17 +1339,13 @@ describe("测试Table组件", function () {
 
             chooseTd("table2.4");
 
-            doSyncFn(() => {
-              TableLogic.copyCells(editor);
-            }, 300);
+            doCopy();
 
             doSyncFn(() => {
               selectTd(editor, 0, "start", "end");
             }, 300);
 
-            doSyncFn(() => {
-              editor.insertFragment([]);
-            }, 300);
+            doPaste();
 
             cy.contains("td", "table2.4")
               .then((el) => {
@@ -1405,7 +1357,6 @@ describe("测试Table组件", function () {
           });
           it("粘贴单个未选中的td里的内容", function () {
             const editor: EditorType = this.editor;
-            var copyedContent: Descendant[];
             doSyncFn(() => {
               const [td] = Editor.nodes(editor, {
                 at: [],
@@ -1417,16 +1368,15 @@ describe("测试Table组件", function () {
                 },
               });
               td && Transforms.select(editor, td[1]);
-              copyedContent = editor.getFragment();
             }, 300);
+
+            doCopy();
 
             doSyncFn(() => {
               selectTd(editor, 0, "start", "end");
             }, 300);
 
-            doSyncFn(() => {
-              editor.insertFragment(copyedContent);
-            }, 300);
+            doPaste();
 
             cy.contains("td", "table2.1")
               .then((el) => {
@@ -1446,51 +1396,35 @@ describe("测试Table组件", function () {
 
           chooseTd("1");
 
-          doSyncFn(() => {
-            TableLogic.copyCells(editor);
-          }, 300);
+          doCopy();
 
           doSyncFn(() => {
             selectTd(editor, 0, "end", "end");
           }, 300);
 
-          doSyncFn(() => {
-            editor.insertFragment([]);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "61").should("have.length", 1);
         });
         it("到单个选中的td", function () {
-          const editor: EditorType = this.editor;
-
           chooseTd("1");
 
-          doSyncFn(() => {
-            TableLogic.copyCells(editor);
-          }, 300);
+          doCopy();
 
           chooseTd("2");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "1").should("have.length", 2);
         });
         it("到多个选中的td", function () {
-          const editor: EditorType = this.editor;
-
           chooseTd("1");
 
-          doSyncFn(() => {
-            TableLogic.copyCells(editor);
-          }, 300);
+          doCopy();
 
           selectMultiTds(0, "4", "6");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "1").should("have.length", 4);
         });
@@ -1501,43 +1435,31 @@ describe("测试Table组件", function () {
 
           selectMultiTds(0, "1", "3");
 
-          doSyncFn(() => {
-            TableLogic.copyCells(editor);
-          }, 300);
+          doCopy();
 
           doSyncFn(() => {
             selectTd(editor, 0, "end", "end");
           }, 300);
 
-          doSyncFn(() => {
-            editor.insertFragment([]);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "61\n2\n3").should("have.length", 1);
         });
         it("到单个选中的td", function () {
-          const editor: EditorType = this.editor;
-
           selectMultiTds(0, "1", "3");
 
-          doSyncFn(() => {
-            TableLogic.copyCells(editor);
-          }, 300);
+          doCopy();
 
           chooseTd("6");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           // 应该是不会复制成功
           getTdByText(0, "6").should("have.length", 1);
 
           chooseTd("4");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "6").should("have.length", 0);
           getTdByText(0, "1").should("have.length", 2);
@@ -1545,19 +1467,13 @@ describe("测试Table组件", function () {
           getTdByText(0, "3").should("have.length", 2);
         });
         it("到多个选中的td", function () {
-          const editor: EditorType = this.editor;
-
           selectMultiTds(0, "1", "3");
 
-          doSyncFn(() => {
-            TableLogic.copyCells(editor);
-          }, 300);
+          doCopy();
 
           selectMultiTds(0, "4", "6");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "4").should("have.length", 0);
           getTdByText(0, "5").should("have.length", 0);
@@ -1570,22 +1486,18 @@ describe("测试Table组件", function () {
       describe("粘贴未选中的单个td", function () {
         it("到单个未选中的td", function () {
           const editor: EditorType = this.editor;
-          var copyedContent: Descendant[];
           doSyncFn(() => {
             const td = getTd(editor, "1");
             td && Transforms.select(editor, td[1]);
           }, 300);
 
-          doSyncFn(() => {
-            copyedContent = editor.getFragment();
-          }, 300);
+          doCopy();
 
           doSyncFn(() => {
             selectTd(editor, 0, "end", "end");
           }, 300);
-          doSyncFn(() => {
-            copyedContent && editor.insertFragment(copyedContent);
-          }, 300);
+
+          doPaste();
 
           getTdByText(0, "61").should("have.length", 1);
         });
@@ -1596,15 +1508,11 @@ describe("测试Table组件", function () {
             td && Transforms.select(editor, td[1]);
           }, 300);
 
-          doSyncFn(() => {
-            editor.getFragment();
-          }, 300);
+          doCopy();
 
           chooseTd("6");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "6").should("have.length", 0);
           getTdByText(0, "1").should("have.length", 2);
@@ -1616,15 +1524,11 @@ describe("测试Table组件", function () {
             td && Transforms.select(editor, td[1]);
           }, 300);
 
-          doSyncFn(() => {
-            editor.getFragment();
-          }, 300);
+          doCopy();
 
           selectMultiTds(0, "4", "6");
 
-          doSyncFn(() => {
-            TableLogic.pasteCells(editor);
-          }, 300);
+          doPaste();
 
           getTdByText(0, "4").should("have.length", 0);
           getTdByText(0, "5").should("have.length", 0);

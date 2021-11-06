@@ -3,7 +3,7 @@
     "jsx": "react-jsx",
     "target": "es2015",
     "lib": ["es5", "dom", "ES2015"],
-    "types": ["cypress"],
+    "types": ["cypress", "cypress-real-events"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -15,7 +15,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "downlevelIteration": true,
-    "noEmit": true,
+    "noEmit": true
   },
   "include": ["**/*.ts", "**/*.tsx"]
 }

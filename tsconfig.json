@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "types": ["cypress", "node"],
+    "types": ["cypress", "node", "cypress-real-events"],
     "lib": ["dom", "dom.iterable", "esnext", "ES2015"],
     "allowJs": true,
     "skipLibCheck": true,

@@ -3,7 +3,7 @@
 /* eslint-disable no-undef */
 import { mount, unmount } from "@cypress/react";
 import CyEditor from "../../src/components/RichEditor/RichEditor";
-import { Descendant, Editor, Element, Transforms } from "slate";
+import { Editor, Element, Transforms } from "slate";
 import {
   CET,
   CypressFlagValues,
@@ -11,9 +11,8 @@ import {
   EditorType,
 } from "../../src/components/RichEditor/common/Defines";
 import { ToDoListLogic } from "../../src/components/RichEditor/comps/TodoListComp";
-import { TableLogic } from "../../src/components/RichEditor/comps/Table";
 import { utils } from "../../src/components/RichEditor/common/utils";
-import { doSyncFn, getSlateNodeEntry } from "../support/tool";
+import { doCopy, doPaste, doSyncFn, getSlateNodeEntry } from "../support/tool";
 
 const emptyContent = `[{"type":"div","children":[{"text":""}]}]`;
 var content = emptyContent;
@@ -604,7 +603,6 @@ describe("测试TODO组件", function () {
       });
       it("粘贴单个li进来", function () {
         const editor: EditorType = this.editor;
-        var copyedContent: Descendant[] | null = null;
         doSyncFn(() => {
           Transforms.select(editor, {
             anchor: {
@@ -616,22 +614,21 @@ describe("测试TODO组件", function () {
               offset: 3,
             },
           });
-          copyedContent = editor.getFragment();
-        });
+        }, 300);
+
+        doCopy();
 
         selectTodoPos(editor, "two", "end");
 
-        doSyncFn(() => {
-          copyedContent && editor.insertFragment(copyedContent);
-        });
+        doPaste();
 
         cy.contains("div", /^two123$/).should("have.length", 1);
         getTodoListCount(editor).should("eq", 3);
       });
       it("粘贴多个li进来", function () {
         const editor: EditorType = this.editor;
-        var copyedContent: Descendant[] | null = null;
         doSyncFn(() => {
+          console.log("1");
           Transforms.select(editor, {
             anchor: {
               path: [3, 0, 0, 0],
@@ -642,14 +639,13 @@ describe("测试TODO组件", function () {
               offset: 3,
             },
           });
-          copyedContent = editor.getFragment();
-        });
+        }, 300);
+
+        doCopy();
 
         selectTodoPos(editor, "two", "end");
 
-        doSyncFn(() => {
-          copyedContent && editor.insertFragment(copyedContent);
-        });
+        doPaste();
 
         cy.contains("div", /^two123$/).should("have.length", 1);
         getTodoListCount(editor).should("eq", 3);
@@ -668,7 +664,6 @@ describe("测试TODO组件", function () {
       });
       it("粘贴单个td（非选中）进来", function () {
         const editor: EditorType = this.editor;
-        var copyedContent: Descendant[] | null = null;
         doSyncFn(() => {
           const [td] = Editor.nodes(editor, {
             at: [],
@@ -679,15 +674,14 @@ describe("测试TODO组件", function () {
           });
           if (td) {
             Transforms.select(editor, td[1]);
-            copyedContent = editor.getFragment();
           }
-        });
+        }, 100);
+
+        doCopy();
 
         selectTodoPos(editor, "two", "end");
 
-        doSyncFn(() => {
-          copyedContent && editor.insertFragment(copyedContent);
-        });
+        doPaste();
 
         cy.contains("div", /^two1$/).should("have.length", 1);
         getTodoListCount(editor).should("eq", 3);
@@ -715,17 +709,14 @@ describe("测试TODO组件", function () {
               }
             );
             Transforms.deselect(editor);
-            setTimeout(() => {
-              TableLogic.copyCells(editor);
-            }, 50);
           }
         }).wait(50);
 
+        doCopy();
+
         selectTodoPos(editor, "two", "end");
 
-        doSyncFn(() => {
-          editor.insertFragment([]);
-        }).wait(50);
+        doPaste();
 
         cy.contains("div", /^two1$/).should("have.length", 1);
         getTodoListCount(editor).should("eq", 3);
@@ -757,17 +748,14 @@ describe("测试TODO组件", function () {
               );
             });
             Transforms.deselect(editor);
-            setTimeout(() => {
-              TableLogic.copyCells(editor);
-            }, 50);
           }
         }).wait(50);
 
+        doCopy();
+
         selectTodoPos(editor, "two", "end");
 
-        doSyncFn(() => {
-          editor.insertFragment([]);
-        }).wait(50);
+        doPaste();
 
         cy.contains("div", /^two1$/).should("have.length", 1);
         getTodoListCount(editor).should("eq", 3);
@@ -776,7 +764,6 @@ describe("测试TODO组件", function () {
     it("粘贴其他todo内容进来", function () {
       // 选中one的 ne 到 three 的 thr
       const editor: EditorType = this.editor;
-      var copyedContent: Descendant[] | null = null;
       doSyncFn(() => {
         Transforms.select(editor, {
           anchor: {
@@ -788,43 +775,38 @@ describe("测试TODO组件", function () {
             offset: 2,
           },
         });
-        copyedContent = editor.getFragment();
       }).wait(50);
+
+      doCopy();
 
       selectTodoPos(editor, "two", "end");
 
-      doSyncFn(() => {
-        copyedContent && editor.insertFragment(copyedContent);
-      });
+      doPaste();
 
       cy.contains("div", /^twon$/).should("have.length", 1);
       getTodoListCount(editor).should("eq", 3);
     });
     it("粘贴普通文本过来", function () {
       const editor: EditorType = this.editor;
-      var copyedContent: Descendant[] | null = null;
       doSyncFn(() => {
         Transforms.select(editor, Editor.end(editor, []));
 
         Transforms.insertText(editor, "123");
 
         Transforms.select(editor, [3]);
-
-        copyedContent = editor.getFragment();
       }).wait(50);
+
+      doCopy();
 
       selectTodoPos(editor, "two", "end");
 
-      doSyncFn(() => {
-        copyedContent && editor.insertFragment(copyedContent);
-      });
+      doPaste();
 
       cy.contains("div", /^two123$/).should("have.length", 1);
       getTodoListCount(editor).should("eq", 3);
     });
     it("粘贴带inline元素的文本过来", function () {
       const editor: EditorType = this.editor;
-      var copyedContent: Descendant[] | null = null;
 
       doSyncFn(() => {
         Transforms.select(editor, Editor.end(editor, []));
@@ -839,15 +821,13 @@ describe("测试TODO组件", function () {
         Transforms.insertText(editor, "321");
 
         Transforms.select(editor, [3]);
-
-        copyedContent = editor.getFragment();
       }).wait(50);
+
+      doCopy();
 
       selectTodoPos(editor, "two", "end");
 
-      doSyncFn(() => {
-        copyedContent && editor.insertFragment(copyedContent);
-      });
+      doPaste();
 
       cy.contains("div", /^two123/).should("have.length", 1);
       cy.contains("div", /321$/).should("have.length", 1);

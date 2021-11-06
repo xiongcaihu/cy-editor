@@ -413,6 +413,7 @@ export const withCyWrap = (editor: EditorType) => {
    * 两种情况，
    * 一种是刚复制了单元格，然后粘贴到document的range里。如果刚复制单元格，在RichEditor.tsx中的onDOMBeforeInput中做了特殊处理
    * 一种是没复制单元格，粘贴上一次复制的range。
+   * 此方法的上游触发方式为：ReactEditor.insertData
    * @param fragment
    */
   editor.insertFragment = (fragment) => {

@@ -23,7 +23,7 @@ export const rule = (editor: EditorType) => {
     insertText(text);
     if (text === "@") {
       // 打开选人弹窗
-      setTimeout(() => {
+      const openModal = () => {
         const [modalX, modalY] = utils.getCursorPos(editor);
 
         editor.setFixLayoutBox?.(
@@ -74,19 +74,16 @@ export const rule = (editor: EditorType) => {
         };
         const handleMouseDown = (e: any) => {
           if (isMouseDownOutSide(e)) {
-            const handleMouseUp = (e: any) => {
-              if (isMouseDownOutSide(e)) {
-                editor.setFixLayoutBox?.({ visible: false });
-                window.removeEventListener("mousedown", handleMouseDown);
-                window.removeEventListener("mouseup", handleMouseUp);
-                window.removeEventListener("keydown", handlePressEsc);
-              }
-            };
-            window.addEventListener("mouseup", handleMouseUp);
+            editor.setFixLayoutBox?.({ visible: false });
+            window.removeEventListener("mousedown", handleMouseDown);
+            window.removeEventListener("keydown", handlePressEsc);
           }
         };
         window.addEventListener("mousedown", handleMouseDown);
         window.addEventListener("keydown", handlePressEsc);
+      };
+      setTimeout(() => {
+        openModal();
       }, 0);
     }
   };

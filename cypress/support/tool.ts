@@ -17,6 +17,18 @@ export function doSyncFn(fn: Function, timeout?: number) {
     .invoke("fn");
 }
 
+export function doCopy() {
+  cy.wait(100);
+  cy.focused().realPress(["Control", "c"]);
+  cy.wait(100);
+}
+
+export function doPaste() {
+  cy.wait(100);
+  cy.focused().realPress(["Control", "v"]);
+  cy.wait(100);
+}
+
 export const getSlateNodeEntry = (
   editor: EditorType,
   jqEl: JQuery<HTMLElement>

@@ -4368,6 +4368,11 @@ cypress-plugin-tab@^1.0.5:
   dependencies:
     ally.js "^1.4.1"
 
+cypress-real-events@^1.5.1:
+  version "1.5.1"
+  resolved "https://registry.nlark.com/cypress-real-events/download/cypress-real-events-1.5.1.tgz#5eeb86d2a7aad9aa6d5271e288a23e46373915cd"
+  integrity sha1-XuuG0qeq2aptUnHiiKI+Rjc5Fc0=
+
 cypress@^8.6.0:
   version "8.6.0"
   resolved "https://registry.npmmirror.com/cypress/download/cypress-8.6.0.tgz?cache=0&sync_timestamp=1633982852793&other_urls=https%3A%2F%2Fregistry.npmmirror.com%2Fcypress%2Fdownload%2Fcypress-8.6.0.tgz#8d02fa58878b37cfc45bbfce393aa974fa8a8e22"

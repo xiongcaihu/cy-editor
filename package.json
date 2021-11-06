@@ -23,6 +23,7 @@
     "codemirror": "^5.62.2",
     "cypress": "^8.6.0",
     "cypress-plugin-tab": "^1.0.5",
+    "cypress-real-events": "^1.5.1",
     "escape-html": "^1.0.3",
     "html-webpack-plugin": "^4.5.2",
     "jquery": "^3.6.0",

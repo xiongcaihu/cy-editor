@@ -16,6 +16,8 @@
 // Import commands.js using ES2015 syntax:
 import "./commands";
 import "cypress-plugin-tab";
+// https://github.com/dmtrKovalenko/cypress-real-events#cyrealpress
+import "cypress-real-events/support";
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')
