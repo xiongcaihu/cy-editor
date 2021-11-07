@@ -1,8 +1,9 @@
 import { Editor, Element, Transforms } from "slate";
 import { ReactEditor, useSlateStatic } from "slate-react";
-import { Marks } from "../../../common/Defines";
+import { CypressFlagValues, Marks } from "../../../common/Defines";
 import { utils } from "../../../common/utils";
 import { TableLogic } from "../../Table";
+import { ToDoListLogic } from "../../TodoListComp";
 import { ValueSelector } from "../common/ValueSelector";
 
 export const TextAlignButton = () => {
@@ -17,7 +18,7 @@ export const TextAlignButton = () => {
 
         const [node] = Editor.nodes(editor, {
           match(n) {
-            return utils.isTextWrapper(n);
+            return utils.isTextWrapper(n) || ToDoListLogic.isTodoList(n);
           },
         });
         if (!node) return "左对齐";
@@ -32,6 +33,7 @@ export const TextAlignButton = () => {
         return `${value}`;
       }}
       title="对齐方式"
+      cypressId={CypressFlagValues.SET_FONT_ALIGN}
       afterSelect={(value) => {
         ReactEditor.focus(editor);
         const tds = TableLogic.getSelectedTds(editor);
@@ -54,7 +56,7 @@ export const TextAlignButton = () => {
           {
             mode: "lowest",
             match(n) {
-              return utils.isTextWrapper(n);
+              return utils.isTextWrapper(n) || ToDoListLogic.isTodoList(n);
             },
           }
         );

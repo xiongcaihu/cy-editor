@@ -2,7 +2,8 @@ import { Tooltip, Select } from "antd";
 import _ from "lodash";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useSlate, ReactEditor } from "slate-react";
-import { EditorType } from "../../../common/Defines";
+import { CypressFlagValues, EditorType } from "../../../common/Defines";
+import { utils } from "../../../common/utils";
 import { ToolBarConfig } from "./config";
 
 var isMounted = false;
@@ -13,6 +14,7 @@ export const ValueSelector = (props: {
   title: string;
   getValue: (editor: EditorType) => any;
   afterSelect?: (value: string | number) => void;
+  cypressId?: CypressFlagValues;
 }) => {
   const editor = useSlate();
   const [visible, setVisible] = useState(false);
@@ -68,6 +70,7 @@ export const ValueSelector = (props: {
               e.preventDefault();
               setVisible(!visible);
             }}
+            {...utils.insertCypressId(props, "cypressId")}
           ></div>
           <Select
             placeholder={props.title}

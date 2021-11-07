@@ -563,13 +563,13 @@ export const withCyWrap = (editor: EditorType) => {
     }
 
     // 如果一个块级元素出现在textWrapper里，那么直接删除
-    if (Element.isElement(node) && Editor.isBlock(editor, node)) {
-      const [parent] = utils.getParent(editor, path);
-      if (utils.isTextWrapper(parent)) {
-        Transforms.removeNodes(editor, { at: path });
-        return;
-      }
-    }
+    // if (Element.isElement(node) && Editor.isBlock(editor, node)) {
+    //   const [parent] = utils.getParent(editor, path);
+    //   if (utils.isTextWrapper(parent)) {
+    //     Transforms.removeNodes(editor, { at: path });
+    //     return;
+    //   }
+    // }
 
     // inline元素和void元素的前后都必须有文本节点
     if (Element.isElement(node) && InLineTypes.includes(node.type)) {

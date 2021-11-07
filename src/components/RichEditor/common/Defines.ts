@@ -8,6 +8,7 @@ declare module "slate" {
     Editor: EditorType;
     Element: CustomElement;
     Text: CustomText;
+    Node: CustomElement | EditorType | CustomText;
   }
 }
 
@@ -113,6 +114,14 @@ export enum CypressFlagValues {
   SELECTE_TD = "select_td",
   AT_PERSON_MODAL = "atPersonModal",
   AT_PERSON_TEXT = "atPersonText",
+  WRAP_FONT_COMP = "wrapFontComp",
+  SET_FONT_SIZE = "setFontSize",
+  SET_FONT_ALIGN = "setFontAlign",
+  SET_BOLD = "setBold",
+  SET_ITALIC = "setItalic",
+  SET_UNDERLINE = 'setUnderline',
+  SET_LINETHROUGH = 'setLinethrough',
+  COPY_FORMAT = 'copyFormat'
 }
 
 export const FixlayoutBoxId = "CyEditor_FixlayoutBox";

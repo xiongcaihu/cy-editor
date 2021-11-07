@@ -1,6 +1,6 @@
 import { Transforms, Editor, Element } from "slate";
 import { useSlateStatic } from "slate-react";
-import { EditorType, Marks } from "../../../common/Defines";
+import { CypressFlagValues, EditorType, Marks } from "../../../common/Defines";
 import { TableLogic } from "../../Table";
 import { ValueSelector } from "../common/ValueSelector";
 
@@ -31,6 +31,7 @@ export const FontSizeButton = () => {
         return `${value}px`;
       }}
       title="字体大小"
+      cypressId={CypressFlagValues.SET_FONT_SIZE}
       afterSelect={(value) => {
         const tds = TableLogic.getSelectedTds(editor);
         if (tds.length > 0) {

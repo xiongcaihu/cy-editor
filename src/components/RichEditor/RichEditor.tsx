@@ -31,6 +31,7 @@ import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
 import "./RichEditor.css";
 import { getCopyedCells } from "./common/globalStore";
 import { FixLayoutBox } from "./comps/FixLayoutBox";
+import { ToDoListLogic } from "./comps/TodoListComp";
 
 type savedMarksShape =
   | (Partial<{
@@ -170,28 +171,30 @@ const EditorComp: EditorCompShape = (props) => {
         at: editor.selection?.anchor,
         mode: "lowest",
         match(n) {
-          return utils.isTextWrapper(n);
+          return utils.isTextWrapper(n) || ToDoListLogic.isTodoList(n);
         },
       });
-      if (!textWrapper) return;
+
       for (const key of Object.values(Marks)) {
         Editor.removeMark(editor, key);
       }
-      if (hasTextAlign) {
+
+      textWrapper &&
         Transforms.unsetNodes(editor, Marks.TextAlign, { at: textWrapper[1] });
-      }
+
       for (const key in savedMarks) {
         if (key === "children") continue;
         Editor.addMark(editor, key, savedMarks[key]);
       }
       if (hasTextAlign) {
-        Transforms.setNodes(
-          editor,
-          {
-            [Marks.TextAlign]: savedMarks[Marks.TextAlign],
-          },
-          { at: textWrapper[1] }
-        );
+        textWrapper &&
+          Transforms.setNodes(
+            editor,
+            {
+              [Marks.TextAlign]: savedMarks[Marks.TextAlign],
+            },
+            { at: textWrapper[1] }
+          );
       }
       setSavedMarks(null);
       document.body.style.cursor = "auto";

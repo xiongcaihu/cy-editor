@@ -19,7 +19,7 @@ export const TodoListComp: (props: RenderElementProps) => JSX.Element = ({
   const readOnly = useReadOnly();
 
   return (
-    <div {...attributes}>
+    <div {...attributes} style={{ textAlign: element.textAlign }}>
       <span contentEditable={false} style={{ marginRight: 4 }}>
         <Checkbox
           checked={element.checked}

@@ -3,9 +3,11 @@ import _ from "lodash";
 import { useContext, useState, useRef, useEffect, useMemo } from "react";
 import { Editor, Element, Range } from "slate";
 import { useSlate } from "slate-react";
+import { CypressFlagValues } from "../../../common/Defines";
 import { utils } from "../../../common/utils";
 import { EditorContext } from "../../../RichEditor";
 import { TableLogic } from "../../Table";
+import { ToDoListLogic } from "../../TodoListComp";
 import { ToolBarConfig } from "../common/config";
 import { StaticButton } from "../common/StaticButton";
 
@@ -50,7 +52,7 @@ export const CopyFormatButton: React.FC<{}> = (props) => {
       const textWrapper = Editor.above(editor, {
         mode: "lowest",
         match(n) {
-          return utils.isTextWrapper(n);
+          return utils.isTextWrapper(n) || ToDoListLogic.isTodoList(n);
         },
       });
       if (textWrapper) setSavedMarks({ ...marks, ...textWrapper[0] } || null);
@@ -67,6 +69,7 @@ export const CopyFormatButton: React.FC<{}> = (props) => {
         mousedownFunc={() => {
           copyMark();
         }}
+        cypressId={CypressFlagValues.COPY_FORMAT}
       >
         <FormatPainterOutlined />
       </StaticButton>

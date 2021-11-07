@@ -3,7 +3,8 @@ import _ from "lodash";
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Transforms, Editor, Element } from "slate";
 import { useSlate, ReactEditor } from "slate-react";
-import { EditorType, Marks } from "../../../common/Defines";
+import { CypressFlagValues, EditorType, Marks } from "../../../common/Defines";
+import { utils } from "../../../common/utils";
 import { TableLogic } from "../../Table";
 import { ToolBarConfig } from "./config";
 
@@ -28,6 +29,7 @@ var isMounted = false;
 export const MarkButton: React.FC<{
   title: string;
   mark?: Marks;
+  cypressId?: CypressFlagValues;
 }> = (props) => {
   const editor = useSlate();
   const [type, setType] = useState("text");
@@ -93,7 +95,9 @@ export const MarkButton: React.FC<{
             props.mark && toggleMark(props.mark);
           }}
         >
-          {props.children}
+          <span {...utils.insertCypressId(props, "cypressId")}>
+            {props.children}
+          </span>
         </Button>
       </Tooltip>
     );

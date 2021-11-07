@@ -50,7 +50,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "cypress:open": "npx cypress open-ct",
-    "cypress:no-open": "npx cypress run-ct --browser chrome --headed"
+    "cypress:all": "npx cypress run-ct --browser chrome --headed"
   },
   "eslintConfig": {
     "extends": [

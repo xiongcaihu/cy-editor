@@ -114,7 +114,7 @@ export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
   return (
     <div {...attributes} style={{ display: "inline", position: "relative" }}>
       <Popover
-        placement="right"
+        placement="bottomLeft"
         content={editPanel}
         trigger={readOnly ? [] : ["hover"]}
       >

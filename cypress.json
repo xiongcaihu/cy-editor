@@ -2,6 +2,9 @@
   "testFiles": "integration/**/*.spec.{js,ts,jsx,tsx}",
   "componentFolder": "cypress",
   "screenshotOnRunFailure": false,
+  "viewportHeight": 900,
+  "viewportWidth": 1600,
+  "scrollBehavior": false,
   "video": false,
   "retries": 1
 }
