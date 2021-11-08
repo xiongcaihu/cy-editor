@@ -44,23 +44,13 @@ export const FontTypeButton = () => {
       );
       if (todos) {
         todos.forEach((todo) => {
-          const parent = Editor.parent(editor, todo[1]);
-          if (utils.isTextWrapper(parent[0])) {
-            Transforms.setNodes(
-              editor,
-              { type },
-              {
-                at: parent[1],
-              }
-            );
-          } else
-            Transforms.wrapNodes(
-              editor,
-              { type, children: [] },
-              {
-                at: todo[1],
-              }
-            );
+          Transforms.setNodes(
+            editor,
+            { childrenWrapper: type },
+            {
+              at: todo[1],
+            }
+          );
         });
       }
     }
@@ -71,12 +61,18 @@ export const FontTypeButton = () => {
       getValue={(editor: EditorType) => {
         const [node] = Editor.nodes(editor, {
           match(n) {
-            return utils.isTextWrapper(n);
+            return utils.isTextWrapper(n) || ToDoListLogic.isTodoList(n);
           },
         });
         if (!node) return "正文";
-        const type = Element.isElement(node[0]) && node[0].type;
-        return type === "div" || type === false ? "正文" : type.toUpperCase();
+        const type =
+          Element.isElement(node[0]) &&
+          (node[0].type === CET.TODOLIST
+            ? node[0].childrenWrapper || "正文"
+            : node[0].type);
+        return type === "div" || type === false
+          ? "正文"
+          : String(type).toUpperCase();
       }}
       options={["H1", "H2", "H3", "H4", "正文"]}
       optionLabelRender={(value) => {

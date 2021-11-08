@@ -332,9 +332,15 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       colSpan={element.colSpan}
       rowSpan={element.rowSpan}
       style={{
-        minWidth: element.width || tdMinWidth,
-        maxWidth: element.width || tdMinWidth,
-        width: element.width || tdMinWidth,
+        ...(element.tdAutoWidth
+          ? {
+              minWidth: tdMinWidth,
+            }
+          : {
+              minWidth: element.width || tdMinWidth,
+              maxWidth: element.width || tdMinWidth,
+              width: element.width || tdMinWidth,
+            }),
         height: element.height || tdMinHeight,
         color: element[Marks.Color] || "unset",
         backgroundColor:
@@ -353,7 +359,7 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
       onDoubleClick={tdDbClick}
     >
       {children}
-      {!readOnly ? (
+      {!readOnly && !element.tdAutoWidth ? (
         <>
           <span
             className="resizer"

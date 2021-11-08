@@ -18,28 +18,51 @@ export const TodoListComp: (props: RenderElementProps) => JSX.Element = ({
   const editor = useSlateStatic();
   const readOnly = useReadOnly();
 
-  return (
-    <div {...attributes} style={{ textAlign: element.textAlign }}>
-      <span contentEditable={false} style={{ marginRight: 4 }}>
-        <Checkbox
-          checked={element.checked}
-          onChange={(e) => {
-            Transforms.setNodes(
-              editor,
-              {
-                checked: e.target.checked,
-              },
-              {
-                at: ReactEditor.findPath(editor, element),
-              }
-            );
-          }}
-          disabled={readOnly}
-        ></Checkbox>
-      </span>
-      <span>{children}</span>
-    </div>
-  );
+  const renderFather = () => {
+    const attrs = {
+      ...attributes,
+      style: { textAlign: element.textAlign },
+    };
+    switch (element.childrenWrapper || "div") {
+      case "div":
+        return <div {...attrs}>{renderChild()}</div>;
+      case "h1":
+        return <h1 {...attrs}>{renderChild()}</h1>;
+      case "h2":
+        return <h2 {...attrs}>{renderChild()}</h2>;
+      case "h3":
+        return <h3 {...attrs}>{renderChild()}</h3>;
+      case "h4":
+        return <h4 {...attrs}>{renderChild()}</h4>;
+    }
+  };
+
+  const renderChild = () => {
+    return (
+      <>
+        <span contentEditable={false} style={{ marginRight: 4 }}>
+          <Checkbox
+            checked={element.checked}
+            onChange={(e) => {
+              Transforms.setNodes(
+                editor,
+                {
+                  checked: e.target.checked,
+                },
+                {
+                  at: ReactEditor.findPath(editor, element),
+                }
+              );
+            }}
+            disabled={readOnly}
+          ></Checkbox>
+        </span>
+        <span>{children}</span>
+      </>
+    );
+  };
+
+  return renderFather();
 };
 
 export const ToDoListLogic = {

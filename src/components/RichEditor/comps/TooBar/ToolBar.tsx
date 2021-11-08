@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable eqeqeq */
 import { Col, Row, Divider } from "antd";
-import { Transforms } from "slate";
+import { Editor, Element, NodeEntry, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import _ from "lodash";
 import { SaveOutlined } from "@ant-design/icons";
@@ -45,6 +45,7 @@ import { SplitCellButton } from "./funcButtons/SplitCellButton";
 import { ClearCellButton } from "./funcButtons/ClearCellButton";
 import { CET } from "../../common/Defines";
 import { SelectCellButton } from "./funcButtons/SelectCellButton";
+import { TableLogic } from "../Table";
 
 const ReadOnlyButton: React.FC<{}> = (props) => {
   const { readOnly, setReadOnly } = useContext(EditorContext);
@@ -144,6 +145,62 @@ export const ToolBar: React.FC<{
         <Col>{diverComp}</Col>
         <Col>
           <InsertTableButton></InsertTableButton>
+        </Col>
+        <Col>
+          <button
+            onClick={() => {
+              const isInTable =
+                TableLogic.isInTable(editor) ||
+                TableLogic.getFirstSelectedTd(editor);
+              if (isInTable) {
+                var table: NodeEntry = null as any;
+                if (editor.selection) {
+                  table = Array.from(
+                    Editor.nodes(editor, {
+                      mode: "highest",
+                      match: (n) => TableLogic.isTable(n),
+                    })
+                  )?.[0];
+                } else {
+                  const td = TableLogic.getFirstSelectedTd(editor);
+                  if (td) {
+                    table =
+                      Editor.above(editor, {
+                        match: (n) => TableLogic.isTable(n),
+                        at: td[1],
+                      }) || (null as any);
+                  }
+                }
+                if (!table) return;
+                const isAutoWidth =
+                  Element.isElement(table[0]) && table[0].tdAutoWidth;
+                Editor.withoutNormalizing(editor, () => {
+                  Transforms.setNodes(
+                    editor,
+                    {
+                      tdAutoWidth: !isAutoWidth,
+                    },
+                    {
+                      at: table[1],
+                    }
+                  );
+                  Transforms.setNodes(
+                    editor,
+                    {
+                      tdAutoWidth: !isAutoWidth,
+                    },
+                    {
+                      at: table[1],
+                      mode: "lowest",
+                      match: (n) => TableLogic.isTd(n),
+                    }
+                  );
+                });
+              }
+            }}
+          >
+            自适应表格
+          </button>
         </Col>
         <Col>
           <DeleteTableButton></DeleteTableButton>

@@ -1,4 +1,4 @@
-import { TextWrappers, CET } from "../common/Defines";
+import { TextWrappers, CET, Marks } from "../common/Defines";
 import { TD } from "../comps/Td";
 import { Table } from "../comps/Table";
 import { ImgComp } from "../comps/ImgComp";
@@ -44,7 +44,7 @@ export const MyElements: (
       return <ul {...attributes}>{children}</ul>;
     case CET.LIST_ITEM:
       return (
-        <li {...attributes} style={{ color: element.liColor || "unset" }}>
+        <li {...attributes} style={{ color: element[Marks.Color] || "unset" }}>
           {children}
         </li>
       );

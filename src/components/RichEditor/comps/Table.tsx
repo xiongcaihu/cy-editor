@@ -19,7 +19,13 @@ import {
   useReadOnly,
   useSlateStatic,
 } from "slate-react";
-import { CET, CustomElement, EditorType, Marks } from "../common/Defines";
+import {
+  CET,
+  CustomElement,
+  EditorContainerClassName,
+  EditorType,
+  Marks,
+} from "../common/Defines";
 import { utils } from "../common/utils";
 import { EditorContext } from "../RichEditor";
 import { customTdShape, TdLogic, tdMinHeight, tdMinWidth } from "./Td";
@@ -118,7 +124,7 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         reCalcTdWidth();
       });
     });
-    const container = document.querySelector(".cyEditor__content");
+    const container = document.querySelector(`.${EditorContainerClassName}`);
     container && ro.observe(container);
 
     return () => {

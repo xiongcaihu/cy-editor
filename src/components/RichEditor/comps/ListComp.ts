@@ -298,7 +298,7 @@ export const ListLogic = {
       if (colors.size == 1) {
         const onlyColor = Array.from(colors).pop();
         onlyColor &&
-          Transforms.setNodes(editor, { liColor: onlyColor }, { at: path });
+          Transforms.setNodes(editor, { [Marks.Color]: onlyColor }, { at: path });
         return;
       }
     }

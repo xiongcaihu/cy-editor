@@ -173,7 +173,7 @@ export const utils = {
     let leftDistance = 0,
       topDistance = 0;
     do {
-      leftDistance += nowNode.offsetLeft;
+      leftDistance += nowNode.offsetLeft - (nowNode.scrollLeft || 0);
       topDistance += nowNode.offsetTop;
       nowNode = nowNode.offsetParent;
     } while (nowNode != B);
@@ -195,6 +195,16 @@ export const utils = {
     let parent = startDom;
     while (parent != null && parent != targetDom) {
       parent = parent.offsetParent as HTMLElement;
+    }
+    return parent;
+  },
+  findParentByClassName(
+    startDom: HTMLElement,
+    className: string
+  ): HTMLElement | null {
+    let parent = startDom;
+    while (parent != null && parent.className != className) {
+      parent = parent.parentNode as HTMLElement;
     }
     return parent;
   },

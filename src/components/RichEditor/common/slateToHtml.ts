@@ -33,8 +33,8 @@ const getStyle = (node: Node) => {
       }
     }
     // li
-    if (node.type === CET.LIST_ITEM && node.liColor != null) {
-      style.color = node.liColor;
+    if (node.type === CET.LIST_ITEM && node[Marks.Color] != null) {
+      style.color = node[Marks.Color];
     }
     // td
     if (node.type === CET.TD) {

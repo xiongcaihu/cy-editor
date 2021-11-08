@@ -53,6 +53,7 @@ export const ToDoListButton = () => {
               editor,
               {
                 type: CET.TODOLIST,
+                childrenWrapper: "div",
                 children: [],
               },
               {

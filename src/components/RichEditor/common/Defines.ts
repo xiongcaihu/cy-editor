@@ -59,12 +59,13 @@ export type CustomElement = {
   border?: boolean; // img边框
   colSpan?: number; // td属性
   rowSpan?: number; // td 属性
+  tdAutoWidth?:boolean; // 是否自动宽度
   width?: number; // td样式属性
   height?: number; // td样式属性
   selected?: boolean; // td是否被选中
+  childrenWrapper?: "div" | "h1" | "h2" | "h3" | "h4"; // todo 里包裹文字的容器
   // canTdEdit?: boolean; // td是否可以编辑
   tdIsEditing?: boolean; // 光标是否处于该td上
-  liColor?: string; // li color
   checked?: boolean; // todoList属性
   openPopModal?: boolean; // 是否打开弹窗
   wrapperWidthWhenCreated?: number; // table创建时所在的容器宽度，用于动态计算td的宽度
@@ -119,9 +120,12 @@ export enum CypressFlagValues {
   SET_FONT_ALIGN = "setFontAlign",
   SET_BOLD = "setBold",
   SET_ITALIC = "setItalic",
-  SET_UNDERLINE = 'setUnderline',
-  SET_LINETHROUGH = 'setLinethrough',
-  COPY_FORMAT = 'copyFormat'
+  SET_UNDERLINE = "setUnderline",
+  SET_LINETHROUGH = "setLinethrough",
+  COPY_FORMAT = "copyFormat",
+  CLEAN_FORMAT = "cleanFormat",
 }
 
 export const FixlayoutBoxId = "CyEditor_FixlayoutBox";
+
+export const EditorContainerClassName = 'cyEditor__content';

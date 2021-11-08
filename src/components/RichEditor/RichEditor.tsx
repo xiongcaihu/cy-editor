@@ -15,6 +15,7 @@ import {
   CustomElement,
   EditableProps,
   EditorCompShape,
+  EditorContainerClassName,
   EditorType,
   Marks,
   StateShape,
@@ -167,27 +168,33 @@ const EditorComp: EditorCompShape = (props) => {
       if (hasSelectTd) return;
 
       const hasTextAlign = savedMarks[Marks.TextAlign];
-      const textWrapper = Editor.above(editor, {
-        at: editor.selection?.anchor,
-        mode: "lowest",
-        match(n) {
-          return utils.isTextWrapper(n) || ToDoListLogic.isTodoList(n);
-        },
-      });
+      const textWrappers =
+        Array.from(
+          Editor.nodes(editor, {
+            // at: editor.selection?.anchor,
+            mode: "lowest",
+            match(n) {
+              return utils.isTextWrapper(n) || ToDoListLogic.isTodoList(n);
+            },
+          })
+        ) || [];
 
       for (const key of Object.values(Marks)) {
         Editor.removeMark(editor, key);
       }
 
-      textWrapper &&
-        Transforms.unsetNodes(editor, Marks.TextAlign, { at: textWrapper[1] });
+      textWrappers.forEach((textWrapper) => {
+        Transforms.unsetNodes(editor, Marks.TextAlign, {
+          at: textWrapper[1],
+        });
+      });
 
       for (const key in savedMarks) {
         if (key === "children") continue;
         Editor.addMark(editor, key, savedMarks[key]);
       }
       if (hasTextAlign) {
-        textWrapper &&
+        textWrappers.forEach((textWrapper) => {
           Transforms.setNodes(
             editor,
             {
@@ -195,6 +202,7 @@ const EditorComp: EditorCompShape = (props) => {
             },
             { at: textWrapper[1] }
           );
+        });
       }
       setSavedMarks(null);
       document.body.style.cursor = "auto";
@@ -238,10 +246,11 @@ const EditorComp: EditorCompShape = (props) => {
         >
           {MyToolBar}
           <div
-            className="cyEditor__content"
+            className={EditorContainerClassName}
             ref={editorDomRef}
             style={{
-              overflow: "auto",
+              overflowY: "auto",
+              overflowX: "hidden",
               height: window.screen.availHeight - 200,
               border: "1px solid",
               padding: 12,

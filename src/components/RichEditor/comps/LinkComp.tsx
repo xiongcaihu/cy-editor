@@ -116,7 +116,7 @@ export const LinkComp: (props: RenderElementProps) => JSX.Element = ({
       <Popover
         placement="bottomLeft"
         content={editPanel}
-        trigger={readOnly ? [] : ["hover"]}
+        trigger={readOnly ? [] : ["click"]}
       >
         <a
           href={element.url}

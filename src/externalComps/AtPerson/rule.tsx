@@ -30,7 +30,7 @@ export const rule = (editor: EditorType) => {
           {
             visible: true,
             left: modalX,
-            top: modalY + 16,
+            top: modalY + 18,
           },
           <ChoosePersonComp
             onChange={(persons) => {

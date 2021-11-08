@@ -1,9 +1,11 @@
 import Icon from "@ant-design/icons";
 import { Transforms, Editor } from "slate";
 import { useSlateStatic } from "slate-react";
-import { EditorType, Marks } from "../../../common/Defines";
+import { CypressFlagValues, EditorType, Marks } from "../../../common/Defines";
 import { utils } from "../../../common/utils";
+import { ListLogic } from "../../ListComp";
 import { TableLogic } from "../../Table";
+import { ToDoListLogic } from "../../TodoListComp";
 import { StaticButton } from "../common/StaticButton";
 
 export const cleanFormat = (editor: EditorType) => {
@@ -15,19 +17,24 @@ export const cleanFormat = (editor: EditorType) => {
     return;
   }
 
+  for (const mark of Object.values(Marks)) {
+    Editor.removeMark(editor, mark);
+  }
   const all = Editor.nodes(editor, {
-    mode: "lowest",
     match(n) {
-      return utils.isTextWrapper(n);
+      return (
+        ListLogic.isListItem(n) ||
+        TableLogic.isTd(n) ||
+        ToDoListLogic.isTodoList(n) ||
+        utils.isTextWrapper(n)
+      );
     },
   });
   for (const el of all) {
     Transforms.unsetNodes(editor, Object.values(Marks), { at: el[1] });
   }
 
-  for (const mark of Object.values(Marks)) {
-    Editor.removeMark(editor, mark);
-  }
+  Transforms.deselect(editor);
 };
 
 export const CleanFormatButton: React.FC<{}> = () => {
@@ -38,6 +45,7 @@ export const CleanFormatButton: React.FC<{}> = () => {
       mousedownFunc={() => {
         cleanFormat(editor);
       }}
+      cypressId={CypressFlagValues.CLEAN_FORMAT}
     >
       <Icon
         component={() => (
