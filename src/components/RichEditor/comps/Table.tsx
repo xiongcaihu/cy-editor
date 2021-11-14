@@ -406,6 +406,11 @@ export const Table: (props: RenderElementProps) => JSX.Element = ({
         overflowY: "hidden",
         borderCollapse: "collapse",
         position: "relative",
+        ...(element.tdAutoWidth
+          ? {
+              width: "100%",
+            }
+          : {}),
       }}
       onMouseDown={handleTableMouseDown}
       onMouseUp={handleTableMouseUp}

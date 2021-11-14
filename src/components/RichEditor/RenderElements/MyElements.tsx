@@ -7,6 +7,7 @@ import { LinkComp } from "../comps/LinkComp";
 import { TodoListComp as TODO } from "../comps/TodoListComp";
 import { CheckBoxComp } from "../comps/CheckBox";
 import { RenderElementProps } from "slate-react";
+import { utils } from "../common/utils";
 
 export type externalCompShape = {
   comp: React.FC<RenderElementProps>;
@@ -19,9 +20,9 @@ export const MyElements: (
   }
 ) => JSX.Element = (props) => {
   const { attributes, children, element } = props;
-  const style: any = {};
+  let style: any = {};
   if (TextWrappers.includes(element.type) && element.textAlign)
-    style.textAlign = element.textAlign;
+    style = { ...style, ...utils.getTextAlignStyle(element.textAlign) };
 
   // 加载外部的组件
   const ExternalComp = (props.comps || []).find((comp) => {

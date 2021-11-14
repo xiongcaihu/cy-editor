@@ -148,9 +148,15 @@ export const InsertImgButton = () => {
 
   return (
     <ReactButton
-      title={`插入图片（支持格式：${acceptImgTypes
-        .join("，")
-        .replace(/image\//gi, ".")}）`}
+      title={
+        <span className="customToolBarTitle">
+          插入图片
+          <br />
+          <span className="customToolBarTitle_subTitle">
+            支持格式：{acceptImgTypes.join("，").replace(/image\//gi, ".")}
+          </span>
+        </span>
+      }
       mousedownFunc={() => {
         chooseImg();
       }}

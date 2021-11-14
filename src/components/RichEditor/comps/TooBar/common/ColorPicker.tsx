@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Editor, Element } from "slate";
 import { useSlate } from "slate-react";
 import { Marks } from "../../../common/Defines";
+import { utils } from "../../../common/utils";
 import { TableLogic } from "../../Table";
 import { ColorPickerCore } from "./ColorPickerCore";
 import { ToolBarConfig } from "./config";
@@ -59,6 +60,9 @@ export const ColorPicker: React.FC<{
         zIndex={99}
         mouseLeaveDelay={0}
         mouseEnterDelay={0}
+        getPopupContainer={(e) => {
+          return utils.findParentByClassName(e, "cyEditor") || document.body;
+        }}
       >
         <div
           onMouseLeave={() => {

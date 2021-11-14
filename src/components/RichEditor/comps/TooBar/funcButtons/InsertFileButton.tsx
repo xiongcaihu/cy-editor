@@ -157,7 +157,15 @@ export const InsertFileButton = () => {
 
   return (
     <ReactButton
-      title={`插入附件（支持格式：${acceptFileTypes.join("，")}）`}
+      title={
+        <span className="customToolBarTitle">
+          插入附件
+          <br />
+          <span className="customToolBarTitle_subTitle">
+            支持格式：{acceptFileTypes.join("，")}
+          </span>
+        </span>
+      }
       mousedownFunc={() => {
         chooseFile();
       }}

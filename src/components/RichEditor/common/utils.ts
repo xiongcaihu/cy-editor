@@ -10,10 +10,17 @@ import {
   NodeEntry,
   Point,
 } from "slate";
-import { TextWrappers, EditorType, CET, CypressTestFlag } from "./Defines";
+import {
+  TextWrappers,
+  EditorType,
+  CET,
+  CypressTestFlag,
+  TextAlignEnum,
+} from "./Defines";
 import { TableLogic } from "../comps/Table";
 import { jsx } from "slate-hyperscript";
 import { ReactEditor } from "slate-react";
+import { CSSProperties } from "react";
 
 const deserialize: any = (el: any) => {
   // text node
@@ -99,6 +106,36 @@ const deserialize: any = (el: any) => {
 };
 
 export const utils = {
+  getTextAlignStyle(
+    textAlign: TextAlignEnum | null | undefined
+  ): CSSProperties {
+    if (!textAlign) return {};
+    switch (textAlign) {
+      case TextAlignEnum.LEFT:
+        return {
+          textAlign: "left",
+        };
+      case TextAlignEnum.RIGHT:
+        return {
+          textAlign: "right",
+        };
+      case TextAlignEnum.X_CENTER:
+        return {
+          textAlign: "center",
+        };
+      case TextAlignEnum.Y_CENTER:
+        return {
+          verticalAlign: "middle",
+        };
+      case TextAlignEnum.XY_CENTER:
+        return {
+          verticalAlign: "middle",
+          textAlign: "center",
+        };
+      default:
+        return {};
+    }
+  },
   getDataTransfer(nodes: Node[]) {
     const newTransfer = new DataTransfer();
     newTransfer.setData(

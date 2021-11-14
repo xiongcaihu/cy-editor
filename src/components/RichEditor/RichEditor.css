@@ -107,3 +107,9 @@
   display: flex;
   align-items: center;
 }
+
+.cyEditor .customToolBarTitle .customToolBarTitle_subTitle {
+  font-size: 10px;
+  opacity: 0.5;
+  word-break: break-all;
+}

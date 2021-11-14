@@ -16,6 +16,7 @@ import {
   setEditingTdsPath,
   setStrPathSetOfSelectedTds,
 } from "../common/globalStore";
+import { utils } from "../common/utils";
 import { TableLogic } from "./Table";
 
 export type customTdShape = {
@@ -347,13 +348,14 @@ export const TD: (props: RenderElementProps) => JSX.Element = ({
           element.selected && !readOnly
             ? "rgba(180,215,255,.7)"
             : element[Marks.BGColor] || "unset",
-        textAlign: element[Marks.TextAlign] || "unset",
+        // textAlign: element[Marks.TextAlign] || "unset",
         fontSize: element[Marks.FontSize] || "unset",
         fontWeight: element[Marks.BOLD] ? "bold" : "unset",
         fontStyle: element[Marks.ITALIC] ? "italic" : "unset",
         textDecoration: `${element[Marks.Underline] ? "underline" : ""} ${
           element[Marks.LineThrough] ? "line-through" : ""
         }`,
+        ...utils.getTextAlignStyle(element.textAlign),
       }}
       onClick={tdClick}
       onDoubleClick={tdDbClick}

@@ -9,7 +9,14 @@ export const StaticButton: React.FC<{
   cypressId?: CypressFlagValues;
 }> = (props) => {
   return (
-    <Tooltip title={props.title} mouseEnterDelay={0} mouseLeaveDelay={0}>
+    <Tooltip
+      title={props.title}
+      mouseEnterDelay={0}
+      mouseLeaveDelay={0}
+      getPopupContainer={(e) => {
+        return utils.findParentByClassName(e, "cyEditor") || document.body;
+      }}
+    >
       <Button
         className="cyEditor__toolbar__button"
         type={"text"}

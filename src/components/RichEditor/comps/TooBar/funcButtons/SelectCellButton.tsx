@@ -11,7 +11,13 @@ export const SelectCellButton = () => {
 
   return (
     <ReactButton
-      title="选中单元格（鼠标移动到单元格的边缘出现十字标双击）"
+      title={
+        <span className="customToolBarTitle">
+          选中单元格
+          <br />
+          <span className="customToolBarTitle_subTitle">或者鼠标移动到单元格的边缘出现十字标时，进行双击</span>
+        </span>
+      }
       mousedownFunc={() => {
         const td = TableLogic.getEditingTd(editor);
         if (!td) return;

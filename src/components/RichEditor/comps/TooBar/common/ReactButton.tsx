@@ -1,6 +1,6 @@
 import { Button, Tooltip } from "antd";
 import _ from "lodash";
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useSlate } from "slate-react";
 import { CypressFlagValues, EditorType } from "../../../common/Defines";
 import { utils } from "../../../common/utils";
@@ -9,7 +9,7 @@ import { ToolBarConfig } from "./config";
 var isMounted = false;
 
 export const ReactButton: React.FC<{
-  title: string;
+  title: string | React.ReactNode;
   mousedownFunc: (e: any) => void;
   disabledCondition?: (editor: EditorType) => boolean;
   cypressId?: CypressFlagValues;
@@ -37,7 +37,14 @@ export const ReactButton: React.FC<{
   });
   return (
     <div ref={buttonRef}>
-      <Tooltip title={title} mouseEnterDelay={0} mouseLeaveDelay={0}>
+      <Tooltip
+        title={title}
+        mouseEnterDelay={0}
+        mouseLeaveDelay={0}
+        getPopupContainer={(e) => {
+          return utils.findParentByClassName(e, "cyEditor") || document.body;
+        }}
+      >
         <Button
           className="cyEditor__toolbar__button"
           type={"text"}

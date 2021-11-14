@@ -59,7 +59,7 @@ export type CustomElement = {
   border?: boolean; // img边框
   colSpan?: number; // td属性
   rowSpan?: number; // td 属性
-  tdAutoWidth?:boolean; // 是否自动宽度
+  tdAutoWidth?: boolean; // 是否自动宽度
   width?: number; // td样式属性
   height?: number; // td样式属性
   selected?: boolean; // td是否被选中
@@ -71,7 +71,7 @@ export type CustomElement = {
   wrapperWidthWhenCreated?: number; // table创建时所在的容器宽度，用于动态计算td的宽度
   defaultMode?: string; // code 专属
   defaultCode?: string; // code 专属
-  textAlign?: "left" | "right" | "center"; // textWrapper的属性
+  textAlign?: TextAlignEnum; // textWrapper和todoListComp的属性
   tdMap?: any; // 用于计算tdMap
   children: (CustomText | CustomElement)[];
 };
@@ -126,6 +126,14 @@ export enum CypressFlagValues {
   CLEAN_FORMAT = "cleanFormat",
 }
 
+export enum TextAlignEnum {
+  LEFT = "left",
+  RIGHT = "right",
+  X_CENTER = "xCenter",
+  Y_CENTER = "yCenter", // 垂直居中
+  XY_CENTER = "xyCenter", // 水平垂直居中
+}
+
 export const FixlayoutBoxId = "CyEditor_FixlayoutBox";
 
-export const EditorContainerClassName = 'cyEditor__content';
+export const EditorContainerClassName = "cyEditor__content";

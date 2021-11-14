@@ -1,6 +1,10 @@
 import { Editor, Element, Transforms } from "slate";
 import { ReactEditor, useSlateStatic } from "slate-react";
-import { CypressFlagValues, Marks } from "../../../common/Defines";
+import {
+  CypressFlagValues,
+  Marks,
+  TextAlignEnum,
+} from "../../../common/Defines";
 import { utils } from "../../../common/utils";
 import { TableLogic } from "../../Table";
 import { ToDoListLogic } from "../../TodoListComp";
@@ -23,13 +27,21 @@ export const TextAlignButton = () => {
         });
         if (!node) return "左对齐";
         const textAlign = Element.isElement(node[0]) && node[0].textAlign;
-        return textAlign === false || textAlign == null ? "left" : textAlign;
+        return textAlign === false || textAlign == null
+          ? TextAlignEnum.LEFT
+          : textAlign;
       }}
-      options={["left", "right", "center"]}
+      options={[
+        TextAlignEnum.LEFT,
+        TextAlignEnum.RIGHT,
+        TextAlignEnum.X_CENTER,
+      ]}
       optionLabelRender={(value) => {
-        if (value === "left") return "左对齐";
-        if (value === "right") return "右对齐";
-        if (value === "center") return "居中对齐";
+        if (value === TextAlignEnum.LEFT) return "左对齐";
+        if (value === TextAlignEnum.RIGHT) return "右对齐";
+        if (value === TextAlignEnum.X_CENTER) return "水平居中";
+        if (value === TextAlignEnum.Y_CENTER) return "垂直居中";
+        if (value === TextAlignEnum.XY_CENTER) return "水平垂直居中";
         return `${value}`;
       }}
       title="对齐方式"

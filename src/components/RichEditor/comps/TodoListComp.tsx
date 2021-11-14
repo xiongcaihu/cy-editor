@@ -9,6 +9,7 @@ import {
   useReadOnly,
 } from "slate-react";
 import { CET, EditorType } from "../common/Defines";
+import { utils } from "../common/utils";
 
 export const TodoListComp: (props: RenderElementProps) => JSX.Element = ({
   attributes,
@@ -21,7 +22,9 @@ export const TodoListComp: (props: RenderElementProps) => JSX.Element = ({
   const renderFather = () => {
     const attrs = {
       ...attributes,
-      style: { textAlign: element.textAlign },
+      style: {
+        ...utils.getTextAlignStyle(element.textAlign),
+      },
     };
     switch (element.childrenWrapper || "div") {
       case "div":

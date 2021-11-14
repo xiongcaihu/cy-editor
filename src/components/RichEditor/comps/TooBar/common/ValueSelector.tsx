@@ -44,6 +44,9 @@ export const ValueSelector = (props: {
         zIndex={99}
         mouseEnterDelay={0}
         mouseLeaveDelay={0}
+        getPopupContainer={(e) => {
+          return utils.findParentByClassName(e, "cyEditor") || document.body;
+        }}
       >
         <div
           ref={toolDom}
@@ -87,6 +90,7 @@ export const ValueSelector = (props: {
               props?.afterSelect?.(value);
               setVisible(false);
             }}
+            dropdownMatchSelectWidth={false}
           >
             {props.options.map((value) => {
               return (

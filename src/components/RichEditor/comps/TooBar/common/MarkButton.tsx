@@ -86,7 +86,14 @@ export const MarkButton: React.FC<{
 
   return useMemo(() => {
     return (
-      <Tooltip title={props.title} mouseEnterDelay={0} mouseLeaveDelay={0}>
+      <Tooltip
+        title={props.title}
+        mouseEnterDelay={0}
+        mouseLeaveDelay={0}
+        getPopupContainer={(e) => {
+          return utils.findParentByClassName(e, "cyEditor") || document.body;
+        }}
+      >
         <Button
           className="cyEditor__toolbar__button"
           type={type as any}
