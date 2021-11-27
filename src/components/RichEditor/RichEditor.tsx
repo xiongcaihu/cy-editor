@@ -19,6 +19,7 @@ import {
   EditorType,
   Marks,
   StateShape,
+  ToolBars,
 } from "./common/Defines";
 import { TableLogic } from "./comps/Table";
 import { utils } from "./common/utils";
@@ -33,6 +34,8 @@ import "./RichEditor.css";
 import { getCopyedCells } from "./common/globalStore";
 import { FixLayoutBox } from "./comps/FixLayoutBox";
 import { ToDoListLogic } from "./comps/TodoListComp";
+import codeComp from "../../externalComps/Code/index";
+import atPerson from "../../externalComps/AtPerson/index";
 
 type savedMarksShape =
   | (Partial<{
@@ -151,15 +154,8 @@ const EditorComp: EditorCompShape = (props) => {
     return <MyLeaf {...props}></MyLeaf>;
   }, []);
   const MyToolBar = useMemo(() => {
-    return (
-      <ToolBar
-        moreButtons={
-          (plugins?.map((plugin) => plugin.button)?.filter((o) => !!o) ||
-            []) as any
-        }
-      ></ToolBar>
-    );
-  }, [plugins]);
+    return <ToolBar buttons={props.toolbars || []}></ToolBar>;
+  }, [props.toolbars]);
 
   const handleSelect = () => {
     // 处理格式刷逻辑
@@ -244,7 +240,7 @@ const EditorComp: EditorCompShape = (props) => {
             };
           }, [readOnly, savedMarks])}
         >
-          {MyToolBar}
+          {(props.toolbars || []).length === 0 ? null : MyToolBar}
           <div
             className={EditorContainerClassName}
             ref={editorDomRef}
@@ -293,4 +289,13 @@ const EditorComp: EditorCompShape = (props) => {
   );
 };
 
-export default EditorComp;
+const CyReactEditor: EditorCompShape = (props) => {
+  return (
+    <EditorComp
+      plugins={props.plugins || [codeComp, atPerson]}
+      toolbars={props.toolbars || Object.values(ToolBars)}
+    />
+  );
+};
+
+export default CyReactEditor;

@@ -1,9 +1,6 @@
 import { Transforms } from "slate";
 import { ReactEditor } from "slate-react";
-import {
-  EditorType,
-  FixlayoutBoxId,
-} from "../../components/RichEditor/common/Defines";
+import { EditorType, FixlayoutBoxId } from "../../components/RichEditor/common/Defines";
 import { utils } from "../../components/RichEditor/common/utils";
 import { ChoosePersonComp } from "./ChoosePersonComp";
 

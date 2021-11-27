@@ -2,20 +2,17 @@ import { PersonShape } from "./source";
 import { Button, Card, Col, Empty, Row, Select, Space, Spin, Tag } from "antd";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import _ from "lodash";
-import {
-  CypressFlagValues,
-  CypressTestFlag,
-} from "../../components/RichEditor/common/Defines";
 import { Avatar, Typography } from "antd";
 import { LoadingOutlined, UserOutlined } from "@ant-design/icons";
 import { Random } from "mockjs";
+import { CypressTestFlag } from "../../components/RichEditor/common/Defines";
 
 const datas: PersonShape[] = new Array(100).fill(0).map((item, index) => {
   return {
     name: Random.cname(),
     id: Random.id(),
     moreInfo: {
-      org: "开发二团队/数字技术产品部/系统产品_产研平台与直属fkdsajflkasdjlfjasdkjfkdsajkflsadj;klfjksdljfksdjfkd",
+      org: "部门部门部门/部门部门部门/部门部门部门/部门部门部门",
     },
   };
 });
@@ -124,7 +121,7 @@ export const ChoosePersonComp: React.FC<{
             style={{ marginTop: 4, marginBottom: 4, textAlign: "center" }}
           >
             <Typography.Text
-              title={String(props.label)?.split('@')?.join('')}
+              title={String(props.label)?.split("@")?.join("")}
               ellipsis
               style={{ width: 36 }}
             >
@@ -239,7 +236,9 @@ export const ChoosePersonComp: React.FC<{
       ref={ref}
       id="ChoosePersonComp"
       data-no-base-class="choosePersonComp"
-      {...{ [CypressTestFlag]: CypressFlagValues.AT_PERSON_MODAL }}
+      {...{
+        [CypressTestFlag]: 'atPerson',
+      }}
     >
       <Card
         bodyStyle={{

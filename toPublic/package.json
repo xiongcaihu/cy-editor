@@ -1,7 +1,29 @@
 {
-  "name": "chenyu-slate-editor",
-  "version": "1.0.0",
+  "name": "cy-react-editor",
+  "version": "0.0.2",
   "description": "开源富文本编辑器",
+  "main": "lib/main.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiongcaihu/cy-editor.git"
+  },
+  "keywords": [
+    "editor",
+    "react",
+    "text-editor",
+    "rich-text"
+  ],
+  "author": "chenyu1991",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/xiongcaihu/cy-editor/issues"
+  },
   "dependencies": {
     "@ant-design/icons": "^4.6.2",
     "@types/escape-html": "^1.0.1",
@@ -29,6 +51,5 @@
     "typescript": "^4.1.2",
     "viewerjs": "^1.10.1"
   },
-  "main": "main.js",
-  "types": "main.d.ts"
+  "homepage": "https://github.com/xiongcaihu/cy-editor#readme"
 }

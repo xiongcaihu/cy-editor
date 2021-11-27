@@ -92,16 +92,65 @@ export type EditorType = BaseEditor &
   };
 
 export type StateShape = Parameters<typeof Slate>[0]["value"];
+export enum ToolBars {
+  FontTypeButton = "FontTypeButton",
+  FontSizeButton = "FontSizeButton",
+  TextAlignButton = "TextAlignButton",
+  CopyFormatButton = "CopyFormatButton",
+  CleanFormatButton = "CleanFormatButton",
+  FontColorButton = "FontColorButton",
+  FontBGColorButton = "FontBGColorButton",
+  FontWeightButton = "FontWeightButton",
+  FontStyleButton = "FontStyleButton",
+  UnderLineButton = "UnderLineButton",
+  LineThroughButton = "LineThroughButton",
+  ToDoListButton = "ToDoListButton",
+  OrderListButton = "OrderListButton",
+  NormalListButton = "NormalListButton",
+  InsertTextAfterVoid = "InsertTextAfterVoid",
+  InsertTextBeforeVoid = "InsertTextBeforeVoid",
+  SetLinkButton = "SetLinkButton",
+  InsertImgButton = "InsertImgButton",
+  InsertFileButton = "InsertFileButton",
+  InsertTableButton = "InsertTableButton",
+  TableAutoWidthButton = "TableAutoWidthButton",
+  DeleteTableButton = "DeleteTableButton",
+  CopyTableButton = "CopyTableButton",
+  SelectCellButton = "SelectCellButton",
+  DeleteColumnButton = "DeleteColumnButton",
+  DeleteRowButton = "DeleteRowButton",
+  InsertColumnBeforeCell = "InsertColumnBeforeCell",
+  InsertColumnAfterCell = "InsertColumnAfterCell",
+  InsertRowBeforeButton = "InsertRowBeforeButton",
+  InsertRowAfterButton = "InsertRowAfterButton",
+  MergeCellButton = "MergeCellButton",
+  SplitCellButton = "SplitCellButton",
+  ClearCellButton = "ClearCellButton",
+  ReadOnlyButton = "ReadOnlyButton",
+  InsertCodeButton = "InsertCodeButton",
+}
 export type EditorCompPropShape = {
+  /**
+   * 初次加载的内容
+   */
   content?: string;
+  /**
+   * 返回editor的实例
+   */
   getEditor?: (editor: EditorType) => void;
+  /**
+   * 内部加载插件用
+   */
   plugins?: {
     rule: (editor: EditorType) => EditorType;
     comp: React.FC<RenderElementProps>;
     name: string;
     button?: React.FC; // 工具条上的button
   }[];
-  toolbars?:[]
+  /**
+   * 工具条上显示的button
+   */
+  toolbars?: (ToolBars | "divide")[];
 };
 export type EditorCompShape = (
   props: EditorCompPropShape

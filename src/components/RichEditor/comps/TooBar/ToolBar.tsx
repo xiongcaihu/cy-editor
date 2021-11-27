@@ -1,18 +1,15 @@
+/* eslint-disable no-eval */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable eqeqeq */
 import { Col, Row, Divider } from "antd";
-import { Editor, Element, NodeEntry, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import _ from "lodash";
-import { ColumnWidthOutlined, SaveOutlined } from "@ant-design/icons";
+import { EyeInvisibleOutlined, EyeOutlined, SaveOutlined } from "@ant-design/icons";
 import "./ToolBar.css";
-import React, { useContext, useEffect } from "react";
+import React, { ReactElement, useContext } from "react";
 import { EditorContext } from "../../RichEditor";
-import { slateToHtml } from "../../common/slateToHtml";
-import { htmlToSlate } from "../../common/htmlToSlate";
 import { CleanFormatButton } from "./funcButtons/CleanFormatButton";
-import { StaticButton } from "./common/StaticButton";
 import { CopyFormatButton } from "./funcButtons/CopyFormatButton";
 import { TextAlignButton } from "./funcButtons/TextAlignButton";
 import { FontSizeButton } from "./funcButtons/FontSizeButton";
@@ -43,14 +40,15 @@ import { InsertRowAfterButton } from "./funcButtons/InsertRowAfterButton";
 import { MergeCellButton } from "./funcButtons/MergeCellButton";
 import { SplitCellButton } from "./funcButtons/SplitCellButton";
 import { ClearCellButton } from "./funcButtons/ClearCellButton";
-import { CET } from "../../common/Defines";
 import { SelectCellButton } from "./funcButtons/SelectCellButton";
-import { TableLogic } from "../Table";
 import { TableAutoWidthButton } from "./funcButtons/TableAutoWidth";
+import { ToolBars } from "../../common/Defines";
+import { StaticButton } from "./common/StaticButton";
+import { Button as InsertCodeButton } from "../../../../externalComps/Code/button";
 
 const ReadOnlyButton: React.FC<{}> = (props) => {
   const { readOnly, setReadOnly } = useContext(EditorContext);
-  const title = readOnly ? "编辑模式" : "只读模式";
+  const title = readOnly ? "切换到编辑模式" : "切换到只读模式";
   return (
     <StaticButton
       title={title}
@@ -58,13 +56,14 @@ const ReadOnlyButton: React.FC<{}> = (props) => {
         setReadOnly(!readOnly);
       }}
     >
-      {title}
+      {readOnly ? <EyeOutlined /> : <EyeInvisibleOutlined />}
     </StaticButton>
   );
 };
 
 export const ToolBar: React.FC<{
   moreButtons?: React.FC[];
+  buttons: (ToolBars | "divide")[];
 }> = (props) => {
   const editor = useSlateStatic();
 
@@ -75,119 +74,59 @@ export const ToolBar: React.FC<{
     />
   );
 
+  const ButtonMapper = (() => {
+    const obj: {
+      [key in ToolBars | "divide"]?: ReactElement;
+    } = {};
+    obj[ToolBars.FontTypeButton] = <FontTypeButton />;
+    obj[ToolBars.FontSizeButton] = <FontSizeButton />;
+    obj[ToolBars.TextAlignButton] = <TextAlignButton />;
+    obj[ToolBars.CopyFormatButton] = <CopyFormatButton />;
+    obj[ToolBars.CleanFormatButton] = <CleanFormatButton />;
+    obj[ToolBars.FontColorButton] = <FontColorButton />;
+    obj[ToolBars.FontBGColorButton] = <FontBGColorButton />;
+    obj[ToolBars.FontWeightButton] = <FontWeightButton />;
+    obj[ToolBars.FontStyleButton] = <FontStyleButton />;
+    obj[ToolBars.UnderLineButton] = <UnderLineButton />;
+    obj[ToolBars.LineThroughButton] = <LineThroughButton />;
+    obj[ToolBars.ToDoListButton] = <ToDoListButton />;
+    obj[ToolBars.OrderListButton] = <OrderListButton />;
+    obj[ToolBars.NormalListButton] = <NormalListButton />;
+    obj[ToolBars.InsertTextAfterVoid] = <InsertTextAfterVoid />;
+    obj[ToolBars.InsertTextBeforeVoid] = <InsertTextBeforeVoid />;
+    obj[ToolBars.SetLinkButton] = <SetLinkButton />;
+    obj[ToolBars.InsertImgButton] = <InsertImgButton />;
+    obj[ToolBars.InsertFileButton] = <InsertFileButton />;
+    obj[ToolBars.InsertTableButton] = <InsertTableButton />;
+    obj[ToolBars.TableAutoWidthButton] = <TableAutoWidthButton />;
+    obj[ToolBars.DeleteTableButton] = <DeleteTableButton />;
+    obj[ToolBars.CopyTableButton] = <CopyTableButton />;
+    obj[ToolBars.SelectCellButton] = <SelectCellButton />;
+    obj[ToolBars.DeleteColumnButton] = <DeleteColumnButton />;
+    obj[ToolBars.DeleteRowButton] = <DeleteRowButton />;
+    obj[ToolBars.InsertColumnBeforeCell] = <InsertColumnBeforeCell />;
+    obj[ToolBars.InsertColumnAfterCell] = <InsertColumnAfterCell />;
+    obj[ToolBars.InsertRowBeforeButton] = <InsertRowBeforeButton />;
+    obj[ToolBars.InsertRowAfterButton] = <InsertRowAfterButton />;
+    obj[ToolBars.MergeCellButton] = <MergeCellButton />;
+    obj[ToolBars.SplitCellButton] = <SplitCellButton />;
+    obj[ToolBars.ClearCellButton] = <ClearCellButton />;
+    obj[ToolBars.ReadOnlyButton] = <ReadOnlyButton />;
+    obj[ToolBars.InsertCodeButton] = <InsertCodeButton />;
+    obj.divide = diverComp;
+    return obj;
+  })();
+
   return (
     <div
       className="cyEditor__toolBar"
       style={{ position: "relative", marginBottom: 4 }}
     >
       <Row align="middle">
-        {/* 设置字体规格 */}
-        <Col>
-          <FontTypeButton></FontTypeButton>
-        </Col>
-        {/* 设置字体大小 */}
-        <Col>
-          <FontSizeButton></FontSizeButton>
-        </Col>
-        {/* 设置对齐方式 */}
-        <Col>
-          <TextAlignButton></TextAlignButton>
-        </Col>
-        <Col>{diverComp}</Col>
-        <Col>
-          <CopyFormatButton></CopyFormatButton>
-        </Col>
-        <Col>
-          <CleanFormatButton></CleanFormatButton>
-        </Col>
-        <Col>
-          <FontColorButton></FontColorButton>
-        </Col>
-        <Col>
-          <FontBGColorButton></FontBGColorButton>
-        </Col>
-        <Col>
-          <FontWeightButton></FontWeightButton>
-        </Col>
-        <Col>
-          <FontStyleButton></FontStyleButton>
-        </Col>
-        <Col>
-          <UnderLineButton></UnderLineButton>
-        </Col>
-        <Col>
-          <LineThroughButton></LineThroughButton>
-        </Col>
-        <Col>{diverComp}</Col>
-        <Col>
-          <ToDoListButton></ToDoListButton>
-        </Col>
-        <Col>
-          <OrderListButton></OrderListButton>
-        </Col>
-        <Col>
-          <NormalListButton></NormalListButton>
-        </Col>
-        <Col>
-          <InsertTextAfterVoid></InsertTextAfterVoid>
-        </Col>
-        <Col>
-          <InsertTextBeforeVoid></InsertTextBeforeVoid>
-        </Col>
-        <Col>
-          <SetLinkButton></SetLinkButton>
-        </Col>
-        <Col>
-          <InsertImgButton></InsertImgButton>
-        </Col>
-        <Col>
-          <InsertFileButton></InsertFileButton>
-        </Col>
-        <Col>{diverComp}</Col>
-        <Col>
-          <InsertTableButton></InsertTableButton>
-        </Col>
-        <Col>
-          <TableAutoWidthButton></TableAutoWidthButton>
-        </Col>
-        <Col>
-          <DeleteTableButton></DeleteTableButton>
-        </Col>
-        <Col>
-          <CopyTableButton></CopyTableButton>
-        </Col>
-        <Col>
-          <SelectCellButton></SelectCellButton>
-        </Col>
-        <Col>
-          <DeleteColumnButton></DeleteColumnButton>
-        </Col>
-        <Col>
-          <DeleteRowButton></DeleteRowButton>
-        </Col>
-        <Col>
-          <InsertColumnBeforeCell></InsertColumnBeforeCell>
-        </Col>
-        <Col>
-          <InsertColumnAfterCell></InsertColumnAfterCell>
-        </Col>
-        <Col>
-          <InsertRowBeforeButton></InsertRowBeforeButton>
-        </Col>
-        <Col>
-          <InsertRowAfterButton></InsertRowAfterButton>
-        </Col>
-        <Col>
-          <MergeCellButton></MergeCellButton>
-        </Col>
-        <Col>
-          <SplitCellButton></SplitCellButton>
-        </Col>
-        <Col>
-          <ClearCellButton></ClearCellButton>
-        </Col>
-        <Col>{diverComp}</Col>
-        <Col>
+        {props.buttons.map((button, index) => {
+          return <Col key={index}>{ButtonMapper[button]}</Col>;
+        })}
+        {/* <Col>
           <StaticButton
             title="输出内容"
             mousedownFunc={() => {
@@ -200,7 +139,7 @@ export const ToolBar: React.FC<{
           >
             <SaveOutlined />
           </StaticButton>
-        </Col>
+        </Col> */}
         {/* <Col>
           <StaticButton
             title="输出内容HTML"
@@ -232,17 +171,13 @@ export const ToolBar: React.FC<{
             htmlToSlate
           </StaticButton>
         </Col> */}
-        <Col>
-          <ReadOnlyButton></ReadOnlyButton>
-        </Col>
-        <Col>{diverComp}</Col>
-        {(props.moreButtons || []).map((Button, i) => {
+        {/* {(props.moreButtons || []).map((Button, i) => {
           return (
             <Col key={i}>
               <Button></Button>
             </Col>
           );
-        })}
+        })} */}
       </Row>
     </div>
   );

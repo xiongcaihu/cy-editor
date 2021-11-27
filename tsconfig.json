@@ -22,10 +22,8 @@
   },
   "include": ["./src"],
   "exclude": [
-    "src/_test/**",
     "node_modules",
     "src/index.tsx",
     "toPublic/**",
-    "src/setupTests.js"
   ]
 }

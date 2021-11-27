@@ -1,5 +1,5 @@
 import { Editor, Transforms, Element } from "slate";
-import { EditorType, CET } from "../../components/RichEditor/common/Defines";
+import { CET, EditorType } from "../../components/RichEditor/common/Defines";
 
 export const type = "code";
 
