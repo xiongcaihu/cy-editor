@@ -1,6 +1,6 @@
 {
   "name": "cy-react-editor",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "开源富文本编辑器",
   "main": "lib/main.js",
   "directories": {

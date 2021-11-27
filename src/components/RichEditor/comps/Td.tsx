@@ -618,9 +618,7 @@ export const TdLogic = {
     Editor.withoutNormalizing(editor, () => {
       const selectedTds = TableLogic.getSelectedTds(editor);
       for (const [n, p] of selectedTds) {
-        const isEmptyCell =
-          n.children.length === 1 &&
-          Editor.string(editor, p, { voids: true }) === "";
+        const isEmptyCell = utils.isElementEmpty(editor, [n, p]);
 
         if (isEmptyCell) continue;
 

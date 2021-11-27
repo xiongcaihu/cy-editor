@@ -155,3 +155,6 @@ https://docs.slatejs.org/concepts/11-normalizing
 - [ ] 支持粘贴excel里的表格
 - [ ] 支持粘贴word里的内容
 - [ ] 支持多窗口实时编辑
+
+### BUGS
+- [x] 表格内批量删除，无法删除图片

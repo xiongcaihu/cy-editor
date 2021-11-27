@@ -126,7 +126,7 @@ export const ToolBar: React.FC<{
         {props.buttons.map((button, index) => {
           return <Col key={index}>{ButtonMapper[button]}</Col>;
         })}
-        {/* <Col>
+        <Col>
           <StaticButton
             title="输出内容"
             mousedownFunc={() => {
@@ -139,7 +139,7 @@ export const ToolBar: React.FC<{
           >
             <SaveOutlined />
           </StaticButton>
-        </Col> */}
+        </Col>
         {/* <Col>
           <StaticButton
             title="输出内容HTML"
