@@ -43,7 +43,8 @@ import {
 import { message } from "antd";
 import { useEffect } from "react";
 declare module "react" {
-  interface HTMLAttributes<T> extends DOMAttributes<T> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface HTMLAttributes<T> {
     border?: any;
   }
 }

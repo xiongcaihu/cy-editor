@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "es5",
-    "types": ["cypress", "node", "cypress-real-events"],
-    "lib": ["dom", "dom.iterable", "esnext", "ES2015"],
+    "types": ["node"],
+    "lib": ["dom", "dom.iterable", "esnext", "ES2015", "ES6"],
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -15,14 +15,17 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "downlevelIteration": true,
-    "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "declaration": true,
+    "outDir": "./toPublic/lib",
+    "noEmit": true
   },
-  "include": [
-    "src",
-    "node_modules/cypress",
-    "cypress/**/*.ts",
-    "cypress/**/*.tsx"
-  ],
-  "exclude": ["src/_test/**"]
+  "include": ["./src"],
+  "exclude": [
+    "src/_test/**",
+    "node_modules",
+    "src/index.tsx",
+    "toPublic/**",
+    "src/setupTests.js"
+  ]
 }

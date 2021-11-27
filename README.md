@@ -130,7 +130,7 @@ https://docs.slatejs.org/concepts/11-normalizing
 - [x] 重构扩展组件逻辑
   - 存放路径/externalComps/comps
 - [x] 容器内增加通用透明悬浮div，通过editor.setFixLayoutBox方法来调用
-- [ ] 可配置数据的@功能 (doing)
+- [x] 可配置数据的@功能 (doing)
   - 功能描述：
     - 输入@符号后，光标处弹出选人窗口
     - 待选人结束后，关闭窗口
@@ -149,7 +149,7 @@ https://docs.slatejs.org/concepts/11-normalizing
 - [ ] 颜色选项实现可配置化
 - [ ] 对于粘贴的外部内容的转换规则实现可配置化
 - [ ] 为文本添加\t内容的按钮
-- [ ] 单元格垂直居中的功能
+- [x] 单元格垂直居中的功能
 - [x] 代码块组件的界面优化【将语言选择移动到不阻碍代码显示的位置，并增加更多语言选项】 (done)
 - [ ] 可插入特殊符号
 - [ ] 支持粘贴excel里的表格

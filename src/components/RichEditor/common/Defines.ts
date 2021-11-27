@@ -101,6 +101,7 @@ export type EditorCompPropShape = {
     name: string;
     button?: React.FC; // 工具条上的button
   }[];
+  toolbars?:[]
 };
 export type EditorCompShape = (
   props: EditorCompPropShape

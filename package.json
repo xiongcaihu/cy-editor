@@ -41,14 +41,23 @@
     "slate-react": "^0.67.0",
     "typescript": "^4.1.2",
     "viewerjs": "^1.10.1",
+    "copyfiles": "^2.4.1",
+    "rimraf": "^3.0.2",
     "web-vitals": "^1.0.1"
   },
+  "main": "lib/main.js",
+  "types": "lib/main.d.ts",
   "scripts": {
+    "lint": "eslint --fix --quiet toPublic/lib/**/*.js",
+    "clean": "rimraf toPublic/lib/**",
+    "copy-files": "copyfiles -u 1 src/**/*.css toPublic/lib/",
+    "buildTsc": "yarn clean && tsc --noEmit false && yarn copy-files && yarn lint",
     "runExpress": "cd ./express && npm run start",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
+    "check": "tsc",
     "cypress:open": "npx cypress open-ct",
     "cypress:all": "npx cypress run-ct --browser chrome --headed"
   },

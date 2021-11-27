@@ -24,6 +24,7 @@ export const ColorPickerCore: React.FC<{
     >
       <CompactPicker
         color={color.hex}
+        colors={[]}
         onChange={(color) => {
           setColor(color);
           props?.onChange?.(color.hex);
