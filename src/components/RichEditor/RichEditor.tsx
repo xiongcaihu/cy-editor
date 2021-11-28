@@ -14,7 +14,6 @@ import {
   CET,
   CustomElement,
   EditableProps,
-  EditorCompPropShape,
   EditorCompShape,
   EditorContainerClassName,
   EditorType,
@@ -55,11 +54,6 @@ export const EditorContext = createContext<{
   setSavedMarks: (marks: savedMarksShape) => void;
   readOnly: boolean;
   setReadOnly: (value: boolean) => void;
-  /**
-   * 自定义上传图片函数
-   */
-  customUploadImg?: EditorCompPropShape["customUploadImg"];
-  customUploadFile?: EditorCompPropShape["customUploadFile"];
 }>({
   savedMarks: null,
   setSavedMarks: () => {},
@@ -141,6 +135,7 @@ const EditorComp: EditorCompShape = (props) => {
 
   useEffect(() => {
     props.getEditor?.(editor);
+    editor.customProps = props;
   }, [editor, fixBox, props]);
 
   const renderElement: EditableProps["renderElement"] = useCallback(
@@ -243,15 +238,8 @@ const EditorComp: EditorCompShape = (props) => {
               setSavedMarks: setSavedMarks,
               readOnly,
               setReadOnly,
-              customUploadImg: props.customUploadImg,
-              customUploadFile: props.customUploadFile,
             };
-          }, [
-            props.customUploadFile,
-            props.customUploadImg,
-            readOnly,
-            savedMarks,
-          ])}
+          }, [readOnly, savedMarks])}
         >
           {(props.toolbars || []).length === 0 ? null : MyToolBar}
           <div

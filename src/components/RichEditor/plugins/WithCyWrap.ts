@@ -473,6 +473,15 @@ export const withCyWrap = (editor: EditorType) => {
     // } else
     if (e.types.includes("application/x-slate-fragment")) {
       insertData(e);
+    } else if (e.types.includes("text/html")) {
+      const newTransfer = new DataTransfer();
+      const content = htmlToSlate(e.getData("text/html"));
+      newTransfer.setData(
+        "application/x-slate-fragment",
+        // 编码内容
+        utils.encodeSlateContent(content)
+      );
+      insertData(newTransfer);
     } else if (e.types.includes("text/plain")) {
       const newTransfer = new DataTransfer();
       const content = htmlToSlate(e.getData("text/plain"));
@@ -483,9 +492,17 @@ export const withCyWrap = (editor: EditorType) => {
       );
       insertData(newTransfer);
     } else if (e.types.includes("Files")) {
-      const files = e.files;
-      insertImg(editor, files);
-      insertFile(editor, files);
+      const imgs: File[] = [],
+        files: File[] = [];
+      Array.from(e.files).forEach((file) => {
+        if (file.type.includes("image")) {
+          imgs.push(file);
+        } else {
+          files.push(file);
+        }
+      });
+      insertImg(editor, imgs, editor.customProps?.customUploadImg);
+      insertFile(editor, files, editor.customProps?.customUploadFile);
     }
   };
 

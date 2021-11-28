@@ -81,6 +81,10 @@ export type CustomText = { text: string; [key: string]: any } & Partial<{
 export type EditorType = BaseEditor &
   ReactEditor &
   HistoryEditor & {
+    /**
+     * 用于传递一些自定义的配置
+     */
+    customProps?: EditorCompPropShape;
     setFixLayoutBox?(
       attr: {
         visible: boolean;
@@ -167,7 +171,7 @@ export type EditorCompPropShape = {
   /**
    * 自定义上传文件函数
    */
-   customUploadFile?: {
+  customUploadFile?: {
     /**
      * 验证上传的文件，返回验证通过的图片
      */

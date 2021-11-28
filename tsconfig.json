@@ -17,13 +17,13 @@
     "downlevelIteration": true,
     "jsx": "react-jsx",
     "declaration": true,
-    "outDir": "./toPublic/lib",
+    "outDir": "toPublish/lib",
     "noEmit": true
   },
   "include": ["./src"],
   "exclude": [
     "node_modules",
     "src/index.tsx",
-    "toPublic/**",
+    "toPublish/**",
   ]
 }

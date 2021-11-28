@@ -1,13 +1,12 @@
 import { PictureOutlined } from "@ant-design/icons";
 import { message } from "antd";
-import { InputHTMLAttributes, useContext } from "react";
+import { InputHTMLAttributes } from "react";
 import { useRef } from "react";
 import { Element, Range, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import { CET, EditorCompPropShape, EditorType } from "../../../common/Defines";
 import { ReactButton } from "../common/ReactButton";
 import axios from "axios";
-import { EditorContext } from "../../../RichEditor";
 
 const acceptImgTypes = [
   "image/apng",
@@ -137,7 +136,6 @@ export const insertImg = (
 export const InsertImgButton = () => {
   const editor = useSlateStatic();
   const fileRef = useRef<any>();
-  const { customUploadImg } = useContext(EditorContext);
 
   const chooseImg = () => {
     if (fileRef.current) {
@@ -152,7 +150,7 @@ export const InsertImgButton = () => {
     const files = e.target.files;
     if (!files) return;
 
-    insertImg(editor, files, customUploadImg);
+    insertImg(editor, files, editor.customProps?.customUploadImg);
   };
 
   return (

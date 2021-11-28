@@ -1,13 +1,12 @@
 import { PaperClipOutlined } from "@ant-design/icons";
 import { message } from "antd";
-import { InputHTMLAttributes, useContext } from "react";
+import { InputHTMLAttributes } from "react";
 import { useRef } from "react";
 import { Element, Range, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
 import { CET, EditorCompPropShape, EditorType } from "../../../common/Defines";
 import { ReactButton } from "../common/ReactButton";
 import axios from "axios";
-import { EditorContext } from "../../../RichEditor";
 
 const acceptFileTypes = [
   ".doc",
@@ -145,7 +144,6 @@ export const insertFile = (
 export const InsertFileButton = () => {
   const editor = useSlateStatic();
   const fileRef = useRef<any>();
-  const { customUploadFile } = useContext(EditorContext);
 
   const chooseFile = () => {
     if (fileRef.current) {
@@ -160,7 +158,7 @@ export const InsertFileButton = () => {
     const files = e.target.files;
     if (!files) return;
 
-    insertFile(editor, files, customUploadFile);
+    insertFile(editor, files, editor.customProps?.customUploadFile);
   };
 
   return (

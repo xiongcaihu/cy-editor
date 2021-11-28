@@ -159,6 +159,9 @@ https://docs.slatejs.org/concepts/11-normalizing
 - [x] 图片配置外部化
 - [x] 文件上传配置化
 - [ ] @人实现配置化
+- [ ] 文件预览功能
+  - [ ] word文件【doc,ppt,docx,excel】
+  - [ ] 普通文本【txt,js,java....】
 
 ### BUGS
 - [x] 表格内批量删除，无法删除图片

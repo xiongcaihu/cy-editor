@@ -60,7 +60,16 @@ const deserialize = (el: any): any => {
     case "BR":
       return "\n";
     case "BODY":
-      return jsx("fragment", {}, children);
+      return jsx(
+        "fragment",
+        {},
+        children.filter((child) => {
+          if (child == null || /^(\n)+$/.test(child)) {
+            return false;
+          }
+          return true;
+        })
+      );
     case "P":
     case "DIV": {
       const isTextWrapper = (Array.from(el?.childNodes) || []).every(
@@ -123,5 +132,6 @@ const deserialize = (el: any): any => {
 export const htmlToSlate = (html: string): any => {
   // 去掉标签之间的空格和回车等其他符号
   const document = new DOMParser().parseFromString(html, "text/html");
-  return deserialize(document.body);
+  const rel = deserialize(document.body);
+  return rel;
 };
