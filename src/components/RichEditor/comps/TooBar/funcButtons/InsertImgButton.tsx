@@ -1,12 +1,13 @@
 import { PictureOutlined } from "@ant-design/icons";
 import { message } from "antd";
-import { InputHTMLAttributes } from "react";
+import { InputHTMLAttributes, useContext } from "react";
 import { useRef } from "react";
 import { Element, Range, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
-import { CET, EditorType } from "../../../common/Defines";
+import { CET, EditorCompPropShape, EditorType } from "../../../common/Defines";
 import { ReactButton } from "../common/ReactButton";
 import axios from "axios";
+import { EditorContext } from "../../../RichEditor";
 
 const acceptImgTypes = [
   "image/apng",
@@ -20,10 +21,9 @@ const acceptImgTypes = [
 
 const maxSize = 1024 * 1024 * 5; // 5M
 
-const valideImg: (param: FileList | File[] | null) => {
-  legalFiles: File[];
-  illegalFiles: File[];
-} = (files) => {
+const verifyImg: NonNullable<
+  EditorCompPropShape["customUploadImg"]
+>["verifyImg"] = (files) => {
   const legalFiles: File[] = [];
   const illegalFiles: File[] = [];
   // all img types https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types
@@ -35,21 +35,27 @@ const valideImg: (param: FileList | File[] | null) => {
         legalFiles.push(file);
       }
     });
-  return {
-    legalFiles,
-    illegalFiles,
-  };
+
+  if (illegalFiles.length > 0) {
+    message.error(
+      illegalFiles.map((file) => file.name).join("，") +
+        `，文件格式非法（或超过最大限制${maxSize / 1024 / 1024}M）`
+    );
+  }
+  return legalFiles;
 };
 
 function sleep() {
   return new Promise<void>((rel) => {
     setTimeout(() => {
       rel();
-    }, 2000);
+    }, 300);
   });
 }
 
-const uploadImg = async (file: File): Promise<string> => {
+const uploadImg: NonNullable<
+  EditorCompPropShape["customUploadImg"]
+>["uploadImg"] = async (file) => {
   try {
     let formData = new FormData();
     formData.append("file", file);
@@ -60,11 +66,12 @@ const uploadImg = async (file: File): Promise<string> => {
       headers: {
         "Content-Type": "multipart/form-data;charset=UTF-8",
       },
+      timeout: 1000,
     });
     return `http://localhost:3001/${res?.data?.[0]?.filename}`;
   } catch (error) {
     await sleep();
-    return URL.createObjectURL(file);
+    return null;
   }
 };
 
@@ -91,15 +98,16 @@ const insertImgToEditor = (
   callback(id);
 };
 
-export const insertImg = (editor: EditorType, files: FileList | File[]) => {
-  files = Array.from(files);
-  const { illegalFiles, legalFiles } = valideImg(files);
-  if (illegalFiles.length > 0) {
-    message.error(
-      illegalFiles.map((file) => file.name).join("，") +
-        `，文件格式非法（或超过最大限制${maxSize / 1024 / 1024}M）`
-    );
+export const insertImg = (
+  editor: EditorType,
+  files: FileList | File[],
+  customUploadImg: EditorCompPropShape["customUploadImg"] = {
+    verifyImg,
+    uploadImg,
   }
+) => {
+  files = Array.from(files);
+  const legalFiles = customUploadImg.verifyImg(files);
 
   for (const file of legalFiles) {
     insertImgToEditor(
@@ -107,7 +115,7 @@ export const insertImg = (editor: EditorType, files: FileList | File[]) => {
       URL.createObjectURL(file),
       new Date().getTime(),
       async (id: number) => {
-        const url = await uploadImg(file);
+        const url = await customUploadImg.uploadImg(file);
         Transforms.setNodes(
           editor,
           {
@@ -129,6 +137,7 @@ export const insertImg = (editor: EditorType, files: FileList | File[]) => {
 export const InsertImgButton = () => {
   const editor = useSlateStatic();
   const fileRef = useRef<any>();
+  const { customUploadImg } = useContext(EditorContext);
 
   const chooseImg = () => {
     if (fileRef.current) {
@@ -143,7 +152,7 @@ export const InsertImgButton = () => {
     const files = e.target.files;
     if (!files) return;
 
-    insertImg(editor, files);
+    insertImg(editor, files, customUploadImg);
   };
 
   return (

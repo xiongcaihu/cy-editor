@@ -1,12 +1,13 @@
 import { PaperClipOutlined } from "@ant-design/icons";
 import { message } from "antd";
-import { InputHTMLAttributes } from "react";
+import { InputHTMLAttributes, useContext } from "react";
 import { useRef } from "react";
 import { Element, Range, Transforms } from "slate";
 import { useSlateStatic } from "slate-react";
-import { CET, EditorType } from "../../../common/Defines";
+import { CET, EditorCompPropShape, EditorType } from "../../../common/Defines";
 import { ReactButton } from "../common/ReactButton";
 import axios from "axios";
+import { EditorContext } from "../../../RichEditor";
 
 const acceptFileTypes = [
   ".doc",
@@ -24,10 +25,9 @@ const acceptFileTypes = [
 
 const maxSize = 1024 * 1024 * 10; // 10M
 
-const valideFile: (param: FileList | File[] | null) => {
-  legalFiles: File[];
-  illegalFiles: File[];
-} = (files) => {
+const verifyFile: NonNullable<
+  EditorCompPropShape["customUploadFile"]
+>["verifyFile"] = (files) => {
   const legalFiles: File[] = [];
   const illegalFiles: File[] = [];
 
@@ -41,21 +41,27 @@ const valideFile: (param: FileList | File[] | null) => {
       }
     });
 
-  return {
-    legalFiles,
-    illegalFiles,
-  };
+  if (illegalFiles.length > 0) {
+    message.error(
+      illegalFiles.map((file) => file.name).join("，") +
+        `，文件格式非法（或超过最大限制${maxSize / 1024 / 1024}M）`
+    );
+  }
+
+  return legalFiles;
 };
 
 function sleep() {
   return new Promise<void>((rel) => {
     setTimeout(() => {
       rel();
-    }, 2000);
+    }, 200);
   });
 }
 
-const uploadFile = async (file: File): Promise<string> => {
+const uploadFile: NonNullable<
+  EditorCompPropShape["customUploadFile"]
+>["uploadFile"] = async (file) => {
   try {
     let formData = new FormData();
     formData.append("file", file);
@@ -70,7 +76,7 @@ const uploadFile = async (file: File): Promise<string> => {
     return `http://localhost:3001/${res?.data?.[0]?.filename}`;
   } catch (error) {
     await sleep();
-    return URL.createObjectURL(file);
+    return null;
   }
 };
 
@@ -99,15 +105,16 @@ const insertFileToEditor = (
   callback(id);
 };
 
-export const insertFile = (editor: EditorType, files: FileList | File[]) => {
-  files = Array.from(files);
-  const { illegalFiles, legalFiles } = valideFile(files);
-  if (illegalFiles.length > 0) {
-    message.error(
-      illegalFiles.map((file) => file.name).join("，") +
-        `，文件格式非法（或超过最大限制${maxSize / 1024 / 1024}M）`
-    );
+export const insertFile = (
+  editor: EditorType,
+  files: FileList | File[],
+  customUploadFile: EditorCompPropShape["customUploadFile"] = {
+    verifyFile,
+    uploadFile,
   }
+) => {
+  files = Array.from(files);
+  const legalFiles = customUploadFile.verifyFile(files);
 
   for (const file of legalFiles) {
     insertFileToEditor(
@@ -116,7 +123,7 @@ export const insertFile = (editor: EditorType, files: FileList | File[]) => {
       file.name,
       new Date().getTime(),
       async (id: number) => {
-        const url = await uploadFile(file);
+        const url = await customUploadFile.uploadFile(file);
         Transforms.setNodes(
           editor,
           {
@@ -138,6 +145,7 @@ export const insertFile = (editor: EditorType, files: FileList | File[]) => {
 export const InsertFileButton = () => {
   const editor = useSlateStatic();
   const fileRef = useRef<any>();
+  const { customUploadFile } = useContext(EditorContext);
 
   const chooseFile = () => {
     if (fileRef.current) {
@@ -152,7 +160,7 @@ export const InsertFileButton = () => {
     const files = e.target.files;
     if (!files) return;
 
-    insertFile(editor, files);
+    insertFile(editor, files, customUploadFile);
   };
 
   return (

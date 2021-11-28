@@ -151,6 +151,32 @@ export type EditorCompPropShape = {
    * 工具条上显示的button
    */
   toolbars?: (ToolBars | "divide")[];
+  /**
+   * 自定义上传图片函数
+   */
+  customUploadImg?: {
+    /**
+     * 验证上传的图片，返回验证通过的图片
+     */
+    verifyImg: (param: FileList | File[] | null) => File[];
+    /**
+     * 上传图片逻辑，成功后，返回图片的url，如果失败，返回null
+     */
+    uploadImg: (file: File) => Promise<string | null>;
+  };
+  /**
+   * 自定义上传文件函数
+   */
+   customUploadFile?: {
+    /**
+     * 验证上传的文件，返回验证通过的图片
+     */
+    verifyFile: (param: FileList | File[] | null) => File[];
+    /**
+     * 上传文件逻辑，成功后，返回文件的url，如果失败，返回null
+     */
+    uploadFile: (file: File) => Promise<string | null>;
+  };
 };
 export type EditorCompShape = (
   props: EditorCompPropShape

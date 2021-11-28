@@ -12,7 +12,7 @@ const datas: PersonShape[] = new Array(100).fill(0).map((item, index) => {
     name: Random.cname(),
     id: Random.id(),
     moreInfo: {
-      org: "部门部门部门/部门部门部门/部门部门部门/部门部门部门",
+      org: Random.word(10, 100),
     },
   };
 });
@@ -85,13 +85,6 @@ export const ChoosePersonComp: React.FC<{
       }, 0);
     }
   }, []);
-
-  // useEffect(() => {
-  //   console.log("mounted");
-  //   return () => {
-  //     console.log("unmounted");
-  //   };
-  // }, []);
 
   useEffect(() => {
     // 如果initPerson变化，说明是刚刚点击人员文字，此时应该只选中这个initPerson
@@ -196,7 +189,7 @@ export const ChoosePersonComp: React.FC<{
               height: "100%",
               lineHeight: 1.5,
             }}
-            justify="center"
+            justify="start"
           >
             <Col>
               <Typography.Text strong>
@@ -237,7 +230,7 @@ export const ChoosePersonComp: React.FC<{
       id="ChoosePersonComp"
       data-no-base-class="choosePersonComp"
       {...{
-        [CypressTestFlag]: 'atPerson',
+        [CypressTestFlag]: "atPerson",
       }}
     >
       <Card

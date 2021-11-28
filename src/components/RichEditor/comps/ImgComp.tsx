@@ -231,7 +231,7 @@ export const ImgComp: (props: RenderElementProps) => JSX.Element = ({
             ref={registeImgViewer}
             width="100%"
             height="100%"
-            alt=""
+            alt={element.url == null ? "upload failed" : ""}
             src={element.url}
           ></img>
         </Popover>
