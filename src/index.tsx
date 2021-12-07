@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom";
 import Editor from "./components/RichEditor/RichEditor";
+import "./components/RichEditor/RichEditor.css";
 
 ReactDOM.render(
   <Editor

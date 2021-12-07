@@ -6,7 +6,6 @@ import { Col, Row } from "antd";
 import { useSlateStatic } from "slate-react";
 import _ from "lodash";
 import { SaveOutlined } from "@ant-design/icons";
-import "./ToolBar.css";
 import React from "react";
 import { ToolBars } from "../../common/Defines";
 import { StaticButton } from "./common/StaticButton";

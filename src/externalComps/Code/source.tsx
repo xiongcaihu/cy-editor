@@ -21,7 +21,6 @@ require("codemirror/mode/javascript/javascript.js");
 require("codemirror/mode/jsx/jsx.js");
 require("codemirror/mode/vue/vue.js");
 require("codemirror/mode/clike/clike.js");
-require('./source.css');
 
 const lans = [
   {
