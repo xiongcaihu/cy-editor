@@ -1,4 +1,11 @@
 @import url("../../externalComps/Code/source.css");
+@import url("antd/dist/antd.css");
+@import url("viewerjs/dist/viewer.css");
+@import url("codemirror/lib/codemirror.css");
+@import url("codemirror/theme/material.css");
+@import url("codemirror/theme/neat.css");
+@import url("codemirror/theme/darcula.css");
+@import url("codemirror/theme/material-palenight.css");
 
 :root {
   --table-border-color: #bbb;

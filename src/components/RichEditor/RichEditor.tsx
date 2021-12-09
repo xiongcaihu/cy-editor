@@ -29,7 +29,6 @@ import { withCyWrap } from "./plugins/WithCyWrap";
 import { HandleKeyDownEvent } from "./EventHandler/HandleKeyDownEvent/HandleKeyDownEvent";
 import { MyElements } from "./RenderElements/MyElements";
 import { MyLeaf } from "./RenderElements/RenderLeaf";
-import "antd/dist/antd.css"; // or 'antd/dist/antd.less'
 import { getCopyedCells } from "./common/globalStore";
 import { FixLayoutBox } from "./comps/FixLayoutBox";
 import { ToDoListLogic } from "./comps/TodoListComp";

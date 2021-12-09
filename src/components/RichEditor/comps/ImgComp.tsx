@@ -16,7 +16,6 @@ import {
   useSlateStatic,
   useReadOnly,
 } from "slate-react";
-import "viewerjs/dist/viewer.css";
 import Viewer from "viewerjs";
 import { useCallback } from "react";
 import { utils } from "../common/utils";
