@@ -6,6 +6,7 @@
 ### [slatejs介绍](https://docs.slatejs.org/)
 
 ### 核心概念
+#### slatejs是一个L1级的富文本编辑框架，它利用contenteditable的排版，自己定义了一个用于描述容器内容的树形结构，类似DOM，通过MVC的模式去管理渲染，所以这就可以避免用户输入这个Model无法管理或者不认可的内容（因为slatejs拦截了用户的输入行为，并替换成内部的api去执行），同时也屏蔽了contenteditable的一些莫名其妙的排版和行为问题。
 #### editor.children
 slatejs展示的内容结构，是一棵树，根节点就是editor.children对象（editor是编辑器的一个实例），它由众多Element和Text节点构成，其中Text是叶子节点。结构如下：
 ``` typescript
